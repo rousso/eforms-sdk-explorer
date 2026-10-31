@@ -17,5 +17,12 @@
     "bugs": {
         "url": "https://github.com/OP-TED/eforms-sdk-explorer/issues"
     },
-    "homepage": "https://github.com/OP-TED/eforms-sdk-explorer#readme"
+    "homepage": "https://github.com/OP-TED/eforms-sdk-explorer#readme",
+    "scripts": {
+        "smoke": "node scripts/smoke.mjs"
+    },
+    "devDependencies": {
+        "http-server": "^14.1.1",
+        "playwright": "^1.63.0"
+    }
 }

@@ -9,5 +9,6 @@ export const appConfig = {
     rawBaseUrl: 'https://raw.githubusercontent.com/OP-TED/eForms-SDK',
     contentsFileUrl: 'https://api.github.com/repos/OP-TED/eForms-SDK/contents',
     thresholdVersion: '1.3.2',  // versions before this one are not displayed in the dropdown
+    branches: ['develop', 'efx-2'],  // branches offered at the top of the target version dropdown
 };
 

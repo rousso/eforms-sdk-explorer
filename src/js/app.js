@@ -6,6 +6,7 @@
 
 import { appConfig } from "./config.js";
 import { appState } from "./state.js";
+import { SdkVersion } from "./sdk-version.js";
 import { HomeTab } from "./tabs/home-tab.js";
 import { FieldsTab } from "./tabs/fields-tab.js";
 import { NoticeTypesTab } from "./tabs/notice-types-tab.js";
@@ -18,6 +19,9 @@ import { ReleaseNotesTab } from "./tabs/release-notes-tab.js";
 import { TabController } from "./tabs/tab-controller.js";
 
 export class SdkExplorerApplication {
+
+    /** The page size used to fetch the tags of the SDK repository (the maximum the GitHub API allows). */
+    static #TAGS_PER_PAGE = 100;
 
     /** @type {SdkExplorerApplication} */
     static instance = new SdkExplorerApplication();
@@ -199,74 +203,23 @@ export class SdkExplorerApplication {
     }
 
     /**
-     * Compares two version numbers but returns the opposite of the result.
+     * Gets the default base version for the given target version.
+     * For a tagged target, it is the latest patch of the previous minor version in the same major version;
+     * if there is none, it is the release immediately preceding the target in version order.
+     * For a branch target, it is the latest release.
+     * Pre-releases are never a default base.
      * 
-     * @param {string} a 
-     * @param {string} b 
-     * @returns {number} -1 if a > b, 1 if a < b, 0 if a === b
+     * @param {string} target The target version: a tag or one of the configured branches.
+     * @param {SdkVersion[]} releases All released versions, latest first.
+     * @returns {SdkVersion|undefined}
      */
-    #reverseCompareVersions(a, b) {
-        const aParts = a.split('.').map(Number);
-        const bParts = b.split('.').map(Number);
-
-        for (let i = 0; i < aParts.length; i++) {
-            if (aParts[i] > bParts[i]) {
-                return -1;
-            } else if (aParts[i] < bParts[i]) {
-                return 1;
-            }
+    #defaultBaseFor(target, releases) {
+        if (appConfig.branches.includes(target)) {
+            return releases[0];
         }
-
-        return 0;
-    }
-
-    /**
-     * Gets the two latest non-pre-release versions.
-     * 
-     * @param {string[]} versions 
-     * @returns 
-     */
-    #getLastTwoReleasedVersions(versions) {
-
-        // Filter out pre-release versions
-        const releasedVersions = versions.filter(version => version.indexOf('-') === -1);
-
-        releasedVersions.sort(this.#reverseCompareVersions.bind(this));
-
-        const latestVersion = releasedVersions[0];
-
-        // Find the latest patch of the preceding minor version
-        const latestVersionParts = latestVersion.split('.').map(Number);
-        const previousVersion = releasedVersions.find(version => {
-            const versionParts = version.split('.').map(Number);
-            return versionParts[0] === latestVersionParts[0] && versionParts[1] < latestVersionParts[1];
-        });
-
-        return [latestVersion, previousVersion];
-    }
-
-    /**
-     * Gets the previous version of the provided version.
-     * 
-     * @param {string} latestVersion 
-     * @param {string[]} versions 
-     * @returns 
-     */
-    #getPreviousVersion(latestVersion, versions) {
-
-        // Filter out pre-release versions
-        const releasedVersions = versions.filter(version => version.indexOf('-') === -1);
-
-        releasedVersions.sort(this.#reverseCompareVersions.bind(this));
-
-        // Find the latest patch of the preceding minor version
-        const latestVersionParts = latestVersion.split('.').map(Number);
-        const previousVersion = releasedVersions.find(version => {
-            const versionParts = version.split('.').map(Number);
-            return versionParts[0] === latestVersionParts[0] && versionParts[1] < latestVersionParts[1];
-        });
-
-        return previousVersion;
+        const targetVersion = SdkVersion.tryParse(target);
+        return releases.find(release => release.major === targetVersion.major && release.minor < targetVersion.minor)
+            ?? releases.find(release => release.compare(targetVersion) < 0);
     }
 
     /**
@@ -288,47 +241,64 @@ export class SdkExplorerApplication {
         return [versionParam, baseParam];
     }
 
+    /**
+     * Fetches the names of all the tags of the SDK repository.
+     * The GitHub API returns the tags in pages, so pages are requested until one comes back incomplete.
+     * 
+     * @returns {Promise<string[]>}
+     */
+    async #fetchTagNames() {
+        const tagNames = [];
+        let page = 0;
+        let tags;
+        do {
+            page++;
+            tags = await $.ajax({
+                url: `${appConfig.eformsBaseUrl}/tags?per_page=${SdkExplorerApplication.#TAGS_PER_PAGE}&page=${page}`,
+                dataType: 'json'
+            });
+            tagNames.push(...tags.map(tag => tag.name));
+        } while (tags.length === SdkExplorerApplication.#TAGS_PER_PAGE);
+        return tagNames;
+    }
+
     async populateDropdown() {
         this.startSpinner();
         this.clearApiStatus();
         try {
-            const response = await $.ajax({
-                url: `${appConfig.eformsBaseUrl}/tags?per_page=100&page=1`,
-                dataType: 'json'
-            });
-
-            let availableVersions = response.map(item => item.name);
+            // Tags that are not versions are ignored, latest version first
+            const availableVersions = (await this.#fetchTagNames())
+                .map(tagName => SdkVersion.tryParse(tagName))
+                .filter(version => version !== null)
+                .sort((a, b) => b.compare(a));
+            const availableVersionNames = availableVersions.map(version => version.toString());
+            const releases = availableVersions.filter(version => !version.isPreRelease);
 
             // Filter out versions older than the threshold
-            let listedVersions = availableVersions.filter(version => this.#reverseCompareVersions(version, appConfig.thresholdVersion) <= 0);
-            // Sort versions by version number
-            listedVersions.sort(this.#reverseCompareVersions.bind(this));
+            const threshold = SdkVersion.tryParse(appConfig.thresholdVersion);
+            const recentVersions = availableVersions.filter(version => version.compare(threshold) >= 0);
 
             // Filter out pre-releases of released versions
-            const releasedVersions = listedVersions.filter(version => !version.includes('-'));
-            const latestRelease = releasedVersions[0];
-            const preReleasesOfLatestVersion = listedVersions.filter(version => {
-                const baseVersion = version.split('-')[0];
-                return version.includes('-') && baseVersion === latestRelease;
-                });
-            const preReleasesOfUnreleasedVersions = listedVersions.filter(version => {
-                const baseVersion = version.split('-')[0];
-                return version.includes('-') && !releasedVersions.includes(baseVersion);
-            });
-            listedVersions = [...releasedVersions, ...preReleasesOfLatestVersion, ...preReleasesOfUnreleasedVersions];
+            const recentReleases = recentVersions.filter(version => !version.isPreRelease);
+            const latestRelease = recentReleases[0];
+            const preReleasesOfLatestRelease = recentVersions.filter(version => version.isPreReleaseOf(latestRelease));
+            const preReleasesOfUnreleasedVersions = recentVersions.filter(version =>
+                version.isPreRelease && !recentReleases.some(release => version.isPreReleaseOf(release)));
 
-            // Sort versions by version number
-            listedVersions.sort(this.#reverseCompareVersions.bind(this));
+            // Sort versions by version number, latest first
+            const listedVersions = [...recentReleases, ...preReleasesOfLatestRelease, ...preReleasesOfUnreleasedVersions]
+                .sort((a, b) => b.compare(a))
+                .map(version => version.toString());
 
             // Populate the dropdowns
             this.$mainVersionDropdown().empty();
             this.$baseVersionDropdown().empty();
 
-            // Add hardcoded "develop" option to the top of the main version dropdown.
-            // This will allow us to compare any version to the develop branch.
-            const developOption = $('<option>', { value: 'develop', text: 'develop' });
-            this.$mainVersionDropdown().prepend(developOption);
-
+            // Add the configured branches to the top of the main version dropdown.
+            // This will allow us to compare any version to any of these branches.
+            appConfig.branches.forEach(branch => {
+                this.$mainVersionDropdown().append($('<option>', { value: branch, text: branch }));
+            });
 
             listedVersions.forEach(version => {
                 const option = $('<option>', { value: version, text: version });
@@ -337,23 +307,24 @@ export class SdkExplorerApplication {
             });
 
             // Get versions from the query string if provided
-            let [mainVersion, baseVersion] = this.#getVersionsFromQueryString(listedVersions);
+            let [mainVersion, baseVersion] = this.#getVersionsFromQueryString();
 
-            // Validate the versions passed in the query string
-            if (!listedVersions.includes(mainVersion)) {
-                if (availableVersions.includes(mainVersion)) {
+            // Validate the versions passed in the query string.
+            // Branches are accepted only as the main version.
+            if (!appConfig.branches.includes(mainVersion) && !listedVersions.includes(mainVersion)) {
+                if (availableVersionNames.includes(mainVersion)) {
                     const option = $('<option>', { value: mainVersion, text: mainVersion });
                     this.$mainVersionDropdown().append(option);
                 } else {
-                    mainVersion = latestRelease;
+                    mainVersion = latestRelease.toString();
                 }
             }
             if (!listedVersions.includes(baseVersion)) {
-                if (availableVersions.includes(baseVersion)) {
+                if (availableVersionNames.includes(baseVersion)) {
                     const option = $('<option>', { value: baseVersion, text: baseVersion });
                     this.$baseVersionDropdown().append(option);
                 } else {
-                    baseVersion = this.#getPreviousVersion(mainVersion, availableVersions) ?? mainVersion;
+                    baseVersion = this.#defaultBaseFor(mainVersion, releases)?.toString() ?? mainVersion;
                     if (!listedVersions.includes(baseVersion)) {
                         const option = $('<option>', { value: baseVersion, text: baseVersion });
                         this.$baseVersionDropdown().append(option);
