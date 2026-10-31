@@ -7,6 +7,7 @@
 import { appConfig } from "./config.js";
 import { appState } from "./state.js";
 import { SdkVersion } from "./sdk-version.js";
+import { SdkRepository } from "./sdk-repository.js";
 import { HomeTab } from "./tabs/home-tab.js";
 import { FieldsTab } from "./tabs/fields-tab.js";
 import { NoticeTypesTab } from "./tabs/notice-types-tab.js";
@@ -21,9 +22,6 @@ import { TabController } from "./tabs/tab-controller.js";
 
 export class SdkExplorerApplication {
 
-    /** The page size used to fetch the tags of the SDK repository (the maximum the GitHub API allows). */
-    static #TAGS_PER_PAGE = 100;
-
     /** @type {SdkExplorerApplication} */
     static instance = new SdkExplorerApplication();
 
@@ -32,6 +30,9 @@ export class SdkExplorerApplication {
 
     /** @type {TabController} */
     #activeTab = null
+
+    /** @type {SdkRepository} */
+    #repository = new SdkRepository(this);
 
     /** @type {number} */
     #spinnerCounter = 0;
@@ -291,24 +292,14 @@ export class SdkExplorerApplication {
     }
 
     /**
-     * Fetches the names of all the tags of the SDK repository.
-     * The GitHub API returns the tags in pages, so pages are requested until one comes back incomplete.
+     * Performs a request of the application's {@link SdkRepository}, which tabs perform with TabController.ajaxRequest.
+     * The requests of the application are not tracked: there is only one, for the list of versions, made at start-up.
      * 
-     * @returns {Promise<string[]>}
+     * @param {Object} options The options to pass to $.ajax().
+     * @returns {Promise} A promise that resolves with the AJAX response.
      */
-    async #fetchTagNames() {
-        const tagNames = [];
-        let page = 0;
-        let tags;
-        do {
-            page++;
-            tags = await $.ajax({
-                url: `${appConfig.eformsBaseUrl}/tags?per_page=${SdkExplorerApplication.#TAGS_PER_PAGE}&page=${page}`,
-                dataType: 'json'
-            });
-            tagNames.push(...tags.map(tag => tag.name));
-        } while (tags.length === SdkExplorerApplication.#TAGS_PER_PAGE);
-        return tagNames;
+    ajaxRequest(options) {
+        return $.ajax(options);
     }
 
     async populateDropdown() {
@@ -316,7 +307,7 @@ export class SdkExplorerApplication {
         this.clearApiStatus();
         try {
             // Tags that are not versions are ignored, latest version first
-            const availableVersions = (await this.#fetchTagNames())
+            const availableVersions = (await this.#repository.listVersions())
                 .map(tagName => SdkVersion.tryParse(tagName))
                 .filter(version => version !== null)
                 .sort((a, b) => b.compare(a));

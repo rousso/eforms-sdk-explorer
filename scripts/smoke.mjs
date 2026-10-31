@@ -10,9 +10,10 @@
  * Serves the repository with http-server on a free port, opens the explorer in Chromium through Playwright, collects
  * console errors and checks the behaviour listed under "Verification" in docs/plans/sdk2-support.md.
  *
- * The explorer reads the SDK from the live GitHub API, so the test needs network access and spends a few requests of
- * the unauthenticated API budget (60 requests per hour): 22 per run (2 per page load for the tags, 3 per version for
- * each listing of the schematrons folder), so it can run twice an hour.
+ * The explorer reads the SDK from GitHub and jsDelivr, so the test needs network access. It spends 2 requests of the
+ * unauthenticated GitHub API budget (60 requests per hour) per run: one git trees request per version, the first time
+ * the schematrons folder of a pair is listed; the version list comes from jsDelivr, and listings are then kept in the
+ * browser.
  *
  * Usage:
  *   npm install
@@ -83,8 +84,14 @@ class ExplorerPage {
      */
     static #FILES_PROBED_FOR_PRESENCE = Object.freeze([/\/validation\/[^/]+$/]);
 
+    /** The prefix of the URLs of the GitHub API. */
+    static #GITHUB_API = 'https://api.github.com/';
+
     /** @type {import('playwright').Page} */
     #page;
+
+    /** @type {string[]} The URLs of the GitHub API requests made since the page was created. */
+    #githubApiRequests = [];
 
     /** @type {string} */
     #baseUrl;
@@ -106,6 +113,18 @@ class ExplorerPage {
             }
         });
         this.#page.on('pageerror', error => this.#consoleErrors.push(error.message));
+        this.#page.on('request', request => {
+            if (request.url().startsWith(ExplorerPage.#GITHUB_API)) {
+                this.#githubApiRequests.push(request.url());
+            }
+        });
+    }
+
+    /**
+     * @returns {string[]} The URLs of the GitHub API requests made since the page was created, across page loads.
+     */
+    get githubApiRequests() {
+        return [...this.#githubApiRequests];
     }
 
     /**
@@ -350,7 +369,7 @@ class SmokeTest {
         await this.#checkBranchAsTarget();
         await this.#checkPairWithoutRules();
         await this.#checkPairWithRules();
-        console.log(`\n${this.#passed} passed, ${this.#failed} failed`);
+        console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
     }
 
@@ -447,31 +466,36 @@ class SmokeTest {
                     await this.#explorer.openOverview('validation-overview-link');
                 }
             }],
-            ['the Schematron source shows the same cards, folder filter and statuses as the Schematrons tab', async () => {
-                await this.#explorer.selectValidationSource('schematron');
+            ['the Schematron source lists the schematrons of the pair with one git trees request per version', async () => {
+                const treesRequests = await this.#treesRequestsDuring(() => this.#explorer.selectValidationSource('schematron'));
+                assert.equal(treesRequests, 2);
+                const cards = await this.#explorer.indexCards('validation-overview-card-group');
+                assert.ok(cards.length > 0, 'no cards');
+                assert.ok(cards.every(card => card.status), 'a card has no status');
+                assert.equal((await this.#explorer.cardFilter('validation-overview-card-group')).shown, true);
+            }],
+            ['the Schematrons tab shows the same cards, folder filter and statuses, without any GitHub API request', async () => {
                 const validationCards = await this.#explorer.indexCards('validation-overview-card-group');
                 const validationFilter = await this.#explorer.cardFilter('validation-overview-card-group');
+                const before = this.#explorer.githubApiRequests.length;
                 await this.#explorer.openHiddenTab('schematrons-tab');
-                const schematronsCards = await this.#explorer.indexCards('schematrons-overview-card-group');
-                const schematronsFilter = await this.#explorer.cardFilter('schematrons-overview-card-group');
-
-                assert.ok(validationCards.length > 0, 'no cards');
-                assert.ok(validationCards.every(card => card.status), 'a card has no status');
-                assert.deepEqual(validationCards, schematronsCards);
-                assert.equal(validationFilter.shown, true);
-                assert.deepEqual(validationFilter, schematronsFilter);
+                assert.deepEqual(this.#explorer.githubApiRequests.slice(before), []);
+                assert.deepEqual(await this.#explorer.indexCards('schematrons-overview-card-group'), validationCards);
+                assert.deepEqual(await this.#explorer.cardFilter('schematrons-overview-card-group'), validationFilter);
             }],
         ]);
     }
 
     /**
-     * Opens the explorer once and runs the given checks on it, followed by a check for console errors.
+     * Opens the explorer once and runs the given checks on it, followed by checks for console errors and for requests
+     * to the parts of the GitHub API that the explorer must not use (they spend the rate limit).
      *
      * @param {string} queryString
      * @param {Array<[string, () => Promise<void>]>} checks Pairs of description and check.
      */
     async #scenario(queryString, checks) {
         console.log(`\n${queryString}`);
+        const firstRequest = this.#explorer.githubApiRequests.length;
         try {
             await this.#explorer.open(queryString);
         } catch (error) {
@@ -482,6 +506,20 @@ class SmokeTest {
             await this.#check(description, check);
         }
         await this.#check('no console errors', async () => assert.deepEqual(this.#explorer.consoleErrors, []));
+        await this.#check('no request to the GitHub tags or contents API', async () => {
+            const requests = this.#explorer.githubApiRequests.slice(firstRequest);
+            assert.deepEqual(requests.filter(url => /\/repos\/[^/]+\/[^/]+\/(tags|contents)([/?]|$)/.test(url)), []);
+        });
+    }
+
+    /**
+     * @param {() => Promise<void>} action
+     * @returns {Promise<number>} The number of GitHub git trees requests made during the action.
+     */
+    async #treesRequestsDuring(action) {
+        const before = this.#explorer.githubApiRequests.length;
+        await action();
+        return this.#explorer.githubApiRequests.slice(before).filter(url => url.includes('/git/trees/')).length;
     }
 
     /**

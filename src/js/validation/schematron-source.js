@@ -9,12 +9,11 @@ import { Diff, DiffEntry } from "../diff.js";
 import { TabController } from "../tabs/tab-controller.js";
 import { PropertyCard } from "../components/property-card.js";
 import { IndexCard } from "../components/index-card.js";
-import { AjaxError } from "../custom-error.js";
-import { ERROR_FETCHING_DIRECTORY_LISTING } from "../error-messages.js";
+import { SdkRepository } from "../sdk-repository.js";
 
 /**
  * The schematrons folder of the SDK as a source of validation files.
- * It has no index file: the index is built from the GitHub directory listing of the folder and its sub-folders.
+ * It has no index file: the index is built from the listing of the folder and its sub-folders.
  * The status of the files found in both versions is checked in the background by their index cards.
  */
 export class SchematronSource {
@@ -22,12 +21,16 @@ export class SchematronSource {
     /** @type {TabController} */
     #tab;
 
+    /** @type {SdkRepository} */
+    #repository;
+
     /**
      * @param {TabController} tab The tab that owns the source. The requests of the source go through this tab, and
      * the index cards call its checkForChanges(filename) and fetchAndRenderDiffView(filename) methods.
      */
     constructor(tab) {
         this.#tab = tab;
+        this.#repository = new SdkRepository(tab);
     }
 
     /**
@@ -44,8 +47,7 @@ export class SchematronSource {
      * @returns {Promise<Object[]>} One item per file: name, stage, folder and filename.
      */
     async fetchIndex(sdkVersion) {
-        const apiUrl = `${appConfig.contentsFileUrl}/schematrons?ref=${sdkVersion}`;
-        const directoryStructure = await this.#fetchGithubDirectory(apiUrl, '');
+        const directoryStructure = await this.#fetchDirectoryStructure(sdkVersion);
         return this.#buildIndexFromGithubDirectory(directoryStructure);
     }
 
@@ -69,28 +71,24 @@ export class SchematronSource {
         return text;
     }
 
-    async #fetchGithubDirectory(url, path) {
-
-        const response = await this.#tab.ajaxRequest({
-            url: url,
-            headers: { 'Accept': 'application/vnd.github.v3+json' },
-        }).catch(error => {
-            throw new AjaxError(ERROR_FETCHING_DIRECTORY_LISTING, error);
-        });
+    /**
+     * Lists the schematron files of the specified SDK version, grouped by the folder that holds them.
+     *
+     * @param {string} sdkVersion
+     * @returns {Promise<Object<string, string[]>>} The filenames, keyed by the path of their folder within the schematrons folder ('' for the folder itself).
+     */
+    async #fetchDirectoryStructure(sdkVersion) {
+        const files = await this.#repository.listFolder('schematrons', sdkVersion);
 
         let directoryStructure = {};
-        for (const item of response) {
-            if (item.type === 'file') {
-                const extension = item.name.split('.').pop();
-                if (extension === 'sch') {
-                    if (!directoryStructure[path]) {
-                        directoryStructure[path] = [];
-                    }
-                    directoryStructure[path].push(item.name);
+        for (const file of files) {
+            const extension = file.name.split('.').pop();
+            if (extension === 'sch') {
+                const path = file.path.substring(0, file.path.length - file.name.length - 1);
+                if (!directoryStructure[path]) {
+                    directoryStructure[path] = [];
                 }
-            } else if (item.type === 'dir') {
-                const subDirStructure = await this.#fetchGithubDirectory(item.url, item.path);
-                directoryStructure = { ...directoryStructure, ...subDirStructure };
+                directoryStructure[path].push(file.name);
             }
         }
         return directoryStructure;

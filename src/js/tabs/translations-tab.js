@@ -13,9 +13,13 @@ import { IndexCard } from "../components/index-card.js";
 import { SdkExplorerApplication } from "../app.js";
 import { CardGroup } from "../components/card-group.js";
 import { AjaxError, CustomError } from "../custom-error.js";
-import { ERROR_FETCHING_DIRECTORY_LISTING, ERROR_GENERATING_OVERVIEW, ERROR_CHECKING_CHANGES, ERROR_GENERATING_DIFF, ERROR_FETCHING_FILE } from "../error-messages.js";
+import { ERROR_GENERATING_OVERVIEW, ERROR_CHECKING_CHANGES, ERROR_GENERATING_DIFF, ERROR_FETCHING_FILE } from "../error-messages.js";
+import { SdkRepository } from "../sdk-repository.js";
 
 export class TranslationsTab extends TabController {
+
+    /** @type {SdkRepository} */
+    #repository = new SdkRepository(this);
 
     constructor() {
         super('translations-tab');
@@ -119,15 +123,10 @@ export class TranslationsTab extends TabController {
     }
 
     async #fetchFilenames(sdkVersion) {
-        const apiUrl = `${appConfig.contentsFileUrl}/translations?ref=${sdkVersion}`;
-        const response = await this.ajaxRequest({
-            url: apiUrl,
-            headers: { 'Accept': 'application/vnd.github.v3+json' },
-        }).catch(error => {
-            throw new AjaxError(ERROR_FETCHING_DIRECTORY_LISTING, error);
-        });
-        return this.#processFilenames(response.map(file => file.name));
+        const files = await this.#repository.listFolder('translations', sdkVersion);
 
+        // Only the files directly in the translations folder.
+        return this.#processFilenames(files.filter(file => file.path === file.name).map(file => file.name));
     }
 
     async #fetchCountryCodeMappings() {
