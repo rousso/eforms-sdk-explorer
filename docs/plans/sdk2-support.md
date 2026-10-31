@@ -1,0 +1,89 @@
+# Plan: SDK 2 support for the eForms SDK Explorer
+
+## Context
+
+The eForms SDK 2.0.0 is in alpha (`2.0.0-alpha.4`, branch `efx-2` of OP-TED/eForms-SDK; beta with 1.17, rc by end of 2026, final early 2027). The SDK Explorer (`rousso/eforms-sdk-explorer`, fork of OP-TED) compares two SDK versions tab by tab, but was written for SDK 1.x. The user wants it to support SDK 2, with 1.x-vs-2.x migration comparison as the core use case. Two later workstreams (bug-fix pass, TED design-system restyle) are out of scope here.
+
+Working method agreed with the user: this session (Fable 5.1) does analysis and design; implementation runs in fresh Opus 5.5 sessions that read a plan document committed to the repo. All work goes on branch `claude/zealous-feynman-uuwemi` (currently == `develop`, 51fffde). UI changes were approved on the mockup at https://claude.ai/artifact/UGd6tm3y4oWpRsqMCczNsq (screens 1–3 referenced below).
+
+Coding rules from the user: follow the style already in the repo (ES modules, one `TabController` subclass per tab, web components, jQuery/Bootstrap 4), object-oriented clean code, no "helpers", no shortcuts. Existing patterns that fall short are refactored later, not worked around now. Communication: plain text, no multiple-choice prompts.
+
+## What the analysis found (verified against a clone of OP-TED/eForms-SDK, branch `efx-2`, and the tags 1.15.1, 1.16.0-rc.5, 2.0.0-alpha.1 to alpha.4)
+
+- **Index/metadata formats are unchanged in SDK 2.** `fields.json`, `notice-types.json` (+ per-subtype files), `view-templates.json`, `codelists.json`, `translations.json`, `schemas.json` have identical shapes in 1.15.1 and `efx-2`. SDK 2 confines breaking changes to EFX. Every existing tab already works for 2.x targets and for 1.x↔2.x pairs.
+- Background only (not to be encoded in the app): SDK 2.0.0-alpha carries the SDK 1.16 metadata; the final 2.0.0 will be aligned with 1.17.0, the last 1.x.
+- **New or changed in SDK 2 that the explorer does not cover:**
+  1. `validation/` — `rules.efx` (17k lines, 3458 EFX-2 rules; `#include "stage-1a.efx"`, `"stage-4m.efx"`, `"stage-5m.efx"`), `dependencies.json` (rules indexed by field/node). Absent in 1.x. The schematrons in SDK 2 are generated from these rules.
+  2. `fields/fwd/` — forward-compatible (SDK 3 preview) metadata: `fields.json` `{fields[]}`, `nodes.json` `{nodes[]}`, `business-entity-hierarchy.json` `{hierarchy[]}` (`parentId`), `business-entity-properties.json` `{properties[]}` (grouped by `entityId`, no id of their own), `business-entity-composition.json` (tree rooted at `Notice`), `data-types.json` `{dataTypes[]}` (key `type`). Field/node ids equal the legacy ones. Per-field differences vs legacy: legacy-only `businessEntityId, presetValue, privacy, idScheme, schemeName, idSchemes`; fwd-only `disclosureControl, identifiedBusinessEntityId`; `repeatable` is a plain boolean in fwd; codelist `parentId` → `listName` (alpha.4, 13 fields). More `fwd/` folders may appear in later 2.x releases.
+  3. `view-templates/summary.efx` — new, **not listed** in `view-templates.json`. READMEs were added in every content folder (not content; ignore).
+  4. `schematrons/` — stage files restructured (`1a 2a 2b 3b 4 4m 5 5m`; `config.sch`, `validation-stage-6a/6b.sch` removed; `static` == `dynamic`). Rule ids changed from `BR-BT-00001-0022` (per rule × subtype) to `R-XXX-XXX` (one per rule): zero overlap with 1.15/1.16. The existing tab still works (filename-based text diff).
+  5. `efx-grammar/*.g4` rewritten for EFX-2 — not needed in the explorer (user decision).
+- **Version selector is not SDK 2 ready** (simulated against the real 122 tags with the current `app.js` logic): GitHub `/tags` is paged and lexicographically sorted, so page 1 of 100 already drops releases 1.10.0–1.10.2; pre-releases interleave wrongly (`rc.3, beta.3, rc.2…`) because `#reverseCompareVersions` turns `0-alpha` into `NaN`; a 2.0.0 target gets 2.0.0 as default base (`#getPreviousVersion` only searches the same major); the `efx-2` branch cannot be selected (only `develop` is hard-coded); `?version=efx-2` is rejected because branches are not in the tag list.
+- Deferred ideas, recorded for later: a structured per-rule view of `rules.efx` (syntax verified regular: `WITH` / `WHEN` / `ASSERT` / `AS <severity> <id>` / `FOR` / `IN` / `SCOPE`, one statement per line); a cross-major rule mapping by label text (`translations/rule_en.xml` maps 2313/3629 SDK 2 rules to 1.16 rules, 2177 1:1; "if ever").
+
+## Decisions (user, after reviewing the mockup)
+
+- The explorer stays a neutral comparison of any two versions: no hard-coded knowledge about SDK releases. SDK 2-specific behaviour is driven only by what a selected version contains.
+- `validation/`: text-diff tab first; structured per-rule view later. The Validation tab is visible only when at least one of the two selected versions has a `validation/` folder. While it is visible, the Schematrons tab is hidden and the schematrons become a source selection ("EFX rules" / "Schematron") inside the Validation tab. 1.x-vs-1.x comparisons keep today's tab bar.
+- `fields/fwd/`: inside the Fields tab via a source switch; in fwd mode the tree also shows Business entities and Data types as top-level entries. A version without `fwd/` is reported and treated as empty.
+- Default base rule must not encode SDK knowledge: previous minor's latest patch as today; if none, the release immediately preceding the target in version order.
+- No EFX Grammar tab. No cross-major rule mapping for now.
+- Plan documents committed under `docs/plans/` on the working branch (droppable before upstreaming).
+
+## Implementation plan
+
+Increments are ordered so each is shippable on its own. Each is implemented in a fresh Opus 5.5 session from `docs/plans/sdk2-support.md`.
+
+### Increment 0 — commit the plan docs (done in this planning session, right after approval)
+- Add `docs/plans/sdk2-support.md` containing this plan (Context, Findings, Decisions, Increments, Verification, hand-off) and `docs/plans/README.md` (purpose of the folder, how a session works from a plan, and the opening prompt to paste into each implementation session). Commit on `claude/zealous-feynman-uuwemi` and push. No other repo change in this session.
+
+### Increment 1 — version selection ready for SDK 2 (screen 1)
+Files: new `src/js/sdk-version.js`; `src/js/app.js`, `src/js/config.js`, `index.html`.
+- `SdkVersion` (new class): parses a tag `major.minor.patch[-prerelease.n]`; `static tryParse(text)` returns `null` for anything else (branch names); instance API `major`, `minor`, `patch`, `isPreRelease`, `compare(other)` (numeric parts, then pre-release precedence `alpha < beta < rc < release`, then the pre-release number), `toString()`. `SdkExplorerApplication` uses it instead of `#reverseCompareVersions` (deleted, together with the unused `#getLastTwoReleasedVersions`).
+- `appConfig.branches = ['develop', 'efx-2']` replaces the hard-coded `develop`; branches are prepended to the target dropdown as today, are accepted from the query string (`?version=efx-2`), and are never passed to `SdkVersion`.
+- `populateDropdown()` fetches every page of `GET /tags?per_page=100&page=n` until a page has fewer than 100 entries (2 requests today), then applies the existing listing rules (threshold, releases, pre-releases of the latest release, pre-releases of unreleased versions) ordered with `SdkVersion.compare`.
+- Default base, `#defaultBaseFor(target, releases)`: for a tag target, the latest patch of the previous minor in the same major (today's rule); if there is none, the release immediately preceding the target in version order. For a branch target, the latest release (today's behaviour). Query-string `base` still wins when valid.
+
+### Increment 2 — Validation tab with two sources (screen 3)
+Files: new `src/js/tabs/validation-tab.js`; new `src/js/validation/efx-rules-source.js`, `src/js/validation/schematron-source.js`; `src/js/tabs/schematrons-tab.js` (delegates to `SchematronSource`); `src/js/tabs/tab-controller.js` (`isApplicable`); `src/js/app.js` (register, show/hide nav buttons); `index.html` (nav button + pane copied from the Schematrons block plus `<select id="validation-source">`); `src/js/config.js` (`validationFiles`).
+- A **source** is an object that knows one folder of the SDK: `fetchIndex(sdkVersion)` → array of index items with at least `filename`; `fileUrl(filename, sdkVersion)`; `normaliseForComparison(text)` (what to strip before deciding modified/unchanged); `createIndexCard(diffEntry)` (title, subtitle, properties); `filterProperty` (`null` or the property for the card group's left filter). Both sources are constructed with the owning tab, so their requests go through that tab's `ajaxRequest` and are tracked and cancelled like today.
+  - `SchematronSource` holds the code that `SchematronsTab` has now (`#fetchIndex`, `#fetchGithubDirectory`, `#buildIndexFromGithubDirectory`, URL, `#createIndexCard`); `SchematronsTab` keeps its pane and behaviour for 1.x-only comparisons but calls the source. No behaviour change for 1.x.
+  - `EfxRulesSource`: `fetchIndex` fetches each file of `appConfig.validationFiles = ['rules.efx', 'stage-1a.efx', 'stage-4m.efx', 'stage-5m.efx', 'dependencies.json']` as text (there is no index file in this folder); an HTTP 404 means "absent in this version" and is handled inside the source the way `SchemasTab.#fetchIndexFile` handles a missing `schemas.json` (`error.status === 404`). Each present file yields an item `{filename, size, stages, includes, text}` (`stages` from `--- STAGE x ---` headers, `includes` from `#include` lines). Because the texts are already in memory, `ValidationTab` compares them immediately (after `normaliseForComparison`, which strips `//` comment lines as `ViewTemplatesTab` does; nothing for `dependencies.json`) and creates cards with their status known, then drops the texts; no background status callback for this source. Items on one side only are added/removed with Compare disabled (existing `IndexCard` behaviour). Cards: title filename, subtitle "EFX rules" / "JSON", properties `filename`, `stages`, `includes`, `size`.
+- `ValidationTab extends TabController`: overview `card-group` + diff view with `Diff.injectTextDiff`, a `<select id="validation-source">` with `EFX rules` (default) / `Schematron` bound in `init()` to `fetchAndRender()`. `fetchAndRender()` asks the selected source for both indexes, diffs them with `Diff.fromArrayComparison(main, base, 'filename')`, sets the card group's `filter-property` attribute from `source.filterProperty` (`CardGroup` re-renders on attribute change) and fills it; Compare fetches both files through `source.fileUrl` and shows the diff.
+- **Visibility**: `TabController.isApplicable()` (async, default `true`). `ValidationTab.isApplicable()` resolves `true` when `validation/rules.efx` exists for at least one selected version (HTTP HEAD through `ajaxRequest`; 404 = absent; cached per version string, branches included). `SchematronsTab.isApplicable()` returns the opposite, obtained from the application so the probe runs once. `SdkExplorerApplication.versionChanged()` and `init()` first await every tab's answer and show/hide the nav buttons (`li.nav-item`), then, if the active tab became hidden, activate Home; only after that does the active tab re-render.
+
+### Increment 3 — forward-compatible metadata in the Fields tab (screen 2)
+Files: `src/js/tabs/fields-tab.js`, `index.html`, `src/assets/style.css`.
+- `<select id="fields-source">` (`fields.json` default / `fwd/`) and a hidden Bootstrap alert, both in the Fields pane above `<tree-detail-split-view>` (`#fields-tab-content` becomes a flex column so the component keeps filling the height). `FieldsTab.init()` binds the select's change event to `fetchAndRender()`.
+- Legacy mode: untouched.
+- fwd mode: fetch `fields/fwd/nodes.json`, `fields/fwd/fields.json`, `business-entity-hierarchy.json`, `business-entity-properties.json`, `data-types.json` for both versions. A 404 on `nodes.json` means the version has no fwd metadata: handled in the tab as `SchemasTab` handles 404, that side becomes empty lists, and the alert shows "SDK x has no forward-compatible metadata (fields/fwd/)". Legacy data is never substituted.
+- Tree: `XML structure` root with nodes and fields through the existing `#createTreeNodes`; `Business entities` root from the hierarchy (`parentId`), each entity's properties as leaves; `Data types` root. Four `Diff`s keyed by `id`: nodes, fields, entities, data types (`type` copied to `id`), properties (`id = entityId + '.' + name`, built when loading). jsTree ids are prefixed per root (`be:`, `bep:`, `dt:`) so they stay unique; `DiffEntry.id` keeps the SDK id. `searchableProperties` becomes the union (`id`, `btId`, `name`, `xpathRelative`, `businessTermId`, `dataType`, `entityType`).
+- When a loaded JSON lacks the expected array (`xmlStructure`/`fields`/`nodes`/`hierarchy`/`properties`/`dataTypes`), throw a `CustomError` naming the file and version instead of rendering an empty tree (`fields-tab.js:41` today).
+
+### Increment 4 — view templates not listed in the index
+Files: `src/js/tabs/view-templates-tab.js`, `src/js/config.js`.
+- After loading `view-templates.json`, `ViewTemplatesTab` adds `{id: 'summary', filename: 'summary.efx'}` for each name in `appConfig.unindexedViewTemplates` (`['summary.efx']`) that exists in that version (GET, 404 = absent), so it gets a card and a diff through the existing code (`fetchAndRenderDiffView(id)` builds `${id}.efx`).
+
+### Later (not scheduled)
+- Structured per-rule view of `rules.efx`.
+- Cross-major rule mapping by label text.
+
+## Files
+- Modify: `src/js/app.js`, `src/js/config.js`, `src/js/tabs/tab-controller.js`, `src/js/tabs/schematrons-tab.js`, `src/js/tabs/fields-tab.js`, `src/js/tabs/view-templates-tab.js`, `index.html`, `src/assets/style.css`, `README.md`, `CHANGELOG.md`.
+- Add: `src/js/sdk-version.js`, `src/js/tabs/validation-tab.js`, `src/js/validation/efx-rules-source.js`, `src/js/validation/schematron-source.js`, `docs/plans/README.md`, `docs/plans/sdk2-support.md`.
+- Reuse as-is: `Diff`/`DiffEntry` (`src/js/diff.js`), `TreeDetailSplitView`, `CardGroup`/`IndexCard`/`PropertyCard`, `AjaxError`/`CustomError`, `ERROR_*` messages.
+
+## Verification
+- A committed smoke script (user decision): `scripts/smoke.mjs`, run with `npm run smoke`; `package.json` gains `devDependencies` `playwright` and `http-server` and the `smoke` script. It starts `http-server` on a free port, drives Chromium (in cloud sessions the pre-installed Playwright/Chromium; `executablePath` configurable through an env var), collects console errors, and asserts the checks below. Not wired into CI. It hits live GitHub, so it needs network and spends a little of the unauthenticated API budget (60 requests/hour); it loads each tab once per pair. Written in Increment 1 with the checks that exist then, extended by each later increment.
+- Version selector: `/?version=2.0.0-alpha.4&base=1.16.0-rc.5`; `/?version=2.0.0-alpha.4` (base = release preceding the target); `/?version=efx-2` (accepted; base = latest release); dropdown order `2.0.0-alpha.4 … 1.16.0-rc.5 … 1.16.0-beta.1, 1.15.1 …`; releases 1.10.0–1.10.2 present.
+- Tab bar: `1.15.1` vs `1.14.2` → Schematrons visible, Validation hidden; `2.0.0-alpha.4` vs `1.16.0-rc.5` and `efx-2` vs `1.15.1` → Validation visible, Schematrons hidden; switching from the latter pair back to a 1.x pair while Validation is active → Home activated, Schematrons back.
+- Validation tab, EFX source: (`2.0.0-alpha.4`, `1.16.0-rc.5`) → 5 added cards, Compare disabled; (`2.0.0-alpha.4`, `2.0.0-alpha.3`) → 5 unchanged cards, Compare opens the diff. Schematron source: same cards, folder filter and statuses as the Schematrons tab shows today for the same pair.
+- Fields tab: legacy mode unchanged for all pairs; fwd mode (`2.0.0-alpha.4`, `2.0.0-alpha.3`) → 13 modified fields (e.g. `BT-507-Business`, `codeList.parentId` → `listName`), 262 nodes, 96 entities, 19 data types; fwd mode with a 1.x side → alert shown, everything added.
+- View Templates: 2.x side shows `summary.efx` (added against 1.x, unchanged between alphas).
+- Error path: a version lacking a required file shows the toast naming the file, never an empty pane.
+
+## Session hand-off
+The user starts each implementation session from the app: cloud session on `rousso/eforms-sdk-explorer`, branch `claude/zealous-feynman-uuwemi`, model Opus 5.5, effort xhigh, opening prompt from `docs/plans/README.md` (it names the increment to implement). Session A: Increment 1 (with the smoke script). Session B: Increment 2. Session C: Increments 3 and 4. Each session commits per increment, runs `npm run smoke` before each push, pushes to `claude/zealous-feynman-uuwemi`, and ends by noting in `docs/plans/sdk2-support.md` what was done and anything the next increment must know.
+
+## Progress
+- 2026-10-31 — Increment 0 done in the planning session: plan committed. Next: Increment 1.
