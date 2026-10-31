@@ -94,6 +94,10 @@
                 <button class="nav-link" id="schematrons-tab" data-toggle="tab" data-target="#schematrons" type="button"
                     role="tab" aria-controls="schematrons" aria-selected="false">Schematrons</button>
             </li>
+            <li class="nav-item d-none" role="presentation">
+                <button class="nav-link" id="validation-tab" data-toggle="tab" data-target="#validation" type="button"
+                    role="tab" aria-controls="validation" aria-selected="false">Validation</button>
+            </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="translations-tab" data-toggle="tab" data-target="#translations"
                     type="button" role="tab" aria-controls="translations" aria-selected="false">Translations</button>
@@ -271,6 +275,45 @@
 
                 </div> <!-- End of schematrons diff view -->
             </div> <!-- End of schematrons tab container --> 
+        </div>
+
+        <!-- Validation -->
+        <div class="tab-pane fade" id="validation" role="tabpanel" aria-labelledby="validation-tab">
+            <div class="tab-container">
+
+                <!-- Validation overview -->
+                <div id="validation-overview" class="view-container">
+                    <nav aria-label="breadcrumb" class="view-breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item" aria-current="page">Overview</li>
+                        </ol>
+                    </nav>
+                    <div class="d-flex align-items-center px-3">
+                        <label for="validation-source" class="mb-0 mr-2">Source:</label>
+                        <select id="validation-source" class="form-control form-control-sm" style="width:auto;">
+                            <option value="efx-rules" selected>EFX rules</option>
+                            <option value="schematron">Schematron</option>
+                        </select>
+                    </div>
+                    <card-group id="validation-overview-card-group" filter-prompt="Filter by folder"></card-group>
+                </div>
+
+                <!-- Validation diff view -->
+                <div id="validation-diff-view" class="view-container hide-important">
+
+                    <!-- Breadcrumbs -->
+                    <nav aria-label="breadcrumb" class="view-breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="#" id="validation-overview-link">Overview</a></li>
+                            <li class="breadcrumb-item" aria-current="page">Comparison</li>
+                        </ol>
+                    </nav>
+
+                    <!-- Validation Diff -->
+                    <div id="validation-diff" class="view-diff"></div>
+
+                </div> <!-- End of validation diff view -->
+            </div> <!-- End of validation tab container -->
         </div>
 
         <!-- Translations -->

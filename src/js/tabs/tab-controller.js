@@ -97,6 +97,16 @@ export class TabController {
     }
 
     /**
+     * Called by the SdkExplorerApplication when the selected versions change, to decide whether the tab is shown.
+     * Override this method if the tab applies only to some versions.
+     *
+     * @returns {Promise<boolean>} true if the tab applies to the selected versions.
+     */
+    async isApplicable() {
+        return true;
+    }
+
+    /**
      * Make an AJAX request and keep track of it.
      * @param {Object} options - The options to pass to $.ajax().
      * @returns {Promise} - A promise that resolves with the AJAX response.

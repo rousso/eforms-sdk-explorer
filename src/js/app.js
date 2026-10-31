@@ -13,6 +13,7 @@ import { NoticeTypesTab } from "./tabs/notice-types-tab.js";
 import { CodelistsTab } from "./tabs/codelists-tab.js";
 import { SchemasTab } from "./tabs/schemas-tab.js";
 import { SchematronsTab } from "./tabs/schematrons-tab.js";
+import { ValidationTab } from "./tabs/validation-tab.js";
 import { TranslationsTab } from "./tabs/translations-tab.js";
 import { ViewTemplatesTab } from "./tabs/view-templates-tab.js";
 import { ReleaseNotesTab } from "./tabs/release-notes-tab.js";
@@ -59,6 +60,7 @@ export class SdkExplorerApplication {
         this.#addTab(new CodelistsTab());
         this.#addTab(new SchemasTab());
         this.#addTab(new SchematronsTab());
+        this.#addTab(new ValidationTab());
         this.#addTab(new TranslationsTab());
         this.#addTab(new ViewTemplatesTab());
         this.#addTab(new ReleaseNotesTab());
@@ -66,6 +68,7 @@ export class SdkExplorerApplication {
 
     static async init() {
         await SdkExplorerApplication.instance.populateDropdown();
+        await SdkExplorerApplication.instance.#initTabVisibility();
 
         $('ul.nav-tabs').on('shown.bs.tab', 'li.nav-item > button.nav-link', function (event) {
             const activeTabId = $(event.target).attr('id');
@@ -114,6 +117,14 @@ export class SdkExplorerApplication {
     }
 
     /**
+     * @param {TabController} tab 
+     * @returns {HTMLElement} The nav item that holds the button of the tab.
+     */
+    #navItem(tab) {
+        return document.getElementById(tab.getId()).closest('li.nav-item');
+    }
+
+    /**
      * 
      * @param {TabController} tab 
      * @returns 
@@ -142,13 +153,51 @@ export class SdkExplorerApplication {
         this.startSpinner();
         this.clearApiStatus();
         try {
-            await this.#activeTab?.versionChanged();
+            if (await this.#showApplicableTabs()) {
+                await this.#activeTab?.versionChanged();
+            }
+        } catch (error) {
+            if (error.statusText !== 'abort') {
+                SdkExplorerApplication.updateApiStatus(error.message);
+            }
+        }
+        finally {
+            this.stopSpinner();
+        }
+    }
+
+    /**
+     * Shows the tabs that apply to the versions selected when the application starts.
+     */
+    async #initTabVisibility() {
+        this.startSpinner();
+        try {
+            await this.#showApplicableTabs();
         } catch (error) {
             SdkExplorerApplication.updateApiStatus(error.message);
         }
         finally {
             this.stopSpinner();
         }
+    }
+
+    /**
+     * Asks every tab whether it applies to the selected versions, then shows the nav buttons of the tabs that do 
+     * and hides the others. If the active tab is hidden, the Home tab is activated instead.
+     * 
+     * @returns {Promise<boolean>} true if the active tab is still shown, false if the Home tab is being activated instead.
+     */
+    async #showApplicableTabs() {
+        const tabs = Array.from(this.tabs.values());
+        const applicable = await Promise.all(tabs.map(tab => tab.isApplicable()));
+        tabs.forEach((tab, index) => $(this.#navItem(tab)).toggleClass('d-none', !applicable[index]));
+
+        const activeTabIsShown = !this.#activeTab || applicable[tabs.indexOf(this.#activeTab)];
+        if (!activeTabIsShown) {
+            // Showing the Home tab activates it (see activeTabChanged).
+            $('#home-tab').tab('show');
+        }
+        return activeTabIsShown;
     }
 
     static startSpinner() {

@@ -10,5 +10,6 @@ export const appConfig = {
     contentsFileUrl: 'https://api.github.com/repos/OP-TED/eForms-SDK/contents',
     thresholdVersion: '1.3.2',  // versions before this one are not displayed in the dropdown
     branches: ['develop', 'efx-2'],  // branches offered at the top of the target version dropdown
+    validationFiles: ['rules.efx', 'stage-1a.efx', 'stage-4m.efx', 'stage-5m.efx', 'dependencies.json'],  // files of the validation folder (it has no index file)
 };
 

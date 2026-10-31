@@ -11,7 +11,8 @@
  * console errors and checks the behaviour listed under "Verification" in docs/plans/sdk2-support.md.
  *
  * The explorer reads the SDK from the live GitHub API, so the test needs network access and spends a few requests of
- * the unauthenticated API budget (60 requests per hour).
+ * the unauthenticated API budget (60 requests per hour): 22 per run (2 per page load for the tags, 3 per version for
+ * each listing of the schematrons folder), so it can run twice an hour.
  *
  * Usage:
  *   npm install
@@ -67,6 +68,21 @@ class ExplorerPage {
     /** How long to wait for the explorer to fill the version dropdowns, in milliseconds. */
     static #LOAD_TIMEOUT = 60000;
 
+    /**
+     * How long to wait for the explorer to finish what it is doing, in milliseconds.
+     * Long, because the index cards of the schematrons check hundreds of files in the background.
+     */
+    static #IDLE_TIMEOUT = 600000;
+
+    /** How long the loading indicator must stay hidden for the explorer to count as idle, in milliseconds. */
+    static #IDLE_PERIOD = 500;
+
+    /**
+     * Files that the explorer requests to find out whether a version has them: for these, the browser's "404" console
+     * error is expected and is not collected.
+     */
+    static #FILES_PROBED_FOR_PRESENCE = Object.freeze([/\/validation\/[^/]+$/]);
+
     /** @type {import('playwright').Page} */
     #page;
 
@@ -84,7 +100,7 @@ class ExplorerPage {
         this.#page = page;
         this.#baseUrl = baseUrl;
         this.#page.on('console', message => {
-            if (message.type() === 'error') {
+            if (message.type() === 'error' && !ExplorerPage.#isExpectedAbsence(message)) {
                 const url = message.location().url;
                 this.#consoleErrors.push(url ? `${message.text()} (${url})` : message.text());
             }
@@ -100,7 +116,7 @@ class ExplorerPage {
     }
 
     /**
-     * Opens the explorer and waits until it has filled the version dropdowns.
+     * Opens the explorer and waits until it has filled the version dropdowns and decided which tabs to show.
      *
      * @param {string} queryString For example `?version=efx-2`, or an empty string.
      */
@@ -112,10 +128,152 @@ class ExplorerPage {
                 || document.querySelector('#apiStatus .toast-body').textContent.trim() !== '',
             null,
             { timeout: ExplorerPage.#LOAD_TIMEOUT });
+        await this.#waitUntilIdle();
         const apiStatus = await this.apiStatus();
         if (apiStatus !== '') {
             throw new Error(`the explorer reported: ${apiStatus}`);
         }
+    }
+
+    /**
+     * Selects two other versions, the target version first, as a user would, and waits until the explorer is idle.
+     *
+     * @param {string} mainVersion
+     * @param {string} baseVersion
+     */
+    async selectVersions(mainVersion, baseVersion) {
+        await this.#page.selectOption('#main-version-dropdown', mainVersion);
+        await this.#waitUntilIdle();
+        await this.#page.selectOption('#base-version-dropdown', baseVersion);
+        await this.#waitUntilIdle();
+    }
+
+    /**
+     * @param {string} tabId The id of the button of the tab, for example `validation-tab`.
+     * @returns {Promise<boolean>} Whether the button of the tab is shown in the tab bar.
+     */
+    async isTabShown(tabId) {
+        return this.#page.isVisible(`#${tabId}`);
+    }
+
+    /**
+     * @returns {Promise<string>} The id of the button of the active tab.
+     */
+    async activeTab() {
+        return this.#page.$eval('ul.nav-tabs button.nav-link.active', button => button.id);
+    }
+
+    /**
+     * Opens a tab by clicking its button and waits until the explorer is idle.
+     *
+     * @param {string} tabId The id of the button of the tab.
+     */
+    async openTab(tabId) {
+        await this.#page.click(`#${tabId}`);
+        await this.#waitUntilIdle();
+    }
+
+    /**
+     * Opens a tab that is hidden for the selected versions, through Bootstrap, to compare it with another tab.
+     *
+     * @param {string} tabId The id of the button of the tab.
+     */
+    async openHiddenTab(tabId) {
+        await this.#page.evaluate(id => $(`#${id}`).tab('show'), tabId);
+        await this.#waitUntilIdle();
+    }
+
+    /**
+     * Selects a source in the source selector of the Validation tab and waits until the explorer is idle.
+     *
+     * @param {string} source The value of the option, for example `schematron`.
+     */
+    async selectValidationSource(source) {
+        await this.#page.selectOption('#validation-source', source);
+        await this.#waitUntilIdle();
+    }
+
+    /**
+     * @param {string} cardGroupId
+     * @returns {Promise<Array<{title: string, subtitle: string, status: string, compareEnabled: boolean}>>}
+     *          The index cards of the card group, in display order.
+     */
+    async indexCards(cardGroupId) {
+        return this.#page.$eval(`#${cardGroupId}`, cardGroup => Array.from(cardGroup.shadowRoot.querySelectorAll('index-card'), card => ({
+            title: card.getAttribute('title'),
+            subtitle: card.getAttribute('subtitle'),
+            status: card.getAttribute('status'),
+            compareEnabled: !card.shadowRoot.querySelector('#action-button').disabled
+        })));
+    }
+
+    /**
+     * @param {string} cardGroupId
+     * @returns {Promise<{shown: boolean, prompt: string, values: string[]}>} The property filter of the card group.
+     */
+    async cardFilter(cardGroupId) {
+        return this.#page.$eval(`#${cardGroupId}`, cardGroup => ({
+            shown: getComputedStyle(cardGroup.shadowRoot.querySelector('#nav')).display !== 'none',
+            prompt: cardGroup.shadowRoot.querySelector('#filter-prompt').textContent,
+            values: Array.from(cardGroup.shadowRoot.querySelectorAll('#filter-options .nav-link'), link => link.textContent)
+        }));
+    }
+
+    /**
+     * Clicks the Compare button of an index card and waits until the explorer is idle.
+     *
+     * @param {string} cardGroupId
+     * @param {string} title The title of the index card.
+     */
+    async compare(cardGroupId, title) {
+        await this.#page.click(`#${cardGroupId} index-card[title="${title}"] #action-button`);
+        await this.#waitUntilIdle();
+    }
+
+    /**
+     * Clicks the Overview link of a diff view and waits until the explorer is idle.
+     *
+     * @param {string} linkId
+     */
+    async openOverview(linkId) {
+        await this.#page.click(`#${linkId}`);
+        await this.#waitUntilIdle();
+    }
+
+    /**
+     * @param {string} selector
+     * @returns {Promise<boolean>} Whether the element is shown.
+     */
+    async isShown(selector) {
+        return this.#page.isVisible(selector);
+    }
+
+    /**
+     * @param {string} diffContainerId
+     * @returns {Promise<string[]>} The names of the files compared in the diff view.
+     */
+    async comparedFiles(diffContainerId) {
+        return this.#page.$$eval(`#${diffContainerId} .d2h-file-header .d2h-file-name`, names => names.map(name => name.textContent.trim()));
+    }
+
+    /**
+     * Waits until the loading indicator of the explorer stays hidden for a while.
+     */
+    async #waitUntilIdle() {
+        const loadingIndicatorHidden = () => getComputedStyle(document.querySelector('#centralLoadingSpinner')).visibility === 'hidden';
+        do {
+            await this.#page.waitForFunction(loadingIndicatorHidden, null, { timeout: ExplorerPage.#IDLE_TIMEOUT });
+            await this.#page.waitForTimeout(ExplorerPage.#IDLE_PERIOD);
+        } while (!(await this.#page.evaluate(loadingIndicatorHidden)));
+    }
+
+    /**
+     * @param {import('playwright').ConsoleMessage} message
+     * @returns {boolean} Whether the message is the browser's report of a 404 for a file probed for presence.
+     */
+    static #isExpectedAbsence(message) {
+        return message.text().includes('status of 404')
+            && ExplorerPage.#FILES_PROBED_FOR_PRESENCE.some(pattern => pattern.test(message.location().url ?? ''));
     }
 
     /**
@@ -162,6 +320,9 @@ class SmokeTest {
             '1.16.0-beta.3', '1.16.0-beta.2', '1.16.0-beta.1', '1.15.1'],
     ]);
 
+    /** The files of the validation folder of an SDK 2 version, in the order of their index cards. */
+    static #VALIDATION_FILES = Object.freeze(['rules.efx', 'stage-1a.efx', 'stage-4m.efx', 'stage-5m.efx', 'dependencies.json']);
+
     /** @type {ExplorerPage} */
     #explorer;
 
@@ -184,14 +345,17 @@ class SmokeTest {
      * @returns {Promise<number>} The number of failed checks.
      */
     async run() {
-        await this.#checkVersionsFromQueryString();
+        await this.#checkPairFromQueryString();
         await this.#checkDefaultBaseWithoutPreviousMinor();
         await this.#checkBranchAsTarget();
+        await this.#checkPairWithoutRules();
+        await this.#checkPairWithRules();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed`);
         return this.#failed;
     }
 
-    async #checkVersionsFromQueryString() {
+    /** A target with EFX rules and a base without. */
+    async #checkPairFromQueryString() {
         await this.#scenario('?version=2.0.0-alpha.4&base=1.16.0-rc.5', [
             ['both versions are taken from the query string', async () => {
                 assert.equal(await this.#explorer.mainVersion(), '2.0.0-alpha.4');
@@ -207,6 +371,23 @@ class SmokeTest {
             ['the releases beyond the first page of tags (1.10.0 to 1.10.2) are listed', async () => {
                 const options = await this.#explorer.baseVersionOptions();
                 ['1.10.0', '1.10.1', '1.10.2'].forEach(version => assert.ok(options.includes(version), `${version} is missing`));
+            }],
+            ['the Validation tab is shown and the Schematrons tab is hidden', async () => {
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+            }],
+            ['the Validation tab lists the EFX rules files as added, with Compare disabled', async () => {
+                await this.#explorer.openTab('validation-tab');
+                const cards = await this.#explorer.indexCards('validation-overview-card-group');
+                assert.deepEqual(cards.map(card => card.title), SmokeTest.#VALIDATION_FILES);
+                cards.forEach(card => {
+                    assert.equal(card.status, 'added', card.title);
+                    assert.equal(card.compareEnabled, false, card.title);
+                });
+            }],
+            ['selecting 1.15.1 and 1.14.2 while the Validation tab is active activates Home and shows the Schematrons tab again', async () => {
+                await this.#explorer.selectVersions('1.15.1', '1.14.2');
+                assert.equal(await this.#explorer.activeTab(), 'home-tab');
+                await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
             }],
         ]);
     }
@@ -228,6 +409,57 @@ class SmokeTest {
                 assert.equal(await this.#explorer.mainVersion(), 'efx-2');
                 const latestRelease = (await this.#explorer.baseVersionOptions()).find(SmokeTest.#isRelease);
                 assert.equal(await this.#explorer.baseVersion(), latestRelease);
+            }],
+            ['the Validation tab is shown and the Schematrons tab is hidden', async () => {
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+            }],
+        ]);
+    }
+
+    /** Two versions without EFX rules. */
+    async #checkPairWithoutRules() {
+        await this.#scenario('?version=1.15.1&base=1.14.2', [
+            ['the Schematrons tab is shown and the Validation tab is hidden', async () => {
+                await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
+            }],
+        ]);
+    }
+
+    /** Two versions with the same EFX rules. */
+    async #checkPairWithRules() {
+        await this.#scenario('?version=2.0.0-alpha.4&base=2.0.0-alpha.3', [
+            ['the Validation tab lists the EFX rules files as unchanged, without a folder filter', async () => {
+                await this.#explorer.openTab('validation-tab');
+                const cards = await this.#explorer.indexCards('validation-overview-card-group');
+                assert.deepEqual(cards.map(card => card.title), SmokeTest.#VALIDATION_FILES);
+                cards.forEach(card => {
+                    assert.equal(card.status, 'unchanged', card.title);
+                    assert.equal(card.compareEnabled, true, card.title);
+                });
+                assert.equal((await this.#explorer.cardFilter('validation-overview-card-group')).shown, false);
+            }],
+            ['Compare opens the diff of rules.efx', async () => {
+                await this.#explorer.compare('validation-overview-card-group', 'rules.efx');
+                try {
+                    assert.equal(await this.#explorer.isShown('#validation-diff-view'), true);
+                    assert.deepEqual(await this.#explorer.comparedFiles('validation-diff'), ['rules.efx']);
+                } finally {
+                    await this.#explorer.openOverview('validation-overview-link');
+                }
+            }],
+            ['the Schematron source shows the same cards, folder filter and statuses as the Schematrons tab', async () => {
+                await this.#explorer.selectValidationSource('schematron');
+                const validationCards = await this.#explorer.indexCards('validation-overview-card-group');
+                const validationFilter = await this.#explorer.cardFilter('validation-overview-card-group');
+                await this.#explorer.openHiddenTab('schematrons-tab');
+                const schematronsCards = await this.#explorer.indexCards('schematrons-overview-card-group');
+                const schematronsFilter = await this.#explorer.cardFilter('schematrons-overview-card-group');
+
+                assert.ok(validationCards.length > 0, 'no cards');
+                assert.ok(validationCards.every(card => card.status), 'a card has no status');
+                assert.deepEqual(validationCards, schematronsCards);
+                assert.equal(validationFilter.shown, true);
+                assert.deepEqual(validationFilter, schematronsFilter);
             }],
         ]);
     }
@@ -276,6 +508,15 @@ class SmokeTest {
         } else {
             this.#failed++;
             console.log(`  FAIL  ${description}\n        ${error.message.split('\n').join('\n        ')}`);
+        }
+    }
+
+    /**
+     * @param {Object<string, boolean>} expected Whether each tab, by the id of its button, is expected to be shown.
+     */
+    async #assertTabsShown(expected) {
+        for (const [tabId, shown] of Object.entries(expected)) {
+            assert.equal(await this.#explorer.isTabShown(tabId), shown, `${tabId} is ${shown ? 'hidden' : 'shown'}`);
         }
     }
 
