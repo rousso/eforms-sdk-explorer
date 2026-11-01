@@ -240,7 +240,8 @@ class ExplorerPage {
         const heldRequests = [];
         const hold = route => {
             requested();
-            const continued = released.then(() => route.continue());
+            // A held request that the page aborted meanwhile cannot go on, which is fine.
+            const continued = released.then(() => route.continue()).catch(() => {});
             heldRequests.push(continued);
             return continued;
         };
@@ -253,6 +254,25 @@ class ExplorerPage {
                 await this.#page.unroute(urlPattern, hold);
             }
         };
+    }
+
+    /**
+     * Arranges for a version to be selected as soon as the first card is added to a card group, while the rest of
+     * the cards of that load are still to come, as a user who changes the version just as the cards appear.
+     *
+     * @param {string} cardGroupId
+     * @param {'main'|'base'} dropdown
+     * @param {string} version
+     */
+    async selectVersionWhenFirstCardAppears(cardGroupId, dropdown, version) {
+        await this.#page.evaluate(([id, which, value]) => {
+            const container = document.getElementById(id).shadowRoot.querySelector('#cards-container');
+            const observer = new MutationObserver(() => {
+                observer.disconnect();
+                $(`#${which}-version-dropdown`).val(value).trigger('change');
+            });
+            observer.observe(container, { childList: true });
+        }, [cardGroupId, dropdown, version]);
     }
 
     /**
@@ -794,6 +814,20 @@ class SmokeTest {
                 await this.#explorer.openTab('fields-tab');
                 await this.#assertFieldsJsonTree();
             }],
+            ['a slow response for a superseded pair does not replace the tree of the newer pair', async () => {
+                const slowResponse = await this.#explorer.holdRequests('**/1.3.2/fields/fields.json');
+                await this.#explorer.startSelectingVersion('base', '1.3.2');
+                await slowResponse.requested;
+                await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.4');
+                assert.ok((await this.#explorer.treeNodes('fields-explorer')).length > 0, 'no tree for the newer pair');
+                await slowResponse.release();
+                await this.#explorer.waitUntilIdle();
+                const nodes = await this.#explorer.treeNodes('fields-explorer');
+                assert.deepEqual(nodes.filter(node => node.status !== 'unchanged').map(node => node.id).slice(0, 5), [],
+                    'the tree is not the one of 2.0.0-alpha.4 against itself');
+                await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.3');
+                await this.#explorer.waitUntilIdle();
+            }],
             ['the Fields tab in fwd/ mode shows 262 nodes, 13 modified fields (BT-507-Business among them), 96 business entities and 19 data types', async () => {
                 await this.#explorer.selectFieldsSource('fwd');
                 assert.equal(await this.#explorer.shownText('#fields-source-alert'), null);
@@ -892,6 +926,22 @@ class SmokeTest {
                 const parents = new Set((await this.#explorer.indexCards('code-lists-overview-card-group')).map(card => card.subtitle || '(blank)'));
                 const filter = await this.#explorer.cardFilter('code-lists-overview-card-group');
                 assert.deepEqual([...filter.values].sort(), [...parents, '(all)'].sort());
+            }],
+            ['the cards of a load superseded by a version change are not added to the newer comparison', async () => {
+                // The newer pair's index is held, so that the pane must stay empty until it arrives.
+                const newerIndex = await this.#explorer.holdRequests('**/1.4.0/codelists/codelists.json');
+                await this.#explorer.openTab('home-tab');
+                await this.#explorer.selectVersionWhenFirstCardAppears('code-lists-overview-card-group', 'base', '1.4.0');
+                await this.#explorer.startOpeningTab('codelists-tab');
+                await newerIndex.requested;
+                const whileHeld = await this.#explorer.cardStates('code-lists-overview-card-group');
+                await newerIndex.release();
+                await this.#explorer.waitUntilIdle();
+                assert.deepEqual(whileHeld.map(card => card.title).slice(0, 5), [], `${whileHeld.length} cards of the superseded load were added`);
+                assert.equal(await this.#explorer.baseVersion(), '1.4.0');
+                const titles = (await this.#explorer.cardStates('code-lists-overview-card-group')).map(card => card.title);
+                assert.ok(titles.length > 0, 'no cards');
+                assert.deepEqual(titles.filter((title, index) => titles.indexOf(title) !== index), []);
             }],
         ]);
     }

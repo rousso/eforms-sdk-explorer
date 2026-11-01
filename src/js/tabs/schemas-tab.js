@@ -88,12 +88,10 @@ export class SchemasTab extends TabController {
 
                 // Create and add an index-card for each schema.
                 diff.forEach((entry, index) => {
-                    setTimeout(() => {
-                        if (!this.aborting) {
-                            const card = this.#createIndexCard(entry);
-                            this.#cardGroup().appendCard(card);
-                        }
-                    }, 0);
+                    this.defer(() => {
+                        const card = this.#createIndexCard(entry);
+                        this.#cardGroup().appendCard(card);
+                    });
                 });
                 this.#switchToOverview();
             } catch (error) {

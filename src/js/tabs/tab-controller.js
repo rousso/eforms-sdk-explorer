@@ -24,8 +24,8 @@ export class TabController {
     /** @type {Array} */
     #listeners = [];
 
-    /** @type {boolean} */
-    aborting = false;
+    /** @type {Set<number>} The timeouts of the work deferred by {@link defer} that has not run yet. */
+    #deferredWork = new Set();
 
     /**
      * @returns {string}
@@ -49,7 +49,6 @@ export class TabController {
      * No need to override this method.
      */
     async activated() {
-        this.aborting = false;
         this.clear();
         try {
             await this.fetchAndRender();
@@ -68,7 +67,6 @@ export class TabController {
      * Override this method to clean up any resources.
      */
     async deactivated() {
-        this.aborting = true;
         this.cancelRequests();
         this.clear();
     }
@@ -78,6 +76,9 @@ export class TabController {
      * No need to override this method.
      */
     async versionChanged() {
+        // Cancel the load of the previous selection, so that none of its responses or deferred work can render
+        // over the new one.
+        this.cancelRequests();
         this.clear();
         try {
             await this.fetchAndRender();
@@ -184,7 +185,7 @@ export class TabController {
     }
 
     /**
-     * Cancel all ongoing AJAX requests.
+     * Cancel all ongoing AJAX requests, and the work deferred by {@link defer} that has not run yet.
      */
     cancelRequests() {
         this.#ajaxRequests.forEach(jqXHR => {
@@ -193,6 +194,24 @@ export class TabController {
             }
         });
         this.#ajaxRequests = [];
+
+        this.#deferredWork.forEach(timeout => clearTimeout(timeout));
+        this.#deferredWork.clear();
+    }
+
+    /**
+     * Runs a piece of rendering later (in a timeout), so that rendering many items keeps the page responsive, and
+     * keeps track of it like a request: {@link cancelRequests} drops it if it has not run yet, so that a load that
+     * was cancelled (by a version change, a tab switch or a source switch) cannot render anything afterwards.
+     *
+     * @param {function(): void} work
+     */
+    defer(work) {
+        const timeout = setTimeout(() => {
+            this.#deferredWork.delete(timeout);
+            work();
+        }, 0);
+        this.#deferredWork.add(timeout);
     }
 
     showErrorMessage(message) {

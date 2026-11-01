@@ -174,12 +174,10 @@ export class ValidationTab extends TabController {
 
                 // Create and add an index-card for each validation file.
                 diff.forEach((entry, index) => {
-                    setTimeout(() => {
-                        if (!this.aborting) {
-                            const card = source.createIndexCard(entry);
-                            this.#cardGroup().appendCard(card);
-                        }
-                    }, 0);
+                    this.defer(() => {
+                        const card = source.createIndexCard(entry);
+                        this.#cardGroup().appendCard(card);
+                    });
                 });
                 this.#switchToOverview();
             } catch (error) {

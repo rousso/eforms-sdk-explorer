@@ -80,12 +80,10 @@ export class NoticeTypesTab extends TabController {
 
                 // Create and add an index-card for each notice type.
                 diff.forEach(entry => {
-                    setTimeout(() => {
-                        if (!this.aborting) {
-                            const card = this.#createIndexCard(entry);
-                            this.#cardGroup().appendCard(card);
-                        }
-                    }, 0);
+                    this.defer(() => {
+                        const card = this.#createIndexCard(entry);
+                        this.#cardGroup().appendCard(card);
+                    });
                 });
 
                 this.#switchToOverview();
