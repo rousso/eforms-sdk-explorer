@@ -50,6 +50,7 @@ export class TabController {
      */
     async activated() {
         this.aborting = false;
+        this.clear();
         try {
             await this.fetchAndRender();
         }
@@ -70,6 +71,7 @@ export class TabController {
         this.aborting = true;
         $(this.#id).tab('dispose');
         this.cancelRequests();
+        this.clear();
     }
 
     /**
@@ -77,6 +79,7 @@ export class TabController {
      * No need to override this method.
      */
     async versionChanged() {
+        this.clear();
         try {
             await this.fetchAndRender();
         }
@@ -87,6 +90,14 @@ export class TabController {
                 this.showErrorMessage(error.message);
             }
         }
+    }
+
+    /**
+     * Override this method to remove what the tab shows (its tree, cards, diff or alerts), so that it shows an empty
+     * pane. Called before the tab fetches and renders again, so that a failed load does not leave the previous
+     * comparison on screen, and when the tab is deactivated, to free memory.
+     */
+    clear() {
     }
 
     /**

@@ -43,10 +43,12 @@ export class NoticeTypesTab extends TabController {
     /**
      * Overridden to dispose of the card group and diff view.
      */
-    deactivated() {
-        super.deactivated();
-        this.#cardGroup().dispose();
-        this.#splitView().dispose();
+    /**
+     * Overridden to remove the cards and the tree.
+     */
+    clear() {
+        this.#cardGroup().empty();
+        this.#splitView().clear();
     }
     
     // #region Overview display -----------------------------------------------

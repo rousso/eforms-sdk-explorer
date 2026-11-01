@@ -63,6 +63,7 @@ export class ValidationTab extends TabController {
         // Render the overview again when a different source is selected (Bootstrap fires change on the radio input of the button).
         this.$sourceSelector().on('change', 'input[type="radio"]', async (e) => {
             this.cancelRequests();
+            this.clear();
             try {
                 await this.fetchAndRender();
             } catch (error) {
@@ -91,11 +92,10 @@ export class ValidationTab extends TabController {
     }
 
     /**
-     * Overridden to dispose of the card group and diff view.
+     * Overridden to remove the cards and the diff.
      */
-    deactivated() {
-        super.deactivated();
-        this.#cardGroup().dispose();
+    clear() {
+        this.#cardGroup().empty();
         this.$diffContainer().empty();
     }
 

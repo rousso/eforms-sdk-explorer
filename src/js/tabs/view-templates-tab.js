@@ -39,11 +39,10 @@ export class ViewTemplatesTab extends TabController {
     }
 
     /**
-     * Overridden to dispose of the card group and diff view.
+     * Overridden to remove the cards and the diff.
      */
-    deactivated() { 
-        super.deactivated();
-        this.#cardGroup().dispose();
+    clear() {
+        this.#cardGroup().empty();
         this.$diffContainer().empty();
     }
 

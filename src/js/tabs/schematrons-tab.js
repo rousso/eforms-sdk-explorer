@@ -46,9 +46,11 @@ export class SchematronsTab extends TabController {
         return !(await SdkExplorerApplication.instance.tabs.get('validation-tab').isApplicable());
     }
 
-    deactivated() {
-        super.deactivated();
-        this.#cardGroup().dispose();
+    /**
+     * Overridden to remove the cards and the diff.
+     */
+    clear() {
+        this.#cardGroup().empty();
         this.$diffContainer().empty();
     }
 

@@ -97,6 +97,9 @@ class ExplorerPage {
     /** @type {string[]} The URLs of the GitHub API requests made since the page was created. */
     #githubApiRequests = [];
 
+    /** @type {Set<string>} The URLs of the requests that the test made fail on purpose (see {@link failRequestsDuring}). */
+    #deliberatelyFailedUrls = new Set();
+
     /** @type {string} */
     #baseUrl;
 
@@ -111,7 +114,7 @@ class ExplorerPage {
         this.#page = page;
         this.#baseUrl = baseUrl;
         this.#page.on('console', message => {
-            if (message.type() === 'error' && !ExplorerPage.#isExpectedAbsence(message)) {
+            if (message.type() === 'error' && !ExplorerPage.#isExpectedAbsence(message) && !this.#deliberatelyFailedUrls.has(message.location().url)) {
                 const url = message.location().url;
                 this.#consoleErrors.push(url ? `${message.text()} (${url})` : message.text());
             }
@@ -275,6 +278,37 @@ class ExplorerPage {
             nodes = await this.#page.evaluate(readTree, splitViewId);
         } while (!nodes || nodes.length === 0 || nodes.length !== previousLength);
         return nodes;
+    }
+
+    /**
+     * Runs an action while the requests matching a URL pattern fail with an HTTP 500, to see how the explorer reports
+     * a failed load. The browser's console errors for these requests are not collected.
+     *
+     * @param {string} urlPattern A Playwright URL glob, as for page.route().
+     * @param {() => Promise<void>} action
+     */
+    async failRequestsDuring(urlPattern, action) {
+        const fail = route => {
+            this.#deliberatelyFailedUrls.add(route.request().url());
+            return route.fulfill({ status: 500, contentType: 'text/plain', body: 'Failed on purpose by the smoke test' });
+        };
+        await this.#page.route(urlPattern, fail);
+        try {
+            await action();
+        } finally {
+            await this.#page.unroute(urlPattern, fail);
+        }
+    }
+
+    /**
+     * @param {string} splitViewId
+     * @returns {Promise<boolean>} Whether the tree of a tree-detail-split-view has any node.
+     */
+    async hasTree(splitViewId) {
+        return this.#page.evaluate(id => {
+            const tree = $(document.getElementById(id).shadowRoot.querySelector('#treeView')).jstree(true);
+            return Boolean(tree) && tree.get_json('#', { flat: true }).length > 0;
+        }, splitViewId);
     }
 
     /**
@@ -570,6 +604,13 @@ class SmokeTest {
                 assert.ok(modifiedFields.includes('BT-507-Business'), 'BT-507-Business is not modified');
                 assert.equal(nodes.filter(node => node.id.startsWith('be:')).length, 96, 'business entities');
                 assert.equal(nodes.filter(node => node.id.startsWith('dt:')).length, 19, 'data types');
+            }],
+            ['when loading fails, the Fields tab shows an empty pane and the error naming the file, not the previous tree', async () => {
+                await this.#explorer.selectFieldsSource('fields-json');
+                assert.ok((await this.#explorer.treeNodes('fields-explorer')).length > 0, 'no fields.json tree');
+                await this.#explorer.failRequestsDuring('**/2.0.0-alpha.3/fields/fwd/data-types.json', () => this.#explorer.selectFieldsSource('fwd'));
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), false);
+                assert.match(await this.#explorer.apiStatus(), /fwd\/data-types\.json for SDK 2\.0\.0-alpha\.3/);
             }],
             ['the View Templates tab lists summary.efx, which view-templates.json does not list, as unchanged', async () => {
                 await this.#assertViewTemplateStatus('summary.efx', 'unchanged');

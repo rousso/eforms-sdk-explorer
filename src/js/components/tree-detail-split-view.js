@@ -130,9 +130,7 @@ export class TreeDetailSplitView extends BootstrapWebComponent {
      * @param {string} [options.popover.content] - The content for the popover.
      */
     initialise({ dataCallback, searchableProperties = [], hiddenProperties = [], titleProperty = 'id', subtitleProperty = null}) {
-        if (this.$treeView().jstree(true)) {
-            this.$treeView().jstree("destroy");
-        }
+        this.clear();
         this.$treeView().jstree({
             core: {
                 data: dataCallback(),
@@ -150,15 +148,6 @@ export class TreeDetailSplitView extends BootstrapWebComponent {
             this.displayDetails(DiffEntry.fromObject(data.node.data), titleProperty, subtitleProperty, hiddenProperties);
         });   
 
-        // Reset the search fields
-        this.$treeSearch().val('');
-        this.$treeFilter().val('all');
-
-        // Empty the detail view
-        this.$detailView().empty();
-        this.$detailTitle().text('Select a node to see details');
-        this.$detailSubtitle().text('');
-
         let titleSlot = this.shadowRoot.querySelector('slot[name="search-popover-title"]');
         let titleSlotNodes = titleSlot.assignedNodes();
         let popoverTitle = titleSlotNodes.length > 0 ? titleSlotNodes[0].innerHTML : titleSlot.innerHTML;
@@ -171,6 +160,24 @@ export class TreeDetailSplitView extends BootstrapWebComponent {
             title: popoverTitle,
             content: popoverContent.replace("{searchableProperties}", searchableProperties.map(p => `<code>${p}</code>`).join(', ')),
         });
+    }
+
+    /**
+     * Removes the tree and the details, and resets the search fields, so that the component shows nothing.
+     */
+    clear() {
+        if (this.$treeView().jstree(true)) {
+            this.$treeView().jstree("destroy");
+        }
+
+        // Reset the search fields
+        this.$treeSearch().val('');
+        this.$treeFilter().val('all');
+
+        // Empty the detail view
+        this.$detailView().empty();
+        this.$detailTitle().text('Select a node to see details');
+        this.$detailSubtitle().text('');
     }
 
     /**

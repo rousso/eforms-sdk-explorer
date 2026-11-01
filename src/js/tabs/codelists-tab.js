@@ -40,9 +40,11 @@ export class CodelistsTab extends TabController {
 
     // #region Overview display -----------------------------------------------
 
-    deactivated() {
-        super.deactivated();
-        this.#cardGroup().dispose();
+    /**
+     * Overridden to remove the cards and the diff.
+     */
+    clear() {
+        this.#cardGroup().empty();
         this.$diffContainer().empty();
     }
 

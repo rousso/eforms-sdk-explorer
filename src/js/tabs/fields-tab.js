@@ -39,6 +39,7 @@ export class FieldsTab extends TabController {
         // Render the tab again when a different metadata source is selected (Bootstrap fires change on the radio input of the button).
         this.$sourceSelector().on('change', 'input[type="radio"]', async (e) => {
             this.cancelRequests();
+            this.clear();
             SdkExplorerApplication.startSpinner();
             try {
                 await this.fetchAndRender();
@@ -50,6 +51,14 @@ export class FieldsTab extends TabController {
                 SdkExplorerApplication.stopSpinner();
             }
         });
+    }
+
+    /**
+     * Overridden to remove the tree and the alert.
+     */
+    clear() {
+        this.#showAlert([]);
+        this.#splitView().clear();
     }
 
     async fetchAndRender() {
@@ -111,8 +120,6 @@ export class FieldsTab extends TabController {
      * Fetches fields.json for both versions and renders its nodes and fields.
      */
     async #fetchAndRenderFieldsJson() {
-        this.#showAlert([]);
-
         const [response1, response2] = await Promise.all([
             this.#fetchFieldsFile('fields.json', appState.mainVersion),
             this.#fetchFieldsFile('fields.json', appState.baseVersion)
@@ -143,8 +150,6 @@ export class FieldsTab extends TabController {
      * compared as if it had no items (or no items of those files).
      */
     async #fetchAndRenderForwardCompatibleMetadata() {
-        this.#showAlert([]);
-
         const [mainVersionData, baseVersionData] = await Promise.all([
             this.#fetchForwardCompatibleMetadata(appState.mainVersion),
             this.#fetchForwardCompatibleMetadata(appState.baseVersion)

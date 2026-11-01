@@ -40,9 +40,11 @@ export class SchemasTab extends TabController {
         await this.fetchAndRenderOverview();
     }
 
-    deactivated() {
-        super.deactivated();
-        this.#cardGroup().dispose();
+    /**
+     * Overridden to remove the cards and the diff.
+     */
+    clear() {
+        this.#cardGroup().empty();
         this.$diffContainer().empty();
     }
 
