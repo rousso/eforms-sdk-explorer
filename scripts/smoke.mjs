@@ -341,6 +341,14 @@ class ExplorerPage {
     }
 
     /**
+     * @param {string} selector
+     * @returns {Promise<boolean>} Whether the element has no content.
+     */
+    async isEmpty(selector) {
+        return this.#page.$eval(selector, element => element.childNodes.length === 0);
+    }
+
+    /**
      * @param {string} diffContainerId
      * @returns {Promise<string[]>} The names of the files compared in the diff view.
      */
@@ -564,6 +572,13 @@ class SmokeTest {
             }],
             ['the View Templates tab lists summary.efx, which view-templates.json does not list, as unchanged', async () => {
                 await this.#assertViewTemplateStatus('summary.efx', 'unchanged');
+            }],
+            ['Compare opens the diff of summary.efx, and going back to Overview empties the diff view', async () => {
+                await this.#explorer.compare('view-templates-overview-card-group', 'summary.efx');
+                assert.equal(await this.#explorer.isShown('#view-templates-diff-view'), true);
+                assert.deepEqual(await this.#explorer.comparedFiles('view-templates-diff'), ['summary.efx']);
+                await this.#explorer.openOverview('view-templates-overview-link');
+                assert.equal(await this.#explorer.isEmpty('#view-templates-diff'), true);
             }],
             ['the Validation tab lists the EFX rules files as unchanged, without a folder filter', async () => {
                 await this.#explorer.openTab('validation-tab');

@@ -283,7 +283,7 @@ export class ViewTemplatesTab extends TabController {
             ]);
             
             try {
-                Diff.injectTextDiff(mainData, baseData, 'view-template-diff', `${id}.efx`);
+                Diff.injectTextDiff(mainData, baseData, 'view-templates-diff', `${id}.efx`);
                 this.#switchToDiffView();
             } catch (error) {
                 throw new CustomError(ERROR_GENERATING_DIFF(`${id}.efx`), error);
