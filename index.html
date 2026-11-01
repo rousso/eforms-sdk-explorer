@@ -144,8 +144,16 @@
 
         <!-- Fields -->
         <div class="tab-pane h-100 fade show" id="fields-tab-content" role="tabpanel" aria-labelledby="fields-tab">
-            <div class="container-fluid h-100">
-                <tree-detail-split-view id="fields-explorer"></tree-detail-split-view>
+            <div class="container-fluid h-100 d-flex flex-column">
+                <div class="d-flex align-items-center flex-shrink-0 pt-2">
+                    <label for="fields-source" class="mb-0 mr-2">Metadata source:</label>
+                    <select id="fields-source" class="form-control form-control-sm" style="width:auto;">
+                        <option value="fields-json" selected>fields.json</option>
+                        <option value="fwd">fwd/</option>
+                    </select>
+                </div>
+                <div id="fields-source-alert" class="alert alert-warning flex-shrink-0 mt-2 mb-0 d-none" role="alert"></div>
+                <tree-detail-split-view id="fields-explorer" class="flex-grow-1" style="min-height: 0;"></tree-detail-split-view>
             </div>
         </div>
 
@@ -620,6 +628,12 @@
 
         #compact-view-warning {
             display: var(--compact-view-warning-display, none);
+        }
+
+        /* Headings that group the tree-nodes (forward-compatible metadata in the Fields tab) */
+        .root-node > .jstree-anchor {
+            font-weight: bold;
+            color: inherit !important;
         }
 
         /* jQuery Treeview */

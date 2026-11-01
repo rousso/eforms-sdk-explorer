@@ -82,7 +82,7 @@ class ExplorerPage {
      * Files that the explorer requests to find out whether a version has them: for these, the browser's "404" console
      * error is expected and is not collected.
      */
-    static #FILES_PROBED_FOR_PRESENCE = Object.freeze([/\/validation\/[^/]+$/]);
+    static #FILES_PROBED_FOR_PRESENCE = Object.freeze([/\/validation\/[^/]+$/, /\/fields\/fwd\/nodes\.json$/]);
 
     /** The prefix of the URLs of the GitHub API. */
     static #GITHUB_API = 'https://api.github.com/';
@@ -213,6 +213,53 @@ class ExplorerPage {
     }
 
     /**
+     * Selects a source in the metadata source selector of the Fields tab and waits until the explorer is idle.
+     *
+     * @param {string} source The value of the option, for example `fwd`.
+     */
+    async selectFieldsSource(source) {
+        await this.#page.selectOption('#fields-source', source);
+        await this.#waitUntilIdle();
+    }
+
+    /**
+     * Reads the tree of a tree-detail-split-view, once jsTree has finished loading it.
+     *
+     * @param {string} splitViewId
+     * @returns {Promise<Array<{id: string, parent: string, text: string, folder: boolean, status: string}>>}
+     *          The tree-nodes; the status is the type of change of the item ('root' for a heading).
+     */
+    async treeNodes(splitViewId) {
+        const readTree = id => {
+            const tree = $(document.getElementById(id).shadowRoot.querySelector('#treeView')).jstree(true);
+            return tree && !tree.is_loading('#') ? tree.get_json('#', { flat: true }).map(node => ({
+                id: node.id,
+                parent: node.parent,
+                text: node.text,
+                folder: node.icon === 'jstree-folder',
+                status: (node.li_attr?.class ?? '').replace(/-node$/, '')
+            })) : null;
+        };
+        // jsTree loads large trees in the background: wait until the tree has nodes and stops growing.
+        let nodes = null;
+        let previousLength = -1;
+        do {
+            await this.#page.waitForTimeout(ExplorerPage.#IDLE_PERIOD);
+            previousLength = nodes?.length ?? -1;
+            nodes = await this.#page.evaluate(readTree, splitViewId);
+        } while (!nodes || nodes.length === 0 || nodes.length !== previousLength);
+        return nodes;
+    }
+
+    /**
+     * @param {string} selector
+     * @returns {Promise<string|null>} The text of the element, or null if it is hidden.
+     */
+    async shownText(selector) {
+        return (await this.#page.isVisible(selector)) ? (await this.#page.textContent(selector)).trim() : null;
+    }
+
+    /**
      * @param {string} cardGroupId
      * @returns {Promise<Array<{title: string, subtitle: string, status: string, compareEnabled: boolean}>>}
      *          The index cards of the card group, in display order.
@@ -339,6 +386,9 @@ class SmokeTest {
             '1.16.0-beta.3', '1.16.0-beta.2', '1.16.0-beta.1', '1.15.1'],
     ]);
 
+    /** The roots of the tree of the Fields tab in fwd/ mode. */
+    static #FORWARD_COMPATIBLE_ROOTS = Object.freeze(['XML structure', 'Business entities', 'Data types']);
+
     /** The files of the validation folder of an SDK 2 version, in the order of their index cards. */
     static #VALIDATION_FILES = Object.freeze(['rules.efx', 'stage-1a.efx', 'stage-4m.efx', 'stage-5m.efx', 'dependencies.json']);
 
@@ -394,6 +444,14 @@ class SmokeTest {
             ['the Validation tab is shown and the Schematrons tab is hidden', async () => {
                 await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
             }],
+            ['the Fields tab in fwd/ mode names 1.16.0-rc.5 as having no forward-compatible metadata and shows every item as added', async () => {
+                await this.#explorer.openTab('fields-tab');
+                await this.#explorer.selectFieldsSource('fwd');
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.16.0-rc.5 has no forward-compatible metadata (fields/fwd/).');
+                const nodes = await this.#explorer.treeNodes('fields-explorer');
+                assert.deepEqual(nodes.filter(node => node.parent === '#').map(node => node.text), SmokeTest.#FORWARD_COMPATIBLE_ROOTS);
+                assert.deepEqual(nodes.filter(node => node.parent !== '#' && node.status !== 'added'), []);
+            }],
             ['the Validation tab lists the EFX rules files as added, with Compare disabled', async () => {
                 await this.#explorer.openTab('validation-tab');
                 const cards = await this.#explorer.indexCards('validation-overview-card-group');
@@ -441,12 +499,33 @@ class SmokeTest {
             ['the Schematrons tab is shown and the Validation tab is hidden', async () => {
                 await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
             }],
+            ['the Fields tab shows fields.json by default, under ND-Root, without the alert', async () => {
+                await this.#explorer.openTab('fields-tab');
+                await this.#assertFieldsJsonTree();
+            }],
         ]);
     }
 
     /** Two versions with the same EFX rules. */
     async #checkPairWithRules() {
         await this.#scenario('?version=2.0.0-alpha.4&base=2.0.0-alpha.3', [
+            ['the Fields tab shows fields.json by default, under ND-Root, without the alert', async () => {
+                await this.#explorer.openTab('fields-tab');
+                await this.#assertFieldsJsonTree();
+            }],
+            ['the Fields tab in fwd/ mode shows 262 nodes, 13 modified fields (BT-507-Business among them), 96 business entities and 19 data types', async () => {
+                await this.#explorer.selectFieldsSource('fwd');
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'), null);
+                const nodes = await this.#explorer.treeNodes('fields-explorer');
+                assert.deepEqual(nodes.filter(node => node.parent === '#').map(node => node.text), SmokeTest.#FORWARD_COMPATIBLE_ROOTS);
+                const xmlStructure = nodes.filter(node => node.parent !== '#' && !/^(be|bep|dt):/.test(node.id));
+                assert.equal(xmlStructure.filter(node => node.folder).length, 262, 'nodes');
+                const modifiedFields = xmlStructure.filter(node => !node.folder && node.status === 'modified').map(node => node.id);
+                assert.equal(modifiedFields.length, 13, `modified fields: ${modifiedFields.join(', ')}`);
+                assert.ok(modifiedFields.includes('BT-507-Business'), 'BT-507-Business is not modified');
+                assert.equal(nodes.filter(node => node.id.startsWith('be:')).length, 96, 'business entities');
+                assert.equal(nodes.filter(node => node.id.startsWith('dt:')).length, 19, 'data types');
+            }],
             ['the Validation tab lists the EFX rules files as unchanged, without a folder filter', async () => {
                 await this.#explorer.openTab('validation-tab');
                 const cards = await this.#explorer.indexCards('validation-overview-card-group');
@@ -547,6 +626,16 @@ class SmokeTest {
             this.#failed++;
             console.log(`  FAIL  ${description}\n        ${error.message.split('\n').join('\n        ')}`);
         }
+    }
+
+    /**
+     * Asserts that the Fields tab shows the tree of fields.json (one root, ND-Root) and no alert.
+     */
+    async #assertFieldsJsonTree() {
+        assert.equal(await this.#explorer.shownText('#fields-source-alert'), null);
+        const nodes = await this.#explorer.treeNodes('fields-explorer');
+        assert.deepEqual(nodes.filter(node => node.parent === '#').map(node => node.id), ['ND-Root']);
+        assert.ok(nodes.length > 1, 'the tree has no fields');
     }
 
     /**
