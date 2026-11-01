@@ -10,6 +10,7 @@ This release adds support for eForms SDK 2: you can compare SDK 1.x versions wit
 - **View Templates tab**: view templates that a version has without listing them in `view-templates.json`, such as `summary.efx`, are compared too.
 - **Fewer requests to GitHub**: the SDK Explorer no longer uses the GitHub API when it starts, and lists a folder with a single request per version, which your browser then remembers. Users who share a network, such as an office, no longer run out of the 60 GitHub requests per hour allowed without signing in.
 - A file that does not have the expected content is now reported with an error message naming the file, instead of being shown as empty.
+- **Bootstrap upgraded to 5.3** (from 4.6, which is no longer supported). Its stylesheet is now served by the SDK Explorer itself, so that the many cards of the Codelists tab stay quick to display.
 
 
 # SDK Explorer 0.1.0 - Release Notes
