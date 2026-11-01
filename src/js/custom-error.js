@@ -1,18 +1,33 @@
 export class CustomError extends Error {
     constructor(message, error) {
-        if (error instanceof AjaxError) {
-            super(error.message);
-        } else if (error instanceof CustomError) {
-            super(`${message}${this.formatDetail(error.message ?? '')}`);
-        } else if (typeof error === 'string') {
-            super(`${message}${this.formatDetail(error)}`);
-        } else {
-            super(message);
-        }
+        super(CustomError.#composeMessage(message, error));
         this.name = this.constructor.name;
     }
 
-    formatDetail(detail) {
+    /**
+     * Composes the message of an error that wraps another one: an AjaxError keeps its own message; the message of
+     * another CustomError, or a string, is appended as detail; any other error is not shown.
+     *
+     * @param {string} message
+     * @param {*} error The wrapped error.
+     * @returns {string}
+     */
+    static #composeMessage(message, error) {
+        if (error instanceof AjaxError) {
+            return error.message;
+        } else if (error instanceof CustomError) {
+            return `${message}${CustomError.formatDetail(error.message ?? '')}`;
+        } else if (typeof error === 'string') {
+            return `${message}${CustomError.formatDetail(error)}`;
+        }
+        return message;
+    }
+
+    /**
+     * @param {string} detail
+     * @returns {string} The detail as HTML, for the error toast.
+     */
+    static formatDetail(detail) {
         return `<span class="detail">${detail}</span>`;
     }
 }
@@ -29,7 +44,7 @@ export class AjaxError extends CustomError {
         super(message, error);
         if (error && error.statusText !== 'abort') {
             const errorDetail = error?.message ?? error?.responseText ?? (typeof error === 'string' ? error : '') ?? '';            
-            this.message = `${message}${this.formatDetail(errorDetail)}`;
+            this.message = `${message}${CustomError.formatDetail(errorDetail)}`;
         }
 
         // The statusText property is only available on jqXHR objects.
