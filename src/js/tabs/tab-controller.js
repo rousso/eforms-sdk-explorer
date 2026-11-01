@@ -69,7 +69,6 @@ export class TabController {
      */
     async deactivated() {
         this.aborting = true;
-        $(this.#id).tab('dispose');
         this.cancelRequests();
         this.clear();
     }
