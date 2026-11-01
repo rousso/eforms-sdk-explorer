@@ -116,7 +116,7 @@ export class IndexCard extends BootstrapWebComponent {
                 try {
                     await this.actionHandler(event);
                 } catch (error) {
-                    SdkExplorerApplication.updateApiStatus(error.message);
+                    SdkExplorerApplication.updateApiStatus(error.message, error.detail);
                 }
             };
             button.style.display = ''; 
@@ -138,7 +138,7 @@ export class IndexCard extends BootstrapWebComponent {
                 this.setAttribute('status', status);    // This will also trigger a re-render
             }).catch(error => {
                 if (error.statusText !== 'abort') {
-                    SdkExplorerApplication.updateApiStatus(error.message);
+                    SdkExplorerApplication.updateApiStatus(error.message, error.detail);
                 }
             });
         }
