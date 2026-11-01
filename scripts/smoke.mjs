@@ -482,6 +482,14 @@ class ExplorerPage {
 
     /**
      * @param {string} cardGroupId
+     * @returns {Promise<string>} The status shown in the status filter of a card group.
+     */
+    async selectedStatusFilter(cardGroupId) {
+        return this.#page.$eval(`#${cardGroupId}`, cardGroup => cardGroup.shadowRoot.querySelector('#status-filter').value);
+    }
+
+    /**
+     * @param {string} cardGroupId
      * @returns {Promise<Array<{title: string, subtitle: string, status: string|null, visible: boolean}>>}
      *          The index cards of the card group at this moment, with whether the filters show them.
      */
@@ -835,6 +843,10 @@ class SmokeTest {
                     await this.#explorer.openOverview('validation-overview-link');
                 }
             }],
+            ['under EFX rules, the status filter "modified" hides the unchanged files', async () => {
+                await this.#explorer.selectStatusFilter('validation-overview-card-group', 'modified');
+                assert.deepEqual((await this.#explorer.cardStates('validation-overview-card-group')).filter(card => card.visible).map(card => card.title), []);
+            }],
             ['the Schematron source lists the schematrons of the pair with one git trees request per version', async () => {
                 const treesRequests = await this.#treesRequestsDuring(() => this.#explorer.selectValidationSource('schematron'));
                 assert.equal(treesRequests, 2);
@@ -843,6 +855,17 @@ class SmokeTest {
                 assert.ok(cards.length > 0, 'no cards');
                 assert.ok(cards.every(card => card.status), 'a card has no status');
                 assert.equal((await this.#explorer.cardFilter('validation-overview-card-group')).shown, true);
+            }],
+            ['after the switch to Schematron the status filter is back to "all", and the folder "static" shows only its cards, whatever their status', async () => {
+                assert.equal(await this.#explorer.selectedStatusFilter('validation-overview-card-group'), 'all');
+                const cards = await this.#explorer.cardStates('validation-overview-card-group');
+                assert.deepEqual(cards.filter(card => !card.visible).map(card => card.title), []);
+                await this.#explorer.clickFilterValue('validation-overview-card-group', 'static');
+                const visible = (await this.#explorer.cardStates('validation-overview-card-group')).filter(card => card.visible);
+                const staticCards = cards.filter(card => card.subtitle === 'static');
+                assert.ok(staticCards.length > 0, 'no static cards');
+                assert.equal(visible.length, staticCards.length);
+                assert.ok(visible.every(card => card.subtitle === 'static'), 'a card of another folder is shown');
             }],
             ['the Schematrons tab shows the same cards, folder filter and statuses, without any GitHub API request', async () => {
                 const validationCards = await this.#explorer.indexCards('validation-overview-card-group');

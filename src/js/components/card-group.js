@@ -142,18 +142,46 @@ export class CardGroup extends BootstrapWebComponent {
         }
 
         this.indexCards.forEach(indexCard => this.#renderCard(indexCard));
+
+        // The template comes with "all" and "(all)" selected: show the stored selections instead.
+        this.#showSelectedFilters();
     }
 
     /**
-     * Removes the cards and the values of the property filter, and selects "(all)" again, so that the card group can
-     * be filled from nothing (for example after the versions change). Use {@link dispose} to release the component.
+     * Removes the cards and the values of the property filter, so that the card group can be filled from nothing
+     * (for example after the versions change). Emptying a card group resets its filters: "(all)" and "all" are
+     * selected again. Use {@link dispose} to release the component.
      */
     empty() {
         this.indexCards = [];
         this.filterValues = [];
         this.$filterOptions().empty();
         this.$cardsContainer().empty();
-        this.setSelectedPropertyFilterValue('(all)');
+        this.selectedPropertyFilterValue = '(all)';
+        this.selectedStatusFilterValue = 'all';
+        this.#showSelectedFilters();
+    }
+
+    /**
+     * Makes the filter controls and the cards follow the stored selections: the status filter shows the selected
+     * status, the link of the selected property value is highlighted, and the cards container holds the one CSS
+     * variable of the selected pair, which the cards' display reads.
+     */
+    #showSelectedFilters() {
+        const container = this.#cardsContainer();
+        if (!container) {
+            return; // Not rendered yet: render() shows them.
+        }
+        this.$statusFilter().val(this.selectedStatusFilterValue);
+        Array.from(container.style)
+            .filter(propertyName => propertyName.startsWith('--filter-'))
+            .forEach(propertyName => container.style.removeProperty(propertyName));
+        container.style.setProperty(CardGroup.#filterValueToCssVariableName(this.selectedPropertyFilterValue, this.selectedStatusFilterValue), 'block');
+
+        const selectedLink = Array.from(this.#filterOptions().querySelectorAll('.nav-link')).find(link => link.textContent === this.selectedPropertyFilterValue);
+        if (selectedLink) {
+            this.#highlightNavLink(selectedLink);
+        }
     }
 
     #renderCard(indexCard) {
