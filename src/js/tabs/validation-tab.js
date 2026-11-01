@@ -165,7 +165,7 @@ export class ValidationTab extends TabController {
                 const diff = this.#compareIndexes(source, mainVersionData, baseVersionData);
 
                 // Clear the card group, including the filter values of the previous source, and filter by the property of the selected source.
-                this.#cardGroup().dispose();
+                this.#cardGroup().empty();
                 if (source.filterProperty) {
                     this.#cardGroup().setAttribute('filter-property', source.filterProperty);
                 } else {

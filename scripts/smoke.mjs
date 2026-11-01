@@ -454,6 +454,7 @@ class SmokeTest {
         await this.#checkPairWithoutRules();
         await this.#checkPairWithRules();
         await this.#checkPairWithPartialForwardCompatibleMetadata();
+        await this.#checkFilterAfterVersionChange();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
     }
@@ -616,6 +617,23 @@ class SmokeTest {
                 assert.deepEqual(this.#explorer.githubApiRequests.slice(before), []);
                 assert.deepEqual(await this.#explorer.indexCards('schematrons-overview-card-group'), validationCards);
                 assert.deepEqual(await this.#explorer.cardFilter('schematrons-overview-card-group'), validationFilter);
+            }],
+        ]);
+    }
+
+    /**
+     * A pair whose codelists have parents (currency among them) that the second pair's do not have.
+     * Both pairs predate 1.12.0, which renamed some codelist files, so that the switch does not compare files across the rename.
+     */
+    async #checkFilterAfterVersionChange() {
+        await this.#scenario('?version=1.4.5&base=1.4.0', [
+            ['after a version change, the Codelists filter lists only the parents of the codelists shown', async () => {
+                await this.#explorer.openTab('codelists-tab');
+                assert.ok((await this.#explorer.cardFilter('code-lists-overview-card-group')).values.includes('currency'), 'currency is not a parent in 1.4.5 or 1.4.0');
+                await this.#explorer.selectVersions('1.3.6', '1.3.2');
+                const parents = new Set((await this.#explorer.indexCards('code-lists-overview-card-group')).map(card => card.subtitle || '(blank)'));
+                const filter = await this.#explorer.cardFilter('code-lists-overview-card-group');
+                assert.deepEqual([...filter.values].sort(), [...parents, '(all)'].sort());
             }],
         ]);
     }

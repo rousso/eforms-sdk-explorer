@@ -34,10 +34,7 @@ export class CardGroup extends BootstrapWebComponent {
      */
     dispose() {
         super.dispose();
-        this.indexCards = [];
-        this.filterValues = [];
-        this.$filterOptions().empty();
-        this.$cardsContainer().empty();
+        this.empty();
     }
 
     /**
@@ -147,9 +144,16 @@ export class CardGroup extends BootstrapWebComponent {
         this.indexCards.forEach(indexCard => this.#renderCard(indexCard));
     }
 
+    /**
+     * Removes the cards and the values of the property filter, and selects "(all)" again, so that the card group can
+     * be filled from nothing (for example after the versions change). Use {@link dispose} to release the component.
+     */
     empty() {
         this.indexCards = [];
+        this.filterValues = [];
+        this.$filterOptions().empty();
         this.$cardsContainer().empty();
+        this.setSelectedPropertyFilterValue('(all)');
     }
 
     #renderCard(indexCard) {
