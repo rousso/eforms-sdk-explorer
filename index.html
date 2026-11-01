@@ -54,12 +54,12 @@
             </a>
             <div class="d-flex align-items-center arrow">
                 <div class="version-text mr-2" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="left" data-bs-html="true" data-step="0" title="Select versions to compare" data-bs-content="<p>Use these dropdowns to select the versions of the SDK that you want to compare.</p><p>Select the older version (that you are migrating from) and the newer version (that you are migrating to).</p><p>SDK Explorer calls these the <i>base</i> and <i>target</i> version respectively.</p> <div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">Compare SDK versions</div>
-                <select id="base-version-dropdown" class="custom-select" data-bs-toggle="popover" data-bs-trigger="hover"
+                <select id="base-version-dropdown" class="form-select" data-bs-toggle="popover" data-bs-trigger="hover"
                     data-bs-placement="left" title="Older SDK version" data-bs-html="true"
                     data-bs-content="This is the base version for the comparison. Items that exist only in this version are indicated as 'removed'.">
                 </select>
                 <div class="comparison-text mr-2"></div>
-                <select id="main-version-dropdown" class="custom-select mr-2" data-bs-toggle="popover" data-bs-trigger="hover"
+                <select id="main-version-dropdown" class="form-select me-2" data-bs-toggle="popover" data-bs-trigger="hover"
                     data-bs-placement="left" title="Newer SDK version" data-bs-html="true"
                     data-bs-content="This is the target version for the comparison. Items that exist only in this version are indicated as 'added'.">
                 </select>
@@ -692,7 +692,7 @@
                 <input type="text" id="tree-search" placeholder="Search" class="form-control form-control-sm m-1"
                     style="width: 200px;" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="left"
                     data-bs-html="true">
-                <select id="tree-filter" class="form-control form-control-sm m-1" style="width:100px;">
+                <select id="tree-filter" class="form-select form-select-sm m-1" style="width:100px;">
                     <option value="all">all</option>
                     <option value="added">added</option>
                     <option value="removed">removed</option>
@@ -709,9 +709,9 @@
         <div class="col d-flex flex-column h-100 overflow-x-hidden">
             <header class="d-flex flex-shrink-0 font-weight-bold">
                 <div style="flex: 1; align-self: self-end;">Details</div>
-                <div class="custom-control custom-switch">
-                    <input type="checkbox" class="custom-control-input" id="compactViewSwitch">
-                    <label class="custom-control-label font-weight-normal" for="compactViewSwitch">Compact view</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="compactViewSwitch">
+                    <label class="form-check-label font-weight-normal" for="compactViewSwitch">Compact view</label>
                 </div>
             </header>
             <div class="card details-container flex-grow-1">
@@ -825,15 +825,15 @@
     <div id="card-group-container">
         <header id="head">
             <label style="flex:1;" id="filter-prompt"></label>
-            <select id="status-filter" class="form-control form-control-sm m-3" style="width:100px;">
+            <select id="status-filter" class="form-select form-select-sm m-3" style="width:100px;">
                 <option value="all">all</option>
                 <option value="added">added</option>
                 <option value="removed">removed</option>
                 <option value="modified">modified</option>
             </select>
-            <div class="custom-control custom-switch">
-                <input type="checkbox" class="custom-control-input" id="compactViewSwitch">
-                <label class="custom-control-label" for="compactViewSwitch">Compact view</label>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="compactViewSwitch">
+                <label class="form-check-label" for="compactViewSwitch">Compact view</label>
             </div>
         </header>
         <div id="body">
