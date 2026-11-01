@@ -41,9 +41,6 @@ export class NoticeTypesTab extends TabController {
     }
 
     /**
-     * Overridden to dispose of the card group and diff view.
-     */
-    /**
      * Overridden to remove the cards and the tree.
      */
     clear() {

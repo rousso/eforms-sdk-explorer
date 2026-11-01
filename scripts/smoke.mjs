@@ -509,6 +509,7 @@ class SmokeTest {
         await this.#checkPairWithRules();
         await this.#checkPairWithPartialForwardCompatibleMetadata();
         await this.#checkFilterAfterVersionChange();
+        await this.#checkCodelistsAcrossRenames();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
     }
@@ -695,6 +696,21 @@ class SmokeTest {
                 const parents = new Set((await this.#explorer.indexCards('code-lists-overview-card-group')).map(card => card.subtitle || '(blank)'));
                 const filter = await this.#explorer.cardFilter('code-lists-overview-card-group');
                 assert.deepEqual([...filter.values].sort(), [...parents, '(all)'].sort());
+            }],
+        ]);
+    }
+
+    /** A pair on both sides of 1.12.0, which renamed the files of the tailored codelists. */
+    async #checkCodelistsAcrossRenames() {
+        await this.#scenario('?version=2.0.0-alpha.4&base=1.9.0', [
+            ['the Codelists tab compares each version\'s own file (exclusion-ground: criterion_exclusion-ground.gc in 1.9.0), without errors', async () => {
+                await this.#explorer.openTab('codelists-tab');
+                assert.equal(await this.#explorer.apiStatus(), '');
+                const cards = await this.#explorer.indexCards('code-lists-overview-card-group');
+                assert.deepEqual(cards.filter(card => !card.status).map(card => card.title), []);
+                const renamed = cards.find(card => card.title === 'exclusion-ground');
+                assert.ok(renamed, 'exclusion-ground is missing');
+                assert.ok(['unchanged', 'modified'].includes(renamed.status), `exclusion-ground is ${renamed.status}`);
             }],
         ]);
     }
