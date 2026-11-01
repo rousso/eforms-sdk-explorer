@@ -91,8 +91,10 @@ export class SchematronsTab extends TabController {
                 // Create and add an index-card for each schematron.
                 diff.forEach((entry, index) => {
                     setTimeout(() => {
-                        const card = this.#source.createIndexCard(entry);
-                        this.#cardGroup().appendCard(card);
+                        if (!this.aborting) {
+                            const card = this.#source.createIndexCard(entry);
+                            this.#cardGroup().appendCard(card);
+                        }
                     }, 0);
                 });
                 this.#switchToOverview();
