@@ -4,7 +4,8 @@ Each file in this folder is a plan written in a planning session and executed, i
 
 Current plans:
 
-- `sdk2-support.md` — support for eForms SDK 2 (validation rules, forward-compatible field metadata, version selection).
+- `sdk2-support.md` — support for eForms SDK 2 (validation rules, forward-compatible field metadata, version selection). Done.
+- `bug-fixes.md` — the bug-fix pass that precedes the TED design-system restyle.
 
 ## How an implementation session works
 
@@ -15,16 +16,16 @@ Current plans:
 
 ## Opening prompt
 
-Copy, replace `<N>` with the increment number, and paste as the first message of a new session (branch `claude/zealous-feynman-uuwemi`):
+Copy, replace `<plan>` with the plan file and `<N>` with the increment (or item) number, and paste as the first message of a new session (branch `claude/zealous-feynman-uuwemi`):
 
 ```
-Read docs/plans/README.md and docs/plans/sdk2-support.md in full before doing anything else.
+Read docs/plans/README.md and docs/plans/<plan>.md in full before doing anything else.
 
-Implement Increment <N> of docs/plans/sdk2-support.md, exactly as described there. Before writing code, read the current source of every file the increment touches and the components it reuses (src/js/diff.js, src/js/tabs/tab-controller.js, the web components in src/js/components/).
+Implement Increment <N> of docs/plans/<plan>.md, exactly as described there. Before writing code, read the current source of every file the increment touches and the components it reuses (src/js/diff.js, src/js/tabs/tab-controller.js, the web components in src/js/components/).
 
 Rules: follow the coding style already in the repository (ES modules, one TabController subclass per tab, web components, jQuery and Bootstrap 4); object-oriented, clean code; no helper grab-bags, no shortcuts. If the plan and the code disagree, or something is unclear, stop and ask instead of improvising. Do not touch anything outside the increment's scope.
 
 Verify with `npm run smoke` (install devDependencies first) and the checks listed under "Verification" that apply to this increment. Commit per increment with a clear message, push to claude/zealous-feynman-uuwemi, and do not create a pull request.
 
-When done, append an entry to the "Progress" section of docs/plans/sdk2-support.md: what was done, any deviation and why, and what the next increment must know. Commit and push that too.
+When done, append an entry to the "Progress" section of docs/plans/<plan>.md: what was done, any deviation and why, and what the next increment must know. Commit and push that too.
 ```
