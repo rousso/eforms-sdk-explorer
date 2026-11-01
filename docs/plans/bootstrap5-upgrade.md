@@ -35,9 +35,10 @@ Two things to verify rather than assume:
 ## Items
 
 ### 1. Switch the library and rename the data attributes
-- Files: `index.html`, `src/js/config.js` (`stylesheets.bootstrap`), `src/js/script.js`, the `tree-detail-split-view` template in `index.html`.
+- Files: `index.html`, `src/js/config.js` (`stylesheets.bootstrap`), `src/js/script.js`, the `tree-detail-split-view` template in `index.html`, `src/assets/vendor/bootstrap-5.3.8.min.css` (new).
 - Change the two CDN URLs to `bootstrap@5.3.8` (`dist/css/bootstrap.min.css`, `dist/js/bootstrap.bundle.min.js`) in `index.html` and `config.js`; keep jQuery loaded first. Rename every `data-toggle/target/dismiss/placement/trigger/html/content/autohide` to `data-bs-*`, including inside the `data-content` strings only where they are attributes (the tour button markup inside them does not change). `script.js`: `$('[data-bs-toggle="popover"]').popover({html: true})`.
-- Verify: tabs switch, the version-selector hover popovers and the quick tour (all four steps, Next/Cancel) work, the error toast shows and closes, `npm run smoke` passes. Smoke script: no change expected for this item.
+- Revised during implementation (it replaces a planned item 0, see Progress): Bootstrap's CSS is served from the repository, as `src/assets/vendor/bootstrap-5.3.8.min.css`: the npm package's `dist/css/bootstrap.min.css` (the bytes jsDelivr serves) without its leading `@charset "UTF-8";` rule, with a comment on its first line stating the source and why. `index.html`'s `<link>` and `appConfig.stylesheets.bootstrap` both use that path, so the page and the components load the same URL; `bootstrap.bundle.min.js` stays on the CDN. With the rule present, Chromium does not share the parsed stylesheet between the shadow roots that link it, and the Codelists tab's 275 index cards keep the page busy for more than 20 s.
+- Verify: tabs switch, the version-selector hover popovers and the quick tour (all four steps, Next/Cancel) work, the error toast shows and closes, the Codelists tab goes idle as with Bootstrap 4 (long tasks, forced layout, filter click). Smoke script: no change, but its three checks of the source toggles' selected state fail until item 3 (Bootstrap 5 has no button plugin, so no label gets `active`), so items 1–3 are pushed together after item 3, with `npm run smoke` passing.
 
 ### 2. Form controls and switches
 - Files: `index.html` (page and the two templates), `src/assets/style.css`.
@@ -60,7 +61,8 @@ Two things to verify rather than assume:
 - Verify: screenshots of the Codelists overview, the Fields tree and a property card before and after the upgrade, compared by eye; smoke passes.
 
 ### 6. Documentation
-- Files: `README.md` (Acknowledgements: Bootstrap 5.3), `CHANGELOG.md` (0.2.0 entry: "Bootstrap upgraded to 5.3"), `package.json` (`bootstrap` dependency `^5.3.8`; it is informational, the app loads from the CDN).
+- Files: `README.md` (Acknowledgements: Bootstrap 5.3), `CHANGELOG.md` (0.2.0 entry: "Bootstrap upgraded to 5.3"), `package.json` (`bootstrap` dependency `^5.3.8`; it is informational: the app loads the JavaScript from the CDN and the CSS from `src/assets/vendor/`).
+- A future Bootstrap upgrade re-vendors the CSS the same way: the npm package's `dist/css/bootstrap.min.css` without its leading `@charset` rule, with the source comment on its first line, under a file name with the new version, and the two references (`index.html`, `appConfig.stylesheets.bootstrap`) updated.
 
 ## Verification
 - `npm run smoke` after every item (the only intended change in the script is item 3's selector).
