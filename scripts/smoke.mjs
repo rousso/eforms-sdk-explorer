@@ -82,7 +82,7 @@ class ExplorerPage {
      * Files that the explorer requests to find out whether a version has them: for these, the browser's "404" console
      * error is expected and is not collected.
      */
-    static #FILES_PROBED_FOR_PRESENCE = Object.freeze([/\/validation\/[^/]+$/, /\/fields\/fwd\/nodes\.json$/]);
+    static #FILES_PROBED_FOR_PRESENCE = Object.freeze([/\/validation\/[^/]+$/, /\/fields\/fwd\/nodes\.json$/, /\/view-templates\/summary\.efx$/]);
 
     /** The prefix of the URLs of the GitHub API. */
     static #GITHUB_API = 'https://api.github.com/';
@@ -452,6 +452,9 @@ class SmokeTest {
                 assert.deepEqual(nodes.filter(node => node.parent === '#').map(node => node.text), SmokeTest.#FORWARD_COMPATIBLE_ROOTS);
                 assert.deepEqual(nodes.filter(node => node.parent !== '#' && node.status !== 'added'), []);
             }],
+            ['the View Templates tab lists summary.efx, which view-templates.json does not list, as added', async () => {
+                await this.#assertViewTemplateStatus('summary.efx', 'added');
+            }],
             ['the Validation tab lists the EFX rules files as added, with Compare disabled', async () => {
                 await this.#explorer.openTab('validation-tab');
                 const cards = await this.#explorer.indexCards('validation-overview-card-group');
@@ -525,6 +528,9 @@ class SmokeTest {
                 assert.ok(modifiedFields.includes('BT-507-Business'), 'BT-507-Business is not modified');
                 assert.equal(nodes.filter(node => node.id.startsWith('be:')).length, 96, 'business entities');
                 assert.equal(nodes.filter(node => node.id.startsWith('dt:')).length, 19, 'data types');
+            }],
+            ['the View Templates tab lists summary.efx, which view-templates.json does not list, as unchanged', async () => {
+                await this.#assertViewTemplateStatus('summary.efx', 'unchanged');
             }],
             ['the Validation tab lists the EFX rules files as unchanged, without a folder filter', async () => {
                 await this.#explorer.openTab('validation-tab');
@@ -626,6 +632,19 @@ class SmokeTest {
             this.#failed++;
             console.log(`  FAIL  ${description}\n        ${error.message.split('\n').join('\n        ')}`);
         }
+    }
+
+    /**
+     * Opens the View Templates tab and asserts that exactly one card has the given title, with the given status.
+     *
+     * @param {string} title
+     * @param {string} status
+     */
+    async #assertViewTemplateStatus(title, status) {
+        await this.#explorer.openTab('view-templates-tab');
+        const cards = (await this.#explorer.indexCards('view-templates-overview-card-group')).filter(card => card.title === title);
+        assert.equal(cards.length, 1, `${cards.length} cards titled ${title}`);
+        assert.equal(cards[0].status, status);
     }
 
     /**

@@ -12,5 +12,6 @@ export const appConfig = {
     thresholdVersion: '1.3.2',  // versions before this one are not displayed in the dropdown
     branches: ['develop', 'efx-2'],  // branches offered at the top of the target version dropdown
     validationFiles: ['rules.efx', 'stage-1a.efx', 'stage-4m.efx', 'stage-5m.efx', 'dependencies.json'],  // files of the validation folder (it has no index file)
+    unindexedViewTemplates: ['summary.efx'],  // view templates that some versions have without listing them in view-templates.json
 };
 
