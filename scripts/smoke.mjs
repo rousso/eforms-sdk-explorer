@@ -208,8 +208,7 @@ class ExplorerPage {
      * @param {string} source The value of the option, for example `schematron`.
      */
     async selectValidationSource(source) {
-        await this.#page.selectOption('#validation-source', source);
-        await this.#waitUntilIdle();
+        await this.#clickToggleButton('validation-source', source);
     }
 
     /**
@@ -218,7 +217,30 @@ class ExplorerPage {
      * @param {string} source The value of the option, for example `fwd`.
      */
     async selectFieldsSource(source) {
-        await this.#page.selectOption('#fields-source', source);
+        await this.#clickToggleButton('fields-source', source);
+    }
+
+    /**
+     * @param {string} groupId The id of a toggle button group of radio inputs.
+     * @returns {Promise<{checked: string, active: string[]}>} The value of the checked radio input, and the values of
+     *          the radio inputs whose button shows the active state.
+     */
+    async selectedToggleButton(groupId) {
+        return this.#page.$eval(`#${groupId}`, group => ({
+            checked: group.querySelector('input[type="radio"]:checked')?.value,
+            active: Array.from(group.querySelectorAll('label.active input[type="radio"]'), input => input.value)
+        }));
+    }
+
+    /**
+     * Clicks the button of a toggle button group that holds the radio input with the given value, as a user would,
+     * and waits until the explorer is idle.
+     *
+     * @param {string} groupId
+     * @param {string} value
+     */
+    async #clickToggleButton(groupId, value) {
+        await this.#page.click(`#${groupId} label:has(input[value="${value}"])`);
         await this.#waitUntilIdle();
     }
 
@@ -447,6 +469,7 @@ class SmokeTest {
             ['the Fields tab in fwd/ mode names 1.16.0-rc.5 as having no forward-compatible metadata and shows every item as added', async () => {
                 await this.#explorer.openTab('fields-tab');
                 await this.#explorer.selectFieldsSource('fwd');
+                assert.deepEqual(await this.#explorer.selectedToggleButton('fields-source'), { checked: 'fwd', active: ['fwd'] });
                 assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.16.0-rc.5 has no forward-compatible metadata (fields/fwd/).');
                 const nodes = await this.#explorer.treeNodes('fields-explorer');
                 assert.deepEqual(nodes.filter(node => node.parent === '#').map(node => node.text), SmokeTest.#FORWARD_COMPATIBLE_ROOTS);
@@ -468,6 +491,11 @@ class SmokeTest {
                 await this.#explorer.selectVersions('1.15.1', '1.14.2');
                 assert.equal(await this.#explorer.activeTab(), 'home-tab');
                 await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
+            }],
+            ['the fwd/ source stays selected in the Fields tab after the version change, and is used', async () => {
+                assert.deepEqual(await this.#explorer.selectedToggleButton('fields-source'), { checked: 'fwd', active: ['fwd'] });
+                await this.#explorer.openTab('fields-tab');
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.15.1 and 1.14.2 have no forward-compatible metadata (fields/fwd/).');
             }],
         ]);
     }
@@ -554,6 +582,7 @@ class SmokeTest {
             ['the Schematron source lists the schematrons of the pair with one git trees request per version', async () => {
                 const treesRequests = await this.#treesRequestsDuring(() => this.#explorer.selectValidationSource('schematron'));
                 assert.equal(treesRequests, 2);
+                assert.deepEqual(await this.#explorer.selectedToggleButton('validation-source'), { checked: 'schematron', active: ['schematron'] });
                 const cards = await this.#explorer.indexCards('validation-overview-card-group');
                 assert.ok(cards.length > 0, 'no cards');
                 assert.ok(cards.every(card => card.status), 'a card has no status');

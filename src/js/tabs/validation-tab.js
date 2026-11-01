@@ -28,7 +28,7 @@ export class ValidationTab extends TabController {
     #efxRulesSource = new EfxRulesSource(this);
 
     /**
-     * The sources, keyed by the values of the options of the source selector.
+     * The sources, keyed by the values of the radio inputs of the source selector.
      *
      * @type {Map<string, EfxRulesSource|SchematronSource>}
      */
@@ -60,8 +60,8 @@ export class ValidationTab extends TabController {
             this.#switchToOverview();
         });
 
-        // Render the overview again when a different source is selected.
-        this.$sourceSelector().on('change', async (e) => {
+        // Render the overview again when a different source is selected (Bootstrap fires change on the radio input of the button).
+        this.$sourceSelector().on('change', 'input[type="radio"]', async (e) => {
             this.cancelRequests();
             try {
                 await this.fetchAndRender();
@@ -127,7 +127,7 @@ export class ValidationTab extends TabController {
 
     /**
      *
-     * @returns {HTMLSelectElement}
+     * @returns {HTMLElement} The toggle button group of the sources, one radio input per source.
      */
     #sourceSelector() {
         return document.getElementById('validation-source');
@@ -135,7 +135,7 @@ export class ValidationTab extends TabController {
 
     /**
      *
-     * @returns {JQuery<HTMLSelectElement>}
+     * @returns {JQuery<HTMLElement>}
      */
     $sourceSelector() {
         return $(this.#sourceSelector());
@@ -145,7 +145,7 @@ export class ValidationTab extends TabController {
      * @returns {EfxRulesSource|SchematronSource} The source selected in the source selector.
      */
     #selectedSource() {
-        return this.#sources.get(this.$sourceSelector().val());
+        return this.#sources.get(this.$sourceSelector().find('input[type="radio"]:checked').val());
     }
 
     /**

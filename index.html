@@ -146,11 +146,15 @@
         <div class="tab-pane h-100 fade show" id="fields-tab-content" role="tabpanel" aria-labelledby="fields-tab">
             <div class="container-fluid h-100 d-flex flex-column">
                 <div class="d-flex align-items-center flex-shrink-0 pt-2">
-                    <label for="fields-source" class="mb-0 mr-2">Metadata source:</label>
-                    <select id="fields-source" class="form-control form-control-sm" style="width:auto;">
-                        <option value="fields-json" selected>fields.json</option>
-                        <option value="fwd">fwd/</option>
-                    </select>
+                    <span id="fields-source-label" class="mr-2">Metadata source:</span>
+                    <div id="fields-source" class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" role="group" aria-labelledby="fields-source-label">
+                        <label class="btn btn-outline-secondary active">
+                            <input type="radio" name="fields-source" value="fields-json" checked> fields.json
+                        </label>
+                        <label class="btn btn-outline-secondary">
+                            <input type="radio" name="fields-source" value="fwd"> fwd/
+                        </label>
+                    </div>
                 </div>
                 <div id="fields-source-alert" class="alert alert-warning flex-shrink-0 mt-2 mb-0 d-none" role="alert"></div>
                 <tree-detail-split-view id="fields-explorer" class="flex-grow-1" style="min-height: 0;"></tree-detail-split-view>
@@ -297,11 +301,15 @@
                         </ol>
                     </nav>
                     <div class="d-flex align-items-center px-3">
-                        <label for="validation-source" class="mb-0 mr-2">Source:</label>
-                        <select id="validation-source" class="form-control form-control-sm" style="width:auto;">
-                            <option value="efx-rules" selected>EFX rules</option>
-                            <option value="schematron">Schematron</option>
-                        </select>
+                        <span id="validation-source-label" class="mr-2">Source:</span>
+                        <div id="validation-source" class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" role="group" aria-labelledby="validation-source-label">
+                            <label class="btn btn-outline-secondary active">
+                                <input type="radio" name="validation-source" value="efx-rules" checked> EFX rules
+                            </label>
+                            <label class="btn btn-outline-secondary">
+                                <input type="radio" name="validation-source" value="schematron"> Schematron
+                            </label>
+                        </div>
                     </div>
                     <card-group id="validation-overview-card-group" filter-prompt="Filter by folder"></card-group>
                 </div>

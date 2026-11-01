@@ -15,7 +15,7 @@ import { ERROR_FETCHING_FILE, ERROR_UNEXPECTED_FILE_CONTENT } from "../error-mes
 
 export class FieldsTab extends TabController {
 
-    /** The value of the option of the source selector for the forward-compatible metadata (fields/fwd/). */
+    /** The value of the radio input of the source selector for the forward-compatible metadata (fields/fwd/). */
     static #FORWARD_COMPATIBLE_SOURCE = 'fwd';
 
     /** The ids of the root tree-nodes of the forward-compatible metadata, chosen so that they cannot clash with SDK ids. */
@@ -36,8 +36,8 @@ export class FieldsTab extends TabController {
     init() {
         super.init();
 
-        // Render the tab again when a different metadata source is selected.
-        this.$sourceSelector().on('change', async (e) => {
+        // Render the tab again when a different metadata source is selected (Bootstrap fires change on the radio input of the button).
+        this.$sourceSelector().on('change', 'input[type="radio"]', async (e) => {
             this.cancelRequests();
             SdkExplorerApplication.startSpinner();
             try {
@@ -53,7 +53,7 @@ export class FieldsTab extends TabController {
     }
 
     async fetchAndRender() {
-        if (this.$sourceSelector().val() === FieldsTab.#FORWARD_COMPATIBLE_SOURCE) {
+        if (this.#selectedSource() === FieldsTab.#FORWARD_COMPATIBLE_SOURCE) {
             await this.#fetchAndRenderForwardCompatibleMetadata();
         } else {
             await this.#fetchAndRenderFieldsJson();
@@ -70,7 +70,7 @@ export class FieldsTab extends TabController {
 
     /**
      *
-     * @returns {HTMLSelectElement}
+     * @returns {HTMLElement} The toggle button group of the metadata sources, one radio input per source.
      */
     #sourceSelector() {
         return document.getElementById('fields-source');
@@ -78,10 +78,17 @@ export class FieldsTab extends TabController {
 
     /**
      *
-     * @returns {JQuery<HTMLSelectElement>}
+     * @returns {JQuery<HTMLElement>}
      */
     $sourceSelector() {
         return $(this.#sourceSelector());
+    }
+
+    /**
+     * @returns {string} The value of the radio input of the selected metadata source.
+     */
+    #selectedSource() {
+        return this.$sourceSelector().find('input[type="radio"]:checked').val();
     }
 
     /**
