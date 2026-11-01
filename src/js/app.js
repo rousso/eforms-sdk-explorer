@@ -34,6 +34,14 @@ export class SdkExplorerApplication {
     /** @type {SdkRepository} */
     #repository = new SdkRepository(this);
 
+    /**
+     * Counts the selections of versions (the one at start-up and every version change), so that the work for a
+     * selection that a newer one has superseded is dropped after each wait instead of being applied late.
+     *
+     * @type {number}
+     */
+    #selection = 0;
+
     /** @type {number} */
     #spinnerCounter = 0;
 
@@ -72,8 +80,8 @@ export class SdkExplorerApplication {
 
     static async init() {
         await SdkExplorerApplication.instance.populateDropdown();
-        await SdkExplorerApplication.instance.#initTabVisibility();
 
+        // Listen to the user from now on, before the tabs are probed, so that a change made meanwhile is not lost.
         $('ul.nav-tabs').on('shown.bs.tab', 'li.nav-item > button.nav-link', function (event) {
             const activeTabId = $(event.target).attr('id');
             console.log('Active tab changed:', activeTabId);
@@ -91,6 +99,8 @@ export class SdkExplorerApplication {
             $('#fieldDetailsContent').html('Select an item to see details.');
             SdkExplorerApplication.instance.versionChanged(appState.mainVersion, appState.baseVersion);
         });
+
+        await SdkExplorerApplication.instance.#initTabVisibility();
     }
 
     #mainVersionDropdown() {
@@ -156,14 +166,13 @@ export class SdkExplorerApplication {
     async versionChanged() {
         this.startSpinner();
         this.clearApiStatus();
+
+        // Clear the active tab first, so that the previous comparison never stays under the new selection, even
+        // when the tabs cannot be probed.
+        this.#activeTab?.cancelRequests();
+        this.#activeTab?.clear();
         try {
-            if (await this.#showApplicableTabs()) {
-                await this.#activeTab?.versionChanged();
-            }
-        } catch (error) {
-            if (error.statusText !== 'abort') {
-                SdkExplorerApplication.updateApiStatus(error.message);
-            }
+            await this.#updateForSelection();
         }
         finally {
             this.stopSpinner();
@@ -176,9 +185,7 @@ export class SdkExplorerApplication {
     async #initTabVisibility() {
         this.startSpinner();
         try {
-            await this.#showApplicableTabs();
-        } catch (error) {
-            SdkExplorerApplication.updateApiStatus(error.message);
+            await this.#updateForSelection();
         }
         finally {
             this.stopSpinner();
@@ -186,17 +193,49 @@ export class SdkExplorerApplication {
     }
 
     /**
-     * Asks every tab whether it applies to the selected versions, then shows the nav buttons of the tabs that do 
-     * and hides the others. If the active tab is hidden, the Home tab is activated instead.
-     * 
-     * @returns {Promise<boolean>} true if the active tab is still shown, false if the Home tab is being activated instead.
+     * Shows the tabs that apply to the selected versions and renders the active tab for them, unless a newer
+     * selection is made while the tabs are probed: that newer selection then does all of it, and the results and
+     * errors of this one are dropped.
      */
-    async #showApplicableTabs() {
+    async #updateForSelection() {
+        const selection = ++this.#selection;
+        try {
+            const applicable = await this.#probeApplicableTabs();
+            if (selection !== this.#selection) {
+                return;
+            }
+            if (this.#showApplicableTabs(applicable)) {
+                await this.#activeTab?.versionChanged();
+            }
+        } catch (error) {
+            if (selection === this.#selection && error.statusText !== 'abort') {
+                SdkExplorerApplication.updateApiStatus(error.message);
+            }
+        }
+    }
+
+    /**
+     * Asks every tab whether it applies to the selected versions.
+     *
+     * @returns {Promise<Map<TabController, boolean>>}
+     */
+    async #probeApplicableTabs() {
         const tabs = Array.from(this.tabs.values());
         const applicable = await Promise.all(tabs.map(tab => tab.isApplicable()));
-        tabs.forEach((tab, index) => $(this.#navItem(tab)).toggleClass('d-none', !applicable[index]));
+        return new Map(tabs.map((tab, index) => [tab, applicable[index]]));
+    }
 
-        const activeTabIsShown = !this.#activeTab || applicable[tabs.indexOf(this.#activeTab)];
+    /**
+     * Shows the nav buttons of the tabs that apply and hides the others. If the active tab is hidden, the Home tab
+     * is activated instead.
+     *
+     * @param {Map<TabController, boolean>} applicable Whether each tab applies to the selected versions.
+     * @returns {boolean} true if the active tab is still shown, false if the Home tab is being activated instead.
+     */
+    #showApplicableTabs(applicable) {
+        applicable.forEach((isApplicable, tab) => $(this.#navItem(tab)).toggleClass('d-none', !isApplicable));
+
+        const activeTabIsShown = !this.#activeTab || applicable.get(this.#activeTab);
         if (!activeTabIsShown) {
             // Showing the Home tab activates it (see activeTabChanged).
             $('#home-tab').tab('show');
@@ -299,8 +338,9 @@ export class SdkExplorerApplication {
     }
 
     /**
-     * Performs a request of the application's {@link SdkRepository}, which tabs perform with TabController.ajaxRequest.
-     * The requests of the application are not tracked: there is only one, for the list of versions, made at start-up.
+     * Performs a request of the application rather than of a tab: the list of versions (by the application's
+     * {@link SdkRepository}) and the probes that decide which tabs apply to the selected versions.
+     * These requests are not tracked, so cancelling a tab's requests never aborts them.
      * 
      * @param {Object} options The options to pass to $.ajax().
      * @returns {Promise} A promise that resolves with the AJAX response.

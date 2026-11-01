@@ -171,17 +171,88 @@ class ExplorerPage {
      */
     async open(queryString) {
         this.#consoleErrors = [];
+        await this.openWithoutWaiting(queryString);
+        await this.waitUntilIdle();
+        const apiStatus = await this.apiStatus();
+        if (apiStatus !== '') {
+            throw new Error(`the explorer reported: ${apiStatus}`);
+        }
+    }
+
+    /**
+     * Loads the explorer and waits only until it has filled the version dropdowns, not until it has decided which
+     * tabs to show. The console errors collected so far are kept.
+     *
+     * @param {string} queryString
+     */
+    async openWithoutWaiting(queryString) {
         await this.#page.goto(`${this.#baseUrl}/${queryString}`);
         await this.#page.waitForFunction(
             () => document.querySelector('#main-version-dropdown').value !== ''
                 || document.querySelector('#apiStatus .toast-body').textContent.trim() !== '',
             null,
             { timeout: ExplorerPage.#LOAD_TIMEOUT });
-        await this.waitUntilIdle();
-        const apiStatus = await this.apiStatus();
-        if (apiStatus !== '') {
-            throw new Error(`the explorer reported: ${apiStatus}`);
-        }
+    }
+
+    /**
+     * Selects a version in one of the dropdowns, as a user would, without waiting for the explorer to be idle.
+     *
+     * @param {'main'|'base'} dropdown
+     * @param {string} version
+     */
+    async startSelectingVersion(dropdown, version) {
+        await this.#page.selectOption(`#${dropdown}-version-dropdown`, version);
+    }
+
+    /**
+     * @returns {Promise<{mainVersion: string, baseVersion: string}>} The versions the explorer works with (its appState).
+     */
+    async appState() {
+        return this.#page.evaluate(async () => {
+            const { appState } = await import('/src/js/state.js');
+            return { mainVersion: appState.mainVersion, baseVersion: appState.baseVersion };
+        });
+    }
+
+    /**
+     * Waits until the button of a tab is shown in the tab bar, for at most the given time.
+     *
+     * @param {string} tabId
+     * @param {number} timeout In milliseconds.
+     * @returns {Promise<boolean>} Whether it was shown in time.
+     */
+    async waitForTabShown(tabId, timeout) {
+        return this.#page.waitForSelector(`#${tabId}`, { state: 'visible', timeout }).then(() => true, () => false);
+    }
+
+    /**
+     * Holds the responses to the requests matching a URL pattern until they are released, so that they arrive late.
+     *
+     * @param {string} urlPattern A Playwright URL glob, as for page.route().
+     * @returns {Promise<{requested: Promise<void>, release: () => Promise<void>}>} `requested` resolves when a matching
+     *          request is being held; `release` lets the held requests go on and stops holding new ones.
+     */
+    async holdRequests(urlPattern) {
+        let release;
+        const released = new Promise(resolve => { release = resolve; });
+        let requested;
+        const firstRequest = new Promise(resolve => { requested = resolve; });
+        const heldRequests = [];
+        const hold = route => {
+            requested();
+            const continued = released.then(() => route.continue());
+            heldRequests.push(continued);
+            return continued;
+        };
+        await this.#page.route(urlPattern, hold);
+        return {
+            requested: firstRequest,
+            release: async () => {
+                release();
+                await Promise.all(heldRequests);
+                await this.#page.unroute(urlPattern, hold);
+            }
+        };
     }
 
     /**
@@ -673,6 +744,37 @@ class SmokeTest {
             ['the Fields tab shows fields.json by default, under ND-Root, without the alert', async () => {
                 await this.#explorer.openTab('fields-tab');
                 await this.#assertFieldsJsonTree();
+            }],
+            ['when the tabs cannot be probed after a version change, the Fields pane is empty and the toast names the file', async () => {
+                await this.#explorer.failRequestsDuring('**/1.14.1/validation/rules.efx', async () => {
+                    await this.#explorer.startSelectingVersion('base', '1.14.1');
+                    await this.#explorer.waitUntilIdle();
+                });
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), false);
+                assert.match(await this.#explorer.apiStatus(), /rules\.efx for SDK 1\.14\.1/);
+            }],
+            ['a probe for an older selection that answers late does not change the tab bar of a newer selection', async () => {
+                const olderProbe = await this.#explorer.holdRequests('**/1.14.0/validation/rules.efx');
+                await this.#explorer.startSelectingVersion('main', '1.14.0');
+                await olderProbe.requested;
+                await this.#explorer.startSelectingVersion('main', '2.0.0-alpha.2');
+                assert.ok(await this.#explorer.waitForTabShown('validation-tab', 60000), 'the newer selection did not show the Validation tab');
+                await olderProbe.release();
+                await this.#explorer.waitUntilIdle();
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+            }],
+            ['a version change made while the tabs are probed at start-up is applied', async () => {
+                const startupProbe = await this.#explorer.holdRequests('**/1.15.1/validation/rules.efx');
+                await this.#explorer.openWithoutWaiting('?version=1.15.1&base=1.14.2');
+                await startupProbe.requested;
+                await this.#explorer.startSelectingVersion('main', '2.0.0-alpha.4');
+                const validationShown = await this.#explorer.waitForTabShown('validation-tab', 30000);
+                await startupProbe.release();
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.mainVersion(), '2.0.0-alpha.4');
+                assert.deepEqual(await this.#explorer.appState(), { mainVersion: '2.0.0-alpha.4', baseVersion: '1.14.2' });
+                assert.ok(validationShown, 'the Validation tab was not shown for 2.0.0-alpha.4');
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
             }],
         ]);
     }

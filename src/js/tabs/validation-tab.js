@@ -286,14 +286,16 @@ export class ValidationTab extends TabController {
     }
 
     /**
-     * Requests the headers of the EFX rules file of the specified version.
+     * Requests the headers of the EFX rules file of the specified version, through the application.
      *
      * @param {string} sdkVersion
      * @returns {Promise<boolean>} false if the version does not have the file.
      */
     async #probeRules(sdkVersion) {
         try {
-            await this.ajaxRequest({ url: this.#efxRulesSource.fileUrl(ValidationTab.#RULES_FILE, sdkVersion), method: 'HEAD' });
+            // A request of the application, not of this tab: a probe answers which tabs apply to a version, and it is
+            // shared by the questions asked for several selections, so cancelling this tab's loads must not abort it.
+            await SdkExplorerApplication.instance.ajaxRequest({ url: this.#efxRulesSource.fileUrl(ValidationTab.#RULES_FILE, sdkVersion), method: 'HEAD' });
             return true;
         } catch (error) {
             if (error.status === 404) {
