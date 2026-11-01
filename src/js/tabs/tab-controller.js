@@ -57,7 +57,7 @@ export class TabController {
             if (error.statusText === 'abort') {
                 console.log('Request was aborted');
             } else {
-                this.showErrorMessage(error.message);
+                this.showErrorMessage(error.message, error.detail);
             }
         }
     }
@@ -87,7 +87,7 @@ export class TabController {
             if (error.statusText === 'abort') {
                 console.log('Request was aborted');
             } else {
-                this.showErrorMessage(error.message);
+                this.showErrorMessage(error.message, error.detail);
             }
         }
     }
@@ -214,7 +214,13 @@ export class TabController {
         this.#deferredWork.add(timeout);
     }
 
-    showErrorMessage(message) {
-        SdkExplorerApplication.updateApiStatus(message);
+    /**
+     * Shows an error in the error toast.
+     *
+     * @param {string} message
+     * @param {string} [detail]
+     */
+    showErrorMessage(message, detail = '') {
+        SdkExplorerApplication.updateApiStatus(message, detail);
     }
 }

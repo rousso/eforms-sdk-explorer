@@ -400,11 +400,12 @@ class ExplorerPage {
      *
      * @param {string} urlPattern A Playwright URL glob, as for page.route().
      * @param {() => Promise<void>} action
+     * @param {string} [body] The body of the failed responses.
      */
-    async failRequestsDuring(urlPattern, action) {
+    async failRequestsDuring(urlPattern, action, body = 'Failed on purpose by the smoke test') {
         const fail = route => {
             this.#deliberatelyFailedUrls.add(route.request().url());
-            return route.fulfill({ status: 500, contentType: 'text/plain', body: 'Failed on purpose by the smoke test' });
+            return route.fulfill({ status: 500, contentType: 'text/html', body: body });
         };
         await this.#page.route(urlPattern, fail);
         try {
@@ -635,6 +636,32 @@ class ExplorerPage {
     static #isExpectedAbsence(message) {
         return message.text().includes('status of 404')
             && ExplorerPage.#FILES_PROBED_FOR_PRESENCE.some(pattern => pattern.test(message.location().url ?? ''));
+    }
+
+    /**
+     * @returns {Promise<Array<{message: string, detail: string|null, elements: string[], detailStyle: {color: string, display: string}|null}>>}
+     *          The items of the error toast: the text of the message, the text of the detail line, the elements in the
+     *          item other than the detail line, and the detail line's colour and display.
+     */
+    async toastItems() {
+        return this.#page.$$eval('#apiStatus .toast-body li', items => items.map(item => {
+            const detail = item.querySelector(':scope > .detail');
+            const style = detail ? getComputedStyle(detail) : null;
+            return {
+                message: Array.from(item.childNodes).filter(node => node !== detail).map(node => node.textContent).join(''),
+                detail: detail ? detail.textContent : null,
+                elements: Array.from(item.querySelectorAll('*')).filter(element => element !== detail).map(element => element.tagName),
+                detailStyle: style ? { color: style.color, display: style.display } : null
+            };
+        }));
+    }
+
+    /**
+     * @returns {Promise<boolean>} Whether a script injected through the page set the given global variable.
+     * @param {string} name
+     */
+    async globalIsSet(name) {
+        return this.#page.evaluate(variable => window[variable] !== undefined, name);
     }
 
     /**
@@ -896,6 +923,21 @@ class SmokeTest {
                 await this.#explorer.failRequestsDuring('**/2.0.0-alpha.3/fields/fwd/data-types.json', () => this.#explorer.selectFieldsSource('fwd'));
                 assert.equal(await this.#explorer.hasTree('fields-explorer'), false);
                 assert.match(await this.#explorer.apiStatus(), /fwd\/data-types\.json for SDK 2\.0\.0-alpha\.3/);
+            }],
+            ['the error toast shows the body of a failed response as text, never as HTML, under the message', async () => {
+                const body = '<img src=x onerror="window.smokeTestInjected = true">';
+                await this.#explorer.failRequestsDuring('**/2.0.0-alpha.3/fields/fwd/data-types.json', async () => {
+                    await this.#explorer.selectFieldsSource('fields-json');
+                    await this.#explorer.selectFieldsSource('fwd');
+                }, body);
+                // A source switch does not clear the toast: the item of this failure is the last one.
+                assert.deepEqual((await this.#explorer.toastItems()).pop(), {
+                    message: 'Error while downloading file fwd/data-types.json for SDK 2.0.0-alpha.3',
+                    detail: body,
+                    elements: [],
+                    detailStyle: { color: 'rgb(255, 0, 0)', display: 'block' }
+                });
+                assert.equal(await this.#explorer.globalIsSet('smokeTestInjected'), false);
             }],
             ['the View Templates tab lists summary.efx, which view-templates.json does not list, as unchanged', async () => {
                 await this.#assertViewTemplateStatus('summary.efx', 'unchanged');

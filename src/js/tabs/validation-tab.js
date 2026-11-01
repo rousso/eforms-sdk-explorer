@@ -68,7 +68,7 @@ export class ValidationTab extends TabController {
                 await this.fetchAndRender();
             } catch (error) {
                 if (error.statusText !== 'abort') {
-                    this.showErrorMessage(error.message);
+                    this.showErrorMessage(error.message, error.detail);
                 }
             }
         });

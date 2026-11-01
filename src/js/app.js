@@ -45,8 +45,8 @@ export class SdkExplorerApplication {
     /** @type {number} */
     #spinnerCounter = 0;
 
-    /** @type {string} */
-    apiStatusMessage = '';
+    /** @type {boolean} Whether the messages in the error toast have expired (it hid itself), so that the next message replaces them. */
+    #apiStatusExpired = false;
 
     /** @type {number} The timeout that hides the error toast. */
     fadeTimeOut = null;
@@ -156,7 +156,7 @@ export class SdkExplorerApplication {
             this.#activeTab = this.tabs.get(activeTabId);
             await this.#activeTab.activated();
         } catch (error) {
-            SdkExplorerApplication.updateApiStatus(error.message);
+            SdkExplorerApplication.updateApiStatus(error.message, error.detail);
         }
         finally {
             this.stopSpinner();
@@ -209,7 +209,7 @@ export class SdkExplorerApplication {
             }
         } catch (error) {
             if (selection === this.#selection && error.statusText !== 'abort') {
-                SdkExplorerApplication.updateApiStatus(error.message);
+                SdkExplorerApplication.updateApiStatus(error.message, error.detail);
             }
         }
     }
@@ -271,7 +271,7 @@ export class SdkExplorerApplication {
 
     clearApiStatus() {
         // Forget the messages shown so far, and stop the timeout that would hide the toast later
-        SdkExplorerApplication.instance.apiStatusMessage = '';
+        SdkExplorerApplication.instance.#apiStatusExpired = false;
         clearTimeout(SdkExplorerApplication.instance.fadeTimeOut);
 
         // Clear the message inside the toast body
@@ -281,10 +281,29 @@ export class SdkExplorerApplication {
         SdkExplorerApplication.instance.$apiStatus().toast('hide');
     }
 
-    static updateApiStatus(message) {
+    /**
+     * Shows a message in the error toast, after the ones shown since it was last cleared, with its detail on a line
+     * of its own. Both are plain text: they are inserted as text, never as HTML.
+     *
+     * @param {string} message
+     * @param {string} [detail] For example why a request failed (see CustomError.detail).
+     */
+    static updateApiStatus(message, detail = '') {
+        const application = SdkExplorerApplication.instance;
+        if (application.#apiStatusExpired) {
+            application.#toastBody().textContent = '';
+            application.#apiStatusExpired = false;
+        }
 
-        SdkExplorerApplication.instance.apiStatusMessage += '<li>' + message + '</li>';
-        SdkExplorerApplication.instance.#toastBody().innerHTML = SdkExplorerApplication.instance.apiStatusMessage;
+        const item = document.createElement('li');
+        item.append(document.createTextNode(message));
+        if (detail) {
+            const detailElement = document.createElement('span');
+            detailElement.className = 'detail';
+            detailElement.textContent = detail;
+            item.append(detailElement);
+        }
+        application.#toastBody().append(item);
 
         clearTimeout(SdkExplorerApplication.instance.fadeTimeOut);
 
@@ -293,7 +312,7 @@ export class SdkExplorerApplication {
             SdkExplorerApplication.instance.$apiStatus().toast('show');
             SdkExplorerApplication.instance.fadeTimeOut = setTimeout(() => {
                 SdkExplorerApplication.instance.$apiStatus().toast('hide');
-                SdkExplorerApplication.instance.apiStatusMessage = '';
+                SdkExplorerApplication.instance.#apiStatusExpired = true;
             }, 15000);
         }, 0);
     }
@@ -424,7 +443,7 @@ export class SdkExplorerApplication {
             appState.mainVersion = mainVersion;
             appState.baseVersion = baseVersion;
         } catch (error) {
-            SdkExplorerApplication.updateApiStatus(error.message);
+            SdkExplorerApplication.updateApiStatus(error.message, error.detail);
             console.error('Error populating dropdowns:', error);
         } finally {
             this.stopSpinner();
