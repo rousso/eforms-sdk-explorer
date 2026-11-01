@@ -7,6 +7,7 @@
 import { BootstrapWebComponent } from "./bootstrap-web-component.js";
 import { Diff, DiffEntry } from "../diff.js";
 import { PropertyCard } from "./property-card.js";
+import { appConfig } from "../config.js";
 
 export class TreeDetailSplitView extends BootstrapWebComponent {
 
@@ -34,7 +35,7 @@ export class TreeDetailSplitView extends BootstrapWebComponent {
 
     requiredCss() {
         return [ ...super.requiredCss(),
-            'https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css'
+            appConfig.stylesheets.jstreeTheme
         ];
     }
 

@@ -100,6 +100,9 @@ class ExplorerPage {
     /** @type {Set<string>} The URLs of the requests that the test made fail on purpose (see {@link failRequestsDuring}). */
     #deliberatelyFailedUrls = new Set();
 
+    /** @type {string[]} The URLs of the stylesheets requested since the page was created, by the page and by its web components. */
+    #stylesheetRequests = [];
+
     /** @type {string} */
     #baseUrl;
 
@@ -124,7 +127,24 @@ class ExplorerPage {
             if (request.url().startsWith(ExplorerPage.#GITHUB_API)) {
                 this.#githubApiRequests.push(request.url());
             }
+            if (request.resourceType() === 'stylesheet') {
+                this.#stylesheetRequests.push(request.url());
+            }
         });
+    }
+
+    /**
+     * @returns {string[]} The URLs of the stylesheets requested since the page was created, across page loads.
+     */
+    get stylesheetRequests() {
+        return [...this.#stylesheetRequests];
+    }
+
+    /**
+     * @returns {Promise<string[]>} The URLs of the stylesheets that index.html links into the page.
+     */
+    async pageStylesheets() {
+        return this.#page.$$eval('head link[rel="stylesheet"]', links => links.map(link => link.href));
     }
 
     /**
@@ -700,8 +720,9 @@ class SmokeTest {
     }
 
     /**
-     * Opens the explorer once and runs the given checks on it, followed by checks for console errors and for requests
-     * to the parts of the GitHub API that the explorer must not use (they spend the rate limit).
+     * Opens the explorer once and runs the given checks on it, followed by checks for console errors, for requests
+     * to the parts of the GitHub API that the explorer must not use (they spend the rate limit) and for stylesheets
+     * other than the page's.
      *
      * @param {string} queryString
      * @param {Array<[string, () => Promise<void>]>} checks Pairs of description and check.
@@ -709,6 +730,7 @@ class SmokeTest {
     async #scenario(queryString, checks) {
         console.log(`\n${queryString}`);
         const firstRequest = this.#explorer.githubApiRequests.length;
+        const firstStylesheet = this.#explorer.stylesheetRequests.length;
         try {
             await this.#explorer.open(queryString);
         } catch (error) {
@@ -722,6 +744,11 @@ class SmokeTest {
         await this.#check('no request to the GitHub tags or contents API', async () => {
             const requests = this.#explorer.githubApiRequests.slice(firstRequest);
             assert.deepEqual(requests.filter(url => /\/repos\/[^/]+\/[^/]+\/(tags|contents)([/?]|$)/.test(url)), []);
+        });
+        await this.#check('the web components load only the stylesheets the page loads', async () => {
+            const pageStylesheets = await this.#explorer.pageStylesheets();
+            const others = this.#explorer.stylesheetRequests.slice(firstStylesheet).filter(url => !pageStylesheets.includes(url));
+            assert.deepEqual([...new Set(others)], []);
         });
     }
 

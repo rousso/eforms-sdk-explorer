@@ -13,5 +13,9 @@ export const appConfig = {
     branches: ['develop', 'efx-2'],  // branches offered at the top of the target version dropdown
     validationFiles: ['rules.efx', 'stage-1a.efx', 'stage-4m.efx', 'stage-5m.efx', 'dependencies.json'],  // files of the validation folder (it has no index file)
     unindexedViewTemplates: ['summary.efx'],  // view templates that some versions have without listing them in view-templates.json
+    stylesheets: {  // the library stylesheets the web components load into their shadow roots: the same ones index.html loads into the page
+        bootstrap: 'https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css',
+        jstreeTheme: 'https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css',
+    },
 };
 
