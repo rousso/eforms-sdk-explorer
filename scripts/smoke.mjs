@@ -78,6 +78,9 @@ class ExplorerPage {
     /** How long the loading indicator must stay hidden for the explorer to count as idle, in milliseconds. */
     static #IDLE_PERIOD = 500;
 
+    /** How long a card group takes to apply a selected filter (it does so in a timeout), in milliseconds. */
+    static #FILTER_PERIOD = 200;
+
     /**
      * Files that the explorer requests to find out whether a version has them: for these, the browser's "404" console
      * error is expected and is not collected.
@@ -174,7 +177,7 @@ class ExplorerPage {
                 || document.querySelector('#apiStatus .toast-body').textContent.trim() !== '',
             null,
             { timeout: ExplorerPage.#LOAD_TIMEOUT });
-        await this.#waitUntilIdle();
+        await this.waitUntilIdle();
         const apiStatus = await this.apiStatus();
         if (apiStatus !== '') {
             throw new Error(`the explorer reported: ${apiStatus}`);
@@ -189,9 +192,9 @@ class ExplorerPage {
      */
     async selectVersions(mainVersion, baseVersion) {
         await this.#page.selectOption('#main-version-dropdown', mainVersion);
-        await this.#waitUntilIdle();
+        await this.waitUntilIdle();
         await this.#page.selectOption('#base-version-dropdown', baseVersion);
-        await this.#waitUntilIdle();
+        await this.waitUntilIdle();
     }
 
     /**
@@ -216,7 +219,7 @@ class ExplorerPage {
      */
     async openTab(tabId) {
         await this.#page.click(`#${tabId}`);
-        await this.#waitUntilIdle();
+        await this.waitUntilIdle();
     }
 
     /**
@@ -226,7 +229,7 @@ class ExplorerPage {
      */
     async openHiddenTab(tabId) {
         await this.#page.evaluate(id => $(`#${id}`).tab('show'), tabId);
-        await this.#waitUntilIdle();
+        await this.waitUntilIdle();
     }
 
     /**
@@ -268,7 +271,7 @@ class ExplorerPage {
      */
     async #clickToggleButton(groupId, value) {
         await this.#page.click(`#${groupId} label:has(input[value="${value}"])`);
-        await this.#waitUntilIdle();
+        await this.waitUntilIdle();
     }
 
     /**
@@ -354,6 +357,73 @@ class ExplorerPage {
     }
 
     /**
+     * Clicks the button of a tab and returns without waiting for the tab to finish loading.
+     *
+     * @param {string} tabId The id of the button of the tab.
+     */
+    async startOpeningTab(tabId) {
+        await this.#page.click(`#${tabId}`);
+    }
+
+    /**
+     * Waits until a card group has at least the given number of cards (while its tab may still be loading).
+     *
+     * @param {string} cardGroupId
+     * @param {number} count
+     */
+    async waitForCards(cardGroupId, count) {
+        await this.#page.waitForFunction(([id, minimum]) => document.getElementById(id).shadowRoot.querySelectorAll('index-card').length >= minimum,
+            [cardGroupId, count], { timeout: ExplorerPage.#LOAD_TIMEOUT });
+    }
+
+    /**
+     * Waits until the property filter of a card group offers the given value (while its tab may still be loading).
+     *
+     * @param {string} cardGroupId
+     * @param {string} value
+     */
+    async waitForFilterValue(cardGroupId, value) {
+        await this.#page.waitForFunction(([id, filterValue]) => Array.from(document.getElementById(id).shadowRoot.querySelectorAll('#filter-options .nav-link'))
+            .some(link => link.textContent === filterValue), [cardGroupId, value], { timeout: ExplorerPage.#LOAD_TIMEOUT });
+    }
+
+    /**
+     * Clicks a value of the property filter of a card group, without waiting for the explorer to be idle.
+     *
+     * @param {string} cardGroupId
+     * @param {string} value
+     */
+    async clickFilterValue(cardGroupId, value) {
+        await this.#page.click(`#${cardGroupId} #filter-options .nav-link:text-is("${value}")`);
+        await this.#page.waitForTimeout(ExplorerPage.#FILTER_PERIOD);
+    }
+
+    /**
+     * Selects a status in the status filter of a card group, without waiting for the explorer to be idle.
+     *
+     * @param {string} cardGroupId
+     * @param {string} status For example `modified`.
+     */
+    async selectStatusFilter(cardGroupId, status) {
+        await this.#page.selectOption(`#${cardGroupId} #status-filter`, status);
+        await this.#page.waitForTimeout(ExplorerPage.#FILTER_PERIOD);
+    }
+
+    /**
+     * @param {string} cardGroupId
+     * @returns {Promise<Array<{title: string, subtitle: string, status: string|null, visible: boolean}>>}
+     *          The index cards of the card group at this moment, with whether the filters show them.
+     */
+    async cardStates(cardGroupId) {
+        return this.#page.$eval(`#${cardGroupId}`, cardGroup => Array.from(cardGroup.shadowRoot.querySelectorAll('index-card'), card => ({
+            title: card.getAttribute('title'),
+            subtitle: card.getAttribute('subtitle'),
+            status: card.getAttribute('status'),
+            visible: getComputedStyle(card).display !== 'none'
+        })));
+    }
+
+    /**
      * @param {string} cardGroupId
      * @returns {Promise<{shown: boolean, prompt: string, values: string[]}>} The property filter of the card group.
      */
@@ -373,7 +443,7 @@ class ExplorerPage {
      */
     async compare(cardGroupId, title) {
         await this.#page.click(`#${cardGroupId} index-card[title="${title}"] #action-button`);
-        await this.#waitUntilIdle();
+        await this.waitUntilIdle();
     }
 
     /**
@@ -383,7 +453,7 @@ class ExplorerPage {
      */
     async openOverview(linkId) {
         await this.#page.click(`#${linkId}`);
-        await this.#waitUntilIdle();
+        await this.waitUntilIdle();
     }
 
     /**
@@ -413,7 +483,7 @@ class ExplorerPage {
     /**
      * Waits until the loading indicator of the explorer stays hidden for a while.
      */
-    async #waitUntilIdle() {
+    async waitUntilIdle() {
         const loadingIndicatorHidden = () => getComputedStyle(document.querySelector('#centralLoadingSpinner')).visibility === 'hidden';
         do {
             await this.#page.waitForFunction(loadingIndicatorHidden, null, { timeout: ExplorerPage.#IDLE_TIMEOUT });
@@ -510,6 +580,7 @@ class SmokeTest {
         await this.#checkPairWithPartialForwardCompatibleMetadata();
         await this.#checkFilterAfterVersionChange();
         await this.#checkCodelistsAcrossRenames();
+        await this.#checkFiltersWhileLoading();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
     }
@@ -700,6 +771,40 @@ class SmokeTest {
         ]);
     }
 
+    /**
+     * A pair whose codelists take a while to check in the background: the filters must apply to the cards whose
+     * status is still pending (upstream issues #56 and #57).
+     */
+    async #checkFiltersWhileLoading() {
+        await this.#scenario('?version=1.16.0-rc.5&base=1.15.1', [
+            ['the Codelists parent filter applies while the codelists are still being checked ("country": only its 5 codelists)', async () => {
+                await this.#explorer.startOpeningTab('codelists-tab');
+                await this.#explorer.waitForFilterValue('code-lists-overview-card-group', 'country');
+                await this.#explorer.clickFilterValue('code-lists-overview-card-group', 'country');
+                const whileLoading = await this.#explorer.cardStates('code-lists-overview-card-group');
+                assert.ok(whileLoading.some(card => !card.status), 'the codelists were already checked');
+                assert.deepEqual(whileLoading.filter(card => card.visible && card.subtitle !== 'country').map(card => card.title), []);
+                await this.#explorer.waitUntilIdle();
+                const visible = (await this.#explorer.cardStates('code-lists-overview-card-group')).filter(card => card.visible);
+                assert.equal(visible.length, 5, `visible: ${visible.map(card => card.title).join(', ')}`);
+                assert.ok(visible.every(card => card.subtitle === 'country'));
+            }],
+            ['the Codelists status filter applies while the codelists are still being checked ("modified": no pending codelist, then the 11 modified)', async () => {
+                await this.#explorer.openTab('home-tab');
+                await this.#explorer.startOpeningTab('codelists-tab');
+                await this.#explorer.waitForCards('code-lists-overview-card-group', 100);
+                await this.#explorer.selectStatusFilter('code-lists-overview-card-group', 'modified');
+                const whileLoading = await this.#explorer.cardStates('code-lists-overview-card-group');
+                assert.ok(whileLoading.some(card => !card.status), 'the codelists were already checked');
+                assert.deepEqual(whileLoading.filter(card => card.visible && card.status !== 'modified').map(card => card.title), []);
+                await this.#explorer.waitUntilIdle();
+                const visible = (await this.#explorer.cardStates('code-lists-overview-card-group')).filter(card => card.visible);
+                assert.equal(visible.length, 11, `visible: ${visible.map(card => card.title).join(', ')}`);
+                assert.ok(visible.every(card => card.status === 'modified'));
+            }],
+        ]);
+    }
+
     /** A pair on both sides of 1.12.0, which renamed the files of the tailored codelists. */
     async #checkCodelistsAcrossRenames() {
         await this.#scenario('?version=2.0.0-alpha.4&base=1.9.0', [
@@ -866,7 +971,11 @@ const server = new ExplorerServer(fileURLToPath(new URL('..', import.meta.url)))
 const browser = await chromium.launch({ executablePath: process.env.SMOKE_CHROMIUM_EXECUTABLE_PATH });
 try {
     const baseUrl = await server.start();
-    const page = await (await browser.newContext()).newPage();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    // Every load fetches the SDK files as a first visit does (as in a context with request interception, where
+    // Playwright disables the HTTP cache), so that the checks made while a tab is still loading find it loading.
+    await (await context.newCDPSession(page)).send('Network.setCacheDisabled', { cacheDisabled: true });
     const failed = await new SmokeTest(new ExplorerPage(page, baseUrl)).run();
     process.exitCode = failed === 0 ? 0 : 1;
 } finally {

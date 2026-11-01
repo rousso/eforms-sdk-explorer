@@ -182,15 +182,13 @@ export class CardGroup extends BootstrapWebComponent {
         }
 
         if (!indexCard.getStatus()) {
+            // Until its status arrives (or if its check fails), the card follows the filters as a card whose status is
+            // not known: it is shown only while no particular status is selected.
+            indexCard.style.display = CardGroup.#displayWhilePending(filterValue);
+
             // Create the event listener function
             let updateStatusFilter = (event) => {
-                const indexCard = event.target;
-                const status = indexCard.getStatus();
-                const filterOptionStatus = CardGroup.#filterValueToCssVariableName(filterValue, status);
-                const filterOptionAll = CardGroup.#filterValueToCssVariableName(filterValue, 'all');
-                const filterOptionAllStatus = CardGroup.#filterValueToCssVariableName('(all)', status);
-                const filterOptionAllAll = CardGroup.#filterValueToCssVariableName('(all)', 'all');
-                indexCard.style.display = `var(${filterOptionStatus}, var( ${filterOptionAll}, var(${filterOptionAllStatus}, var(${filterOptionAllAll}, none)))`;
+                indexCard.style.display = CardGroup.#displayWithStatus(filterValue, indexCard.getStatus());
 
                 // Remove the event listener
                 indexCard.removeEventListener('statusChanged', updateStatusFilter);
@@ -199,13 +197,36 @@ export class CardGroup extends BootstrapWebComponent {
             // Attach the event listener
             indexCard.addEventListener('statusChanged', updateStatusFilter);
         } else {
-            const status = indexCard.getStatus();
-            const filterOptionStatus = CardGroup.#filterValueToCssVariableName(filterValue, status);
-            const filterOptionAll = CardGroup.#filterValueToCssVariableName(filterValue, 'all');
-            const filterOptionAllStatus = CardGroup.#filterValueToCssVariableName('(all)', status);
-            const filterOptionAllAll = CardGroup.#filterValueToCssVariableName('(all)', 'all');
-            indexCard.style.display = `var(${filterOptionStatus}, var( ${filterOptionAll}, var(${filterOptionAllStatus}, var(${filterOptionAllAll}, none)))`;
+            indexCard.style.display = CardGroup.#displayWithStatus(filterValue, indexCard.getStatus());
         }
+    }
+
+    /**
+     * The display of a card whose status is known: shown when the selected filters (property value and status) match it.
+     *
+     * @param {string} filterValue The card's value of the filter property.
+     * @param {string} status
+     * @returns {string} A CSS display value that reads the CSS variable set for the selected filters.
+     */
+    static #displayWithStatus(filterValue, status) {
+        const filterOptionStatus = CardGroup.#filterValueToCssVariableName(filterValue, status);
+        const filterOptionAll = CardGroup.#filterValueToCssVariableName(filterValue, 'all');
+        const filterOptionAllStatus = CardGroup.#filterValueToCssVariableName('(all)', status);
+        const filterOptionAllAll = CardGroup.#filterValueToCssVariableName('(all)', 'all');
+        return `var(${filterOptionStatus}, var( ${filterOptionAll}, var(${filterOptionAllStatus}, var(${filterOptionAllAll}, none)))`;
+    }
+
+    /**
+     * The display of a card whose status is still pending: shown only when the status filter is "all" and the
+     * property filter matches it (or is "(all)").
+     *
+     * @param {string} filterValue The card's value of the filter property.
+     * @returns {string} A CSS display value that reads the CSS variable set for the selected filters.
+     */
+    static #displayWhilePending(filterValue) {
+        const filterOptionAll = CardGroup.#filterValueToCssVariableName(filterValue, 'all');
+        const filterOptionAllAll = CardGroup.#filterValueToCssVariableName('(all)', 'all');
+        return `var(${filterOptionAll}, var(${filterOptionAllAll}, none))`;
     }
 
     /**
