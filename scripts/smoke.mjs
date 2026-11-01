@@ -451,12 +451,13 @@ class ExplorerPage {
     /**
      * @param {string} groupId The id of a toggle button group of radio inputs.
      * @returns {Promise<{checked: string, active: string[]}>} The value of the checked radio input, and the values of
-     *          the radio inputs whose button shows the active state.
+     *          the radio inputs whose button shows the selected state: the checked ones (Bootstrap's `.btn-check:checked`
+     *          styles the button that follows the radio input).
      */
     async selectedToggleButton(groupId) {
         return this.#page.$eval(`#${groupId}`, group => ({
             checked: group.querySelector('input[type="radio"]:checked')?.value,
-            active: Array.from(group.querySelectorAll('label.active input[type="radio"]'), input => input.value)
+            active: Array.from(group.querySelectorAll('input[type="radio"]:checked'), input => input.value)
         }));
     }
 
@@ -468,7 +469,7 @@ class ExplorerPage {
      * @param {string} value
      */
     async #clickToggleButton(groupId, value) {
-        await this.#page.click(`#${groupId} label:has(input[value="${value}"])`);
+        await this.#page.click(`#${groupId} input[value="${value}"] + label`);
         await this.waitUntilIdle();
     }
 

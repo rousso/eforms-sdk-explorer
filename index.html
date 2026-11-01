@@ -147,13 +147,11 @@
             <div class="container-fluid h-100 d-flex flex-column">
                 <div class="d-flex align-items-center flex-shrink-0 pt-2">
                     <span id="fields-source-label" class="mr-2">Metadata source:</span>
-                    <div id="fields-source" class="btn-group btn-group-toggle btn-group-sm" data-bs-toggle="buttons" role="group" aria-labelledby="fields-source-label">
-                        <label class="btn btn-outline-secondary active">
-                            <input type="radio" name="fields-source" value="fields-json" checked> fields.json
-                        </label>
-                        <label class="btn btn-outline-secondary">
-                            <input type="radio" name="fields-source" value="fwd"> fwd/
-                        </label>
+                    <div id="fields-source" class="btn-group btn-group-sm" role="group" aria-labelledby="fields-source-label">
+                        <input type="radio" class="btn-check" name="fields-source" id="fields-source-fields-json" value="fields-json" autocomplete="off" checked>
+                        <label class="btn btn-outline-secondary" for="fields-source-fields-json">fields.json</label>
+                        <input type="radio" class="btn-check" name="fields-source" id="fields-source-fwd" value="fwd" autocomplete="off">
+                        <label class="btn btn-outline-secondary" for="fields-source-fwd">fwd/</label>
                     </div>
                 </div>
                 <div id="fields-source-alert" class="alert alert-warning flex-shrink-0 mt-2 mb-0 d-none" role="alert"></div>
@@ -302,13 +300,11 @@
                     </nav>
                     <div class="d-flex align-items-center px-3">
                         <span id="validation-source-label" class="mr-2">Source:</span>
-                        <div id="validation-source" class="btn-group btn-group-toggle btn-group-sm" data-bs-toggle="buttons" role="group" aria-labelledby="validation-source-label">
-                            <label class="btn btn-outline-secondary active">
-                                <input type="radio" name="validation-source" value="efx-rules" checked> EFX rules
-                            </label>
-                            <label class="btn btn-outline-secondary">
-                                <input type="radio" name="validation-source" value="schematron"> Schematron
-                            </label>
+                        <div id="validation-source" class="btn-group btn-group-sm" role="group" aria-labelledby="validation-source-label">
+                            <input type="radio" class="btn-check" name="validation-source" id="validation-source-efx-rules" value="efx-rules" autocomplete="off" checked>
+                            <label class="btn btn-outline-secondary" for="validation-source-efx-rules">EFX rules</label>
+                            <input type="radio" class="btn-check" name="validation-source" id="validation-source-schematron" value="schematron" autocomplete="off">
+                            <label class="btn btn-outline-secondary" for="validation-source-schematron">Schematron</label>
                         </div>
                     </div>
                     <card-group id="validation-overview-card-group" filter-prompt="Filter by folder"></card-group>
