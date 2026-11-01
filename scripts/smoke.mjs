@@ -229,8 +229,9 @@ class ExplorerPage {
      * Holds the responses to the requests matching a URL pattern until they are released, so that they arrive late.
      *
      * @param {string} urlPattern A Playwright URL glob, as for page.route().
-     * @returns {Promise<{requested: Promise<void>, release: () => Promise<void>}>} `requested` resolves when a matching
-     *          request is being held; `release` lets the held requests go on and stops holding new ones.
+     * @returns {Promise<{requested: Promise<void>, release: (failStatus?: number) => Promise<void>}>} `requested`
+     *          resolves when a matching request is being held; `release` lets the held requests go on (or fail with
+     *          the given HTTP status, whose console errors are then not collected) and stops holding new ones.
      */
     async holdRequests(urlPattern) {
         let release;
@@ -240,20 +241,126 @@ class ExplorerPage {
         const heldRequests = [];
         const hold = route => {
             requested();
+            const answer = failStatus => {
+                if (!failStatus) {
+                    return route.continue();
+                }
+                this.#deliberatelyFailedUrls.add(route.request().url());
+                return route.fulfill({ status: failStatus, contentType: 'text/plain', body: 'Failed on purpose by the smoke test' });
+            };
             // A held request that the page aborted meanwhile cannot go on, which is fine.
-            const continued = released.then(() => route.continue()).catch(() => {});
+            const continued = released.then(answer).catch(() => {});
             heldRequests.push(continued);
             return continued;
         };
         await this.#page.route(urlPattern, hold);
         return {
             requested: firstRequest,
-            release: async () => {
-                release();
+            release: async failStatus => {
+                release(failStatus);
                 await Promise.all(heldRequests);
                 await this.#page.unroute(urlPattern, hold);
             }
         };
+    }
+
+    /**
+     * Arranges for a version to be selected right after the requests whose URLs end with the given suffixes have
+     * all completed, in the same task: before jQuery hands their responses over (it does so in a later task).
+     *
+     * @param {string[]} urlSuffixes
+     * @param {'main'|'base'} dropdown
+     * @param {string} version
+     */
+    async selectVersionWhenRequestsComplete(urlSuffixes, dropdown, version) {
+        await this.#actWhenRequestsComplete(urlSuffixes, { selectVersion: { dropdown, version } });
+    }
+
+    /**
+     * Arranges for a tab to be activated right after the requests whose URLs end with the given suffixes have all
+     * completed, in the same task, the way the tab-switch event does it.
+     *
+     * @param {string[]} urlSuffixes
+     * @param {string} tabId
+     */
+    async openTabWhenRequestsComplete(urlSuffixes, tabId) {
+        await this.#actWhenRequestsComplete(urlSuffixes, { openTab: tabId });
+    }
+
+    /**
+     * Watches the page's XMLHttpRequests and, when the last of the given ones fires "loadend", does the given action
+     * synchronously, then stops watching.
+     *
+     * @param {string[]} urlSuffixes
+     * @param {{selectVersion?: {dropdown: string, version: string}, openTab?: string}} action
+     */
+    async #actWhenRequestsComplete(urlSuffixes, action) {
+        await this.#page.evaluate(async ([suffixes, todo]) => {
+            const { SdkExplorerApplication } = await import('/src/js/app.js');
+            const pending = new Set(suffixes);
+            const { open, send } = XMLHttpRequest.prototype;
+            const act = () => {
+                if (todo.selectVersion) {
+                    $(`#${todo.selectVersion.dropdown}-version-dropdown`).val(todo.selectVersion.version).trigger('change');
+                } else {
+                    $(`#${todo.openTab}`).tab('show');
+                    SdkExplorerApplication.instance.activeTabChanged(todo.openTab);
+                }
+            };
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                this.smokeTestUrl = String(url);
+                return open.call(this, method, url, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (...args) {
+                const suffix = suffixes.find(candidate => this.smokeTestUrl?.endsWith(candidate));
+                if (suffix) {
+                    this.addEventListener('loadend', () => {
+                        pending.delete(suffix);
+                        if (pending.size === 0) {
+                            XMLHttpRequest.prototype.open = open;
+                            XMLHttpRequest.prototype.send = send;
+                            act();
+                        }
+                    });
+                }
+                return send.apply(this, args);
+            };
+        }, [urlSuffixes, action]);
+    }
+
+    /**
+     * Starts counting the tree-nodes that jsTree adds to the tree of a tree-detail-split-view from now on.
+     *
+     * @param {string} splitViewId
+     */
+    async startCountingTreeNodes(splitViewId) {
+        await this.#page.evaluate(id => {
+            const treeView = document.getElementById(id).shadowRoot.querySelector('#treeView');
+            window.smokeTestAddedTreeNodes = 0;
+            new MutationObserver(records => {
+                records.forEach(record => record.addedNodes.forEach(node => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        window.smokeTestAddedTreeNodes += (node.matches('li') ? 1 : 0) + node.querySelectorAll('li').length;
+                    }
+                }));
+            }).observe(treeView, { childList: true, subtree: true });
+        }, splitViewId);
+    }
+
+    /**
+     * @returns {Promise<number>} The tree-nodes added since {@link startCountingTreeNodes}.
+     */
+    async countedTreeNodes() {
+        return this.#page.evaluate(() => window.smokeTestAddedTreeNodes);
+    }
+
+    /**
+     * Waits for the given time, so that work the page would do late has had the time to happen.
+     *
+     * @param {number} milliseconds
+     */
+    async waitFor(milliseconds) {
+        await this.#page.waitForTimeout(milliseconds);
     }
 
     /**
@@ -893,6 +1000,25 @@ class SmokeTest {
                 await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.3');
                 await this.#explorer.waitUntilIdle();
             }],
+            ['a response that completed just before a version change does not render: the tree never shows the older pair, and a failed newer load leaves the pane empty', async () => {
+                // The newer base (1.3.2) was probed earlier in this scenario, so its load starts at once, before the
+                // older responses are handed over.
+                const newerIndex = await this.#explorer.holdRequests('**/1.3.2/fields/fields.json');
+                await this.#explorer.selectVersionWhenRequestsComplete(['/2.0.0-alpha.4/fields/fields.json', '/2.0.0-alpha.1/fields/fields.json'], 'base', '1.3.2');
+                await this.#explorer.startCountingTreeNodes('fields-explorer');
+                await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.1');
+                await newerIndex.requested;
+                await this.#explorer.waitFor(1500);
+                const treeNodesWhileHeld = await this.#explorer.countedTreeNodes();
+                await newerIndex.release(500);
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.baseVersion(), '1.3.2');
+                assert.equal(treeNodesWhileHeld, 0, 'the tree of the older pair was shown');
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), false);
+                assert.match(await this.#explorer.apiStatus(), /fields\.json for SDK 1\.3\.2/);
+                await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.3');
+                await this.#explorer.waitUntilIdle();
+            }],
             ['tree labels are text: a field name containing <b>x</b> is shown as it is', async () => {
                 const rewrite = content => {
                     content.fields.find(field => field.id === 'BT-507-Business').name = '<b>x</b> NUTS code';
@@ -948,6 +1074,15 @@ class SmokeTest {
                 assert.deepEqual(await this.#explorer.comparedFiles('view-templates-diff'), ['summary.efx']);
                 await this.#explorer.openOverview('view-templates-overview-link');
                 assert.equal(await this.#explorer.isEmpty('#view-templates-diff'), true);
+            }],
+            ['leaving the Validation tab right after its files arrived shows no card afterwards', async () => {
+                const suffixes = ['2.0.0-alpha.4', '2.0.0-alpha.3'].flatMap(version => SmokeTest.#VALIDATION_FILES.map(file => `/${version}/validation/${file}`));
+                await this.#explorer.openTabWhenRequestsComplete(suffixes, 'home-tab');
+                await this.#explorer.startOpeningTab('validation-tab');
+                await this.#explorer.waitFor(1500);
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'home-tab');
+                assert.deepEqual((await this.#explorer.cardStates('validation-overview-card-group')).map(card => card.title), []);
             }],
             ['the Validation tab lists the EFX rules files as unchanged, without a folder filter', async () => {
                 await this.#explorer.openTab('validation-tab');

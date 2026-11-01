@@ -28,6 +28,14 @@ export class TabController {
     #deferredWork = new Set();
 
     /**
+     * The generation of the tab's current load: {@link cancelRequests} starts a new one. A request or a piece of
+     * deferred work remembers the generation it was made in, and does nothing for a later one.
+     *
+     * @type {number}
+     */
+    #load = 0;
+
+    /**
      * @returns {string}
      */
     getId() {
@@ -119,10 +127,16 @@ export class TabController {
 
     /**
      * Make an AJAX request and keep track of it.
+     * The response is handed over only if the load the request was made for has not been cancelled since: a
+     * response that arrived just before a cancellation (jQuery hands it over in a later task) is rejected like an
+     * aborted request instead, so that it renders nothing.
+     *
      * @param {Object} options - The options to pass to $.ajax().
-     * @returns {Promise} - A promise that resolves with the AJAX response.
+     * @returns {Promise} - A promise that resolves with the AJAX response, or rejects with the jqXHR of the failed
+     *          request, or with an aborted-request error (statusText 'abort') if the load was cancelled.
      */
     ajaxRequest(options) {
+        const load = this.#load;
         // Track the number of pending requests to indicate progress
         this.#totalRequests++;
 
@@ -145,8 +159,21 @@ export class TabController {
             this.#showProgress();
         });
 
-        // Return the promise
-        return jqXHR;   
+        // Hand the outcome over only to the load that made the request
+        return new Promise((resolve, reject) => {
+            jqXHR.then(
+                response => load === this.#load ? resolve(response) : reject(TabController.#cancelledLoadError()),
+                error => reject(load === this.#load ? error : TabController.#cancelledLoadError())
+            );
+        });
+    }
+
+    /**
+     * @returns {Error} The error with which a request of a cancelled load fails: like an aborted request
+     *          (statusText 'abort'), so that it is not reported to the user.
+     */
+    static #cancelledLoadError() {
+        return Object.assign(new Error('The load this request was made for was cancelled'), { statusText: 'abort' });
     }
 
     /**
@@ -185,9 +212,12 @@ export class TabController {
     }
 
     /**
-     * Cancel all ongoing AJAX requests, and the work deferred by {@link defer} that has not run yet.
+     * Cancel all ongoing AJAX requests, and the work deferred by {@link defer} that has not run yet, and start a new
+     * load: the requests and deferred work of the cancelled one hand nothing over afterwards.
      */
     cancelRequests() {
+        this.#load++;
+
         this.#ajaxRequests.forEach(jqXHR => {
             if (jqXHR) {
                 jqXHR.abort();
@@ -207,9 +237,12 @@ export class TabController {
      * @param {function(): void} work
      */
     defer(work) {
+        const load = this.#load;
         const timeout = setTimeout(() => {
             this.#deferredWork.delete(timeout);
-            work();
+            if (load === this.#load) {
+                work();
+            }
         }, 0);
         this.#deferredWork.add(timeout);
     }
