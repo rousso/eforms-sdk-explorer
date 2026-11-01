@@ -40,6 +40,9 @@ export class SdkExplorerApplication {
     /** @type {string} */
     apiStatusMessage = '';
 
+    /** @type {number} The timeout that hides the error toast. */
+    fadeTimeOut = null;
+
     /** @returns {string} */
     get newVersion() {
         return appState.mainVersion;
@@ -228,6 +231,10 @@ export class SdkExplorerApplication {
     }
 
     clearApiStatus() {
+        // Forget the messages shown so far, and stop the timeout that would hide the toast later
+        SdkExplorerApplication.instance.apiStatusMessage = '';
+        clearTimeout(SdkExplorerApplication.instance.fadeTimeOut);
+
         // Clear the message inside the toast body
         SdkExplorerApplication.instance.#toastBody().textContent = '';
 
@@ -377,7 +384,7 @@ export class SdkExplorerApplication {
             appState.mainVersion = mainVersion;
             appState.baseVersion = baseVersion;
         } catch (error) {
-            SdkExplorerApplication.updateApiStatus('API call failed to fetch tags.', false);
+            SdkExplorerApplication.updateApiStatus(error.message);
             console.error('Error populating dropdowns:', error);
         } finally {
             this.stopSpinner();
