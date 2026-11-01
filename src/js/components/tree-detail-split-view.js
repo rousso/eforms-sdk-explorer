@@ -135,7 +135,9 @@ export class TreeDetailSplitView extends BootstrapWebComponent {
         this.$treeView().jstree({
             core: {
                 data: dataCallback(),
-                check_callback: true
+                check_callback: true,
+                // The labels are SDK names and ids: show them as text, never as HTML.
+                force_text: true
             },
             plugins: ["wholerow", "search"],
             search: {

@@ -415,6 +415,44 @@ class ExplorerPage {
     }
 
     /**
+     * Runs an action while the JSON responses to the requests matching a URL pattern are rewritten, to see how the
+     * explorer shows content that the SDK could contain.
+     *
+     * @param {string} urlPattern A Playwright URL glob, as for page.route().
+     * @param {function(Object): Object} rewrite Gets the parsed response and returns the content to answer with.
+     * @param {() => Promise<void>} action
+     */
+    async rewriteJsonDuring(urlPattern, rewrite, action) {
+        const rewriteResponse = async route => {
+            const response = await route.fetch();
+            await route.fulfill({ response, json: rewrite(await response.json()) });
+        };
+        await this.#page.route(urlPattern, rewriteResponse);
+        try {
+            await action();
+        } finally {
+            await this.#page.unroute(urlPattern, rewriteResponse);
+        }
+    }
+
+    /**
+     * @param {string} splitViewId
+     * @param {string} nodeId
+     * @returns {Promise<{text: string, elements: string[]}>} The text of a tree-node's label, and the elements in it
+     *          other than jsTree's icon.
+     */
+    async treeLabel(splitViewId, nodeId) {
+        await this.treeNodes(splitViewId);
+        return this.#page.$eval(`#${splitViewId}`, (splitView, id) => {
+            const anchor = splitView.shadowRoot.getElementById(`${id}_anchor`);
+            return {
+                text: anchor.textContent.trim(),
+                elements: Array.from(anchor.querySelectorAll('*')).filter(element => !element.classList.contains('jstree-icon')).map(element => element.tagName)
+            };
+        }, nodeId);
+    }
+
+    /**
      * @param {string} splitViewId
      * @returns {Promise<boolean>} Whether the tree of a tree-detail-split-view has any node.
      */
@@ -827,6 +865,17 @@ class SmokeTest {
                     'the tree is not the one of 2.0.0-alpha.4 against itself');
                 await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.3');
                 await this.#explorer.waitUntilIdle();
+            }],
+            ['tree labels are text: a field name containing <b>x</b> is shown as it is', async () => {
+                const rewrite = content => {
+                    content.fields.find(field => field.id === 'BT-507-Business').name = '<b>x</b> NUTS code';
+                    return content;
+                };
+                await this.#explorer.rewriteJsonDuring('**/2.0.0-alpha.4/fields/fields.json', rewrite, async () => {
+                    await this.#explorer.openTab('home-tab');
+                    await this.#explorer.openTab('fields-tab');
+                    assert.deepEqual(await this.#explorer.treeLabel('fields-explorer', 'BT-507-Business'), { text: '<b>x</b> NUTS code', elements: [] });
+                });
             }],
             ['the Fields tab in fwd/ mode shows 262 nodes, 13 modified fields (BT-507-Business among them), 96 business entities and 19 data types', async () => {
                 await this.#explorer.selectFieldsSource('fwd');
