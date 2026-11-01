@@ -24,7 +24,7 @@ export class FieldsTab extends TabController {
     static #DATA_TYPES_ROOT = 'root:data-types';
 
     /** The forward-compatible metadata of a version that has none: every item of the other version is added or removed. */
-    static #NO_FORWARD_COMPATIBLE_METADATA = Object.freeze({ nodes: [], fields: [], entities: [], properties: [], dataTypes: [] });
+    static #NO_FORWARD_COMPATIBLE_METADATA = Object.freeze({ nodes: [], fields: [], entities: [], properties: [], dataTypes: [], missingFiles: [] });
 
     constructor() {
         super('fields-tab');
@@ -93,7 +93,7 @@ export class FieldsTab extends TabController {
 
     /**
      *
-     * @returns {HTMLElement} The alert that names the versions without forward-compatible metadata.
+     * @returns {HTMLElement} The alert that names what the versions lack of the forward-compatible metadata.
      */
     #alert() {
         return document.getElementById('fields-source-alert');
@@ -111,7 +111,7 @@ export class FieldsTab extends TabController {
      * Fetches fields.json for both versions and renders its nodes and fields.
      */
     async #fetchAndRenderFieldsJson() {
-        this.#showVersionsWithoutForwardCompatibleMetadata([]);
+        this.#showAlert([]);
 
         const [response1, response2] = await Promise.all([
             this.#fetchFieldsFile('fields.json', appState.mainVersion),
@@ -139,20 +139,18 @@ export class FieldsTab extends TabController {
 
     /**
      * Fetches the forward-compatible metadata (fields/fwd/) for both versions and renders it.
-     * A version without forward-compatible metadata is named in the alert and compared as if it had no items.
+     * A version without forward-compatible metadata, or without some of its optional files, is named in the alert and
+     * compared as if it had no items (or no items of those files).
      */
     async #fetchAndRenderForwardCompatibleMetadata() {
-        this.#showVersionsWithoutForwardCompatibleMetadata([]);
+        this.#showAlert([]);
 
         const [mainVersionData, baseVersionData] = await Promise.all([
             this.#fetchForwardCompatibleMetadata(appState.mainVersion),
             this.#fetchForwardCompatibleMetadata(appState.baseVersion)
         ]);
 
-        this.#showVersionsWithoutForwardCompatibleMetadata([
-            ...(mainVersionData === null ? [appState.mainVersion] : []),
-            ...(baseVersionData === null ? [appState.baseVersion] : [])
-        ]);
+        this.#showAlert(FieldsTab.#describeGaps([[appState.mainVersion, mainVersionData], [appState.baseVersion, baseVersionData]]));
         const main = mainVersionData ?? FieldsTab.#NO_FORWARD_COMPATIBLE_METADATA;
         const base = baseVersionData ?? FieldsTab.#NO_FORWARD_COMPATIBLE_METADATA;
 
@@ -177,13 +175,15 @@ export class FieldsTab extends TabController {
 
     /**
      * Fetches the forward-compatible metadata of the specified version.
-     * The presence of fwd/nodes.json tells whether the version has forward-compatible metadata; once it is present,
-     * a missing file is an error.
+     * The presence of fwd/nodes.json tells whether the version has forward-compatible metadata. Once it is present,
+     * fwd/fields.json is required; the business entity and data type files are optional, because the forward-compatible
+     * metadata is an evolving preview: a missing one gives an empty list and is named in missingFiles.
      *
      * @param {string} sdkVersion
-     * @returns {Promise<{nodes: Object[], fields: Object[], entities: Object[], properties: Object[], dataTypes: Object[]}|null>}
+     * @returns {Promise<{nodes: Object[], fields: Object[], entities: Object[], properties: Object[], dataTypes: Object[], missingFiles: string[]}|null>}
      *          null if the version has no forward-compatible metadata.
      *          Business entity properties get an id made of their entity id and name; data types get their type as id.
+     *          missingFiles lists the optional files the version does not have, by their name in the fwd folder.
      */
     async #fetchForwardCompatibleMetadata(sdkVersion) {
         let nodesFile;
@@ -198,19 +198,26 @@ export class FieldsTab extends TabController {
 
         const [fieldsFile, hierarchyFile, propertiesFile, dataTypesFile] = await Promise.all([
             this.#fetchFieldsFile('fwd/fields.json', sdkVersion),
-            this.#fetchFieldsFile('fwd/business-entity-hierarchy.json', sdkVersion),
-            this.#fetchFieldsFile('fwd/business-entity-properties.json', sdkVersion),
-            this.#fetchFieldsFile('fwd/data-types.json', sdkVersion)
+            this.#fetchOptionalFieldsFile('fwd/business-entity-hierarchy.json', sdkVersion),
+            this.#fetchOptionalFieldsFile('fwd/business-entity-properties.json', sdkVersion),
+            this.#fetchOptionalFieldsFile('fwd/data-types.json', sdkVersion)
         ]);
+
+        const missingFiles = [
+            ['business-entity-hierarchy.json', hierarchyFile],
+            ['business-entity-properties.json', propertiesFile],
+            ['data-types.json', dataTypesFile]
+        ].filter(([filename, content]) => content === null).map(([filename]) => filename);
 
         return {
             nodes: FieldsTab.#arrayIn(nodesFile, 'nodes', 'fwd/nodes.json', sdkVersion),
             fields: FieldsTab.#arrayIn(fieldsFile, 'fields', 'fwd/fields.json', sdkVersion),
-            entities: FieldsTab.#arrayIn(hierarchyFile, 'hierarchy', 'fwd/business-entity-hierarchy.json', sdkVersion),
-            properties: FieldsTab.#arrayIn(propertiesFile, 'properties', 'fwd/business-entity-properties.json', sdkVersion)
+            entities: FieldsTab.#optionalArrayIn(hierarchyFile, 'hierarchy', 'fwd/business-entity-hierarchy.json', sdkVersion),
+            properties: FieldsTab.#optionalArrayIn(propertiesFile, 'properties', 'fwd/business-entity-properties.json', sdkVersion)
                 .map(property => ({ id: `${property.entityId}.${property.name}`, ...property })),
-            dataTypes: FieldsTab.#arrayIn(dataTypesFile, 'dataTypes', 'fwd/data-types.json', sdkVersion)
-                .map(dataType => ({ id: dataType.type, ...dataType }))
+            dataTypes: FieldsTab.#optionalArrayIn(dataTypesFile, 'dataTypes', 'fwd/data-types.json', sdkVersion)
+                .map(dataType => ({ id: dataType.type, ...dataType })),
+            missingFiles: missingFiles
         };
     }
 
@@ -225,6 +232,24 @@ export class FieldsTab extends TabController {
         try {
             return await this.ajaxRequest({ url: this.#fieldsFileUrl(path, sdkVersion), dataType: 'json' });
         } catch (error) {
+            throw new AjaxError(ERROR_FETCHING_FILE(path, sdkVersion), error);
+        }
+    }
+
+    /**
+     * Fetches a JSON file of the fields folder that a version may not have.
+     *
+     * @param {string} path The path of the file within the fields folder.
+     * @param {string} sdkVersion
+     * @returns {Promise<Object|null>} null if the version does not have the file.
+     */
+    async #fetchOptionalFieldsFile(path, sdkVersion) {
+        try {
+            return await this.ajaxRequest({ url: this.#fieldsFileUrl(path, sdkVersion), dataType: 'json' });
+        } catch (error) {
+            if (error.status === 404) {
+                return null;
+            }
             throw new AjaxError(ERROR_FETCHING_FILE(path, sdkVersion), error);
         }
     }
@@ -256,17 +281,52 @@ export class FieldsTab extends TabController {
     }
 
     /**
-     * Shows the alert naming the versions that have no forward-compatible metadata, or hides it if there are none.
+     * Gets an array from the content of a loaded optional file.
      *
-     * @param {string[]} sdkVersions
+     * @param {Object|null} content The parsed content of the file, or null if the version does not have it.
+     * @param {string} arrayName The property that holds the array.
+     * @param {string} filename The file, for the error message.
+     * @param {string} sdkVersion The version, for the error message.
+     * @returns {Object[]} An empty array if the version does not have the file.
      */
-    #showVersionsWithoutForwardCompatibleMetadata(sdkVersions) {
-        const versions = [...new Set(sdkVersions)];
-        if (versions.length === 0) {
-            this.$alert().addClass('d-none').text('');
+    static #optionalArrayIn(content, arrayName, filename, sdkVersion) {
+        return content === null ? [] : FieldsTab.#arrayIn(content, arrayName, filename, sdkVersion);
+    }
+
+    /**
+     * Describes what the versions lack of the forward-compatible metadata: the versions without any are named together,
+     * then each version without some of the optional files is named on its own line with these files.
+     *
+     * @param {Array<[string, Object|null]>} versionsMetadata Each version with its forward-compatible metadata, null if it has none.
+     * @returns {string[]} The lines of the alert, none if nothing is missing.
+     */
+    static #describeGaps(versionsMetadata) {
+        const metadataByVersion = new Map(versionsMetadata);
+        const versionsWithoutMetadata = Array.from(metadataByVersion.keys()).filter(version => metadataByVersion.get(version) === null);
+
+        const lines = [];
+        if (versionsWithoutMetadata.length > 0) {
+            const verb = versionsWithoutMetadata.length === 1 ? 'has' : 'have';
+            lines.push(`SDK ${versionsWithoutMetadata.join(' and ')} ${verb} no forward-compatible metadata (fields/fwd/).`);
+        }
+        metadataByVersion.forEach((metadata, version) => {
+            if (metadata?.missingFiles.length > 0) {
+                lines.push(`SDK ${version} has no fields/fwd/${metadata.missingFiles.join(', ')}.`);
+            }
+        });
+        return lines;
+    }
+
+    /**
+     * Shows the alert with the given lines, or hides it if there are none.
+     *
+     * @param {string[]} lines
+     */
+    #showAlert(lines) {
+        if (lines.length === 0) {
+            this.$alert().addClass('d-none').empty();
         } else {
-            const verb = versions.length === 1 ? 'has' : 'have';
-            this.$alert().text(`SDK ${versions.join(' and ')} ${verb} no forward-compatible metadata (fields/fwd/).`).removeClass('d-none');
+            this.$alert().empty().append(lines.map(line => $('<div>').text(line))).removeClass('d-none');
         }
     }
 

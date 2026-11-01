@@ -82,7 +82,11 @@ class ExplorerPage {
      * Files that the explorer requests to find out whether a version has them: for these, the browser's "404" console
      * error is expected and is not collected.
      */
-    static #FILES_PROBED_FOR_PRESENCE = Object.freeze([/\/validation\/[^/]+$/, /\/fields\/fwd\/nodes\.json$/, /\/view-templates\/summary\.efx$/]);
+    static #FILES_PROBED_FOR_PRESENCE = Object.freeze([
+        /\/validation\/[^/]+$/,
+        /\/fields\/fwd\/(nodes|business-entity-hierarchy|business-entity-properties|data-types)\.json$/,
+        /\/view-templates\/summary\.efx$/
+    ]);
 
     /** The prefix of the URLs of the GitHub API. */
     static #GITHUB_API = 'https://api.github.com/';
@@ -278,7 +282,7 @@ class ExplorerPage {
      * @returns {Promise<string|null>} The text of the element, or null if it is hidden.
      */
     async shownText(selector) {
-        return (await this.#page.isVisible(selector)) ? (await this.#page.textContent(selector)).trim() : null;
+        return (await this.#page.isVisible(selector)) ? (await this.#page.innerText(selector)).trim() : null;
     }
 
     /**
@@ -441,6 +445,7 @@ class SmokeTest {
         await this.#checkBranchAsTarget();
         await this.#checkPairWithoutRules();
         await this.#checkPairWithRules();
+        await this.#checkPairWithPartialForwardCompatibleMetadata();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
     }
@@ -596,6 +601,26 @@ class SmokeTest {
                 assert.deepEqual(this.#explorer.githubApiRequests.slice(before), []);
                 assert.deepEqual(await this.#explorer.indexCards('schematrons-overview-card-group'), validationCards);
                 assert.deepEqual(await this.#explorer.cardFilter('schematrons-overview-card-group'), validationFilter);
+            }],
+        ]);
+    }
+
+    /** A base whose fields/fwd/ folder lacks the business entity files. */
+    async #checkPairWithPartialForwardCompatibleMetadata() {
+        await this.#scenario('?version=2.0.0-alpha.3&base=2.0.0-alpha.2', [
+            ['the Fields tab in fwd/ mode names the files 2.0.0-alpha.2 lacks, shows its business entities as added and compares its data types', async () => {
+                await this.#explorer.openTab('fields-tab');
+                await this.#explorer.selectFieldsSource('fwd');
+                assert.equal(await this.#explorer.apiStatus(), '');
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'),
+                    'SDK 2.0.0-alpha.2 has no fields/fwd/business-entity-hierarchy.json, business-entity-properties.json.');
+                const nodes = await this.#explorer.treeNodes('fields-explorer');
+                const businessEntities = nodes.filter(node => /^bep?:/.test(node.id));
+                assert.ok(businessEntities.length > 0, 'no business entities');
+                assert.deepEqual(businessEntities.filter(node => node.status !== 'added'), []);
+                const dataTypes = nodes.filter(node => node.id.startsWith('dt:'));
+                assert.equal(dataTypes.length, 19, 'data types');
+                assert.deepEqual(dataTypes.filter(node => ['added', 'removed'].includes(node.status)), []);
             }],
         ]);
     }
