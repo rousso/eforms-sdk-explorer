@@ -456,6 +456,19 @@ class ExplorerPage {
     }
 
     /**
+     * Focuses the button of a tab and presses a key, as a user who moves along the tab bar with the keyboard, and
+     * waits until the explorer is idle.
+     *
+     * @param {string} tabId The id of the button of the tab.
+     * @param {string} key For example `ArrowRight`.
+     */
+    async pressKeyOnTab(tabId, key) {
+        await this.#page.focus(`#${tabId}`);
+        await this.#page.keyboard.press(key);
+        await this.waitUntilIdle();
+    }
+
+    /**
      * Opens a tab that is hidden for the selected versions, through Bootstrap, to compare it with another tab.
      *
      * @param {string} tabId The id of the button of the tab.
@@ -1188,6 +1201,14 @@ class SmokeTest {
                 assert.deepEqual(this.#explorer.githubApiRequests.slice(before), []);
                 assert.deepEqual(await this.#explorer.indexCards('schematrons-overview-card-group'), validationCards);
                 assert.deepEqual(await this.#explorer.cardFilter('schematrons-overview-card-group'), validationFilter);
+            }],
+            ['the arrow keys of the tab bar skip the hidden Schematrons tab, between Schemas and Validation', async () => {
+                // Bootstrap handles the keys on the buttons of the tabs opened before (here Validation); Schemas
+                // lists its folder from the git trees that the Schematron source fetched above.
+                await this.#explorer.pressKeyOnTab('validation-tab', 'ArrowLeft');
+                assert.equal(await this.#explorer.activeTab(), 'schemas-tab');
+                await this.#explorer.pressKeyOnTab('schemas-tab', 'ArrowRight');
+                assert.equal(await this.#explorer.activeTab(), 'validation-tab');
             }],
         ]);
     }
