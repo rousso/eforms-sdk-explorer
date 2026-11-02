@@ -870,8 +870,10 @@
             width: 140px;
         }
 
+        /* Long labels scroll horizontally, inside the tree's own container (not around the sticky header). */
         #treeViewContainer {
             padding: 8px 0;
+            overflow-x: auto;
         }
 
         /* Details: sticks under the pinned bar; its properties scroll inside only when they are taller than the window. */
