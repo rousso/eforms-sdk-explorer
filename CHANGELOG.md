@@ -11,6 +11,7 @@ This release adds support for eForms SDK 2: you can compare SDK 1.x versions wit
 - **Fewer requests to GitHub**: the SDK Explorer no longer uses the GitHub API when it starts, and lists a folder with a single request per version, which your browser then remembers. Users who share a network, such as an office, no longer run out of the 60 GitHub requests per hour allowed without signing in.
 - A file that does not have the expected content is now reported with an error message naming the file, instead of being shown as empty.
 - **Bootstrap upgraded to 5.3** (from 4.6, which is no longer supported). Its stylesheet is now served by the SDK Explorer itself, so that the many cards of the Codelists tab stay quick to display.
+- **New look**: the SDK Explorer now follows the TED design system, as a public TED site: the EU banner, the TED header and footer, the sections in a bar that stays at the top of the window, the versions compared and the legend of the change markers at the top of every tab, and added, removed and modified items marked by a green plus, a red minus and a blue dot. The page is the only scroll: the filters, the tree's header and the details stay in view while you scroll.
 
 
 # SDK Explorer 0.1.0 - Release Notes
