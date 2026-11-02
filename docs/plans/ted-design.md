@@ -512,3 +512,38 @@ Questions about the design go to the design session, and questions about the pla
     - idle after about 10 s in both. Faster, most likely because the looping `fadeToWhite` animation of the pending cards is gone.
   - Smoke: 69 passed. `#filter-prompt`'s text, the option texts, `#nav`'s computed display, `#status-filter` and `#action-button` are all as before.
   - For Increment 6: the tree/detail template's switch is still `form-switch`, and the property-card rows now carry the card look in the details too.
+- 2026-11-02: Increment 6 done (`392cdd4`).
+  - Fields pane:
+    - `div.ted-fields` holds `div.ted-toolbar` ("Fields" H1 at the left, "Metadata source:" and `#fields-source` unchanged at the right), `#fields-source-alert` and the split view;
+    - `#fields-source-alert` is now `ted-notification ted-notification--warning` (a 4 px warning bar on warning-surface, `d-none` and `role="alert"` unchanged);
+    - `.ted-toolbar` and `.ted-notification` are in the tree section, ready for Increment 9 (Validation) and Increment 8 (the toast).
+  - Tree/detail template:
+    - `#split-view` (flex, wrapping) with two `.panel` sections, each `flex: 1 1 480px`. It is hidden by `#split-view:has(#treeView:empty)` while there is no tree (`clear()` destroys jsTree), so an empty pane shows no panel frames.
+    - Structure: `#structure-header` (sticky at `top: var(--ted-bar-height)`) holds "Structure", Search (labelled, 240 px, placeholder "Name, ID or property", popover attributes kept) and `#tree-filter` (labelled "Show", 140 px). The tree has no scroll of its own.
+    - Details: sticky at `calc(var(--ted-bar-height) + 16px)`, with `max-height: calc(100vh - var(--ted-bar-height) - 32px)`; `#detail-view` scrolls inside. Its header has "Details" and Compact view as a plain `form-check` (same id). `#detail-title` is an `h3`, `#detail-subtitle` and `#compact-view-warning` are `p`s; the latter is a 13 px gray-75 line, its display variable unchanged.
+    - Tree rules replace the old `*-node` highlights:
+      - 28 px rows, a gray-5 hover;
+      - the selected row gray-10 (`.jstree-wholerow-clicked`) with a bold label (`.jstree-clicked`);
+      - node rows, the non-leaf rows except the `root-node` headings, in monospace 13 px;
+      - changed rows: the label on its tint with a 4 px radius, and the marker as the anchor's `::before`, placed 22 px to its left (plus and minus glyphs from `icons.css`, and the dot as a radial gradient).
+  - `tree-detail-split-view.js`: `core.themes.icons: false`, the only change.
+  - Property-card template, shared by the cards and the details:
+    - The values sit in a new `.property-values` wrapper; the ids are unchanged, so `property-card.js` is too.
+    - A changed property's label starts with its marker.
+    - The captions are static template text, as the `::before` of the value boxes: "Base" for removed and old values, "Target" for added and new ones. Each box has a gray-20 border, a 4 px radius and its tint strip, Base above Target.
+    - The details layout comes from `--property-row-*` custom properties, which the tree/detail template sets on `#detail-view property-card`: a grid of 170 px and the value, 14 px labels, 12 px 16 px padding. The cards keep the defaults from Increment 5. The compact-view rule keeps working, because the row's `display` stays on a class.
+  - Deviations:
+    - The rows no longer take the whole-row tints; the markers and the tinted caption strips carry the change, as in `fields.png`. This applies to the card rows too.
+    - `style.css`, which this increment's file list does not name, loses `overflow-y: hidden` on `.view-container`, `overflow-y: auto` on `.view-container card-group`, and the `#fields-tab-content` rules (overflow and a 10 px side padding).
+    - The Notice types comparison's `tree-detail-split-view` loses its inline `overflow-y: auto`.
+    - The last two are needed because those scroll containers kept the sticky panels from following the page. They also fix Increment 5's filter list, which did not stick: verified by scrolling Codelists 3000 px, where `#nav` sits at 72 px.
+    - The caret stays jsTree's own.
+    - A modified node (`ND-…` with `modified-node`) shows the marker and the tint too: the rule names the `*-node` classes, and every change carries its marker.
+  - Checked in the browser, 1.13.0 vs 1.12.0, `fields.json`, `BT-799-ReviewBody` selected, Compact view on, against `fields.png`:
+    - the same panels, rows and details. The highlighting inside the values (O1), the JSON layout (O2), the version numbers in the captions and the field name as the title (O4) are optional items, not done;
+    - scrolled down the page, the Structure header sticks at 56 px (the bar's height) and Details at 72 px, 912 px high, with its property list scrolling;
+    - the selected row is bold on its tint, and rows are 28 px;
+    - Compact view leaves 3 of the 15 properties; Search for `BT-799` filters the tree;
+    - no console errors.
+  - Smoke: 69 passed: `#treeView`, `#tree-search`, `#tree-filter`, `#compactViewSwitch` and `#fields-source-alert` are unchanged.
+  - For Increment 7: the diff views' `.view-diff` still has `overflow: hidden`, and `.d2h-code-wrapper` its `max-height`; both go there.
