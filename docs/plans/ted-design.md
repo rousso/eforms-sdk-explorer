@@ -271,6 +271,7 @@ Files: `index.html` (`#apiStatus`), `ted-theme.css` (states section), `src/asset
   - White, `1px solid gray-20`, 4 px radius, `--gs-base-shadow-2`, padding 20 px.
   - Title 18 px bold, without Bootstrap's grey header band; body 14 px / 1.5.
   - The tour's Cancel link styled as a ghost button and Next as a primary sm button, through their existing classes (`.cancel-tour`, `.next-step`).
+  - Choose each step's `data-bs-placement` for the anchors of Increment 3. Since then Bootstrap flips steps 0, 1 and 2 to `right`: step 0's anchor is at the page's left edge; step 1's popover, centred under the Fields tab, would overflow the left edge by 0.2 px; step 2 has no room above. See Increment 3's Progress entry.
 - **The hover popovers** of the selects get the same look.
 - Verification: smoke passes with every check (the toast's `li` and `span.detail` unchanged). Compare with `states.png`: force an error, for example by blocking `raw.githubusercontent.com` in the inspector, then run the tour and watch a tab load.
 
