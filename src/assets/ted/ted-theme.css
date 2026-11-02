@@ -1,0 +1,32 @@
+/* TED design-system theme of the eForms SDK Explorer (docs/plans/ted-design.md).
+ *
+ * A style layer over Bootstrap 5, built on the tokens of tokens.css (var(--gs-base-...)) and the glyphs of icons.css.
+ * Literals only where the design system itself declares them: the 3px button radius, the card shadow
+ * 0 1px 3px 0 rgba(0, 0, 0, 0.2), and #1454B7 for the primary button's focus ring.
+ *
+ * Loaded by the page (index.html, after icons.css) and into the shadow root of every web component
+ * (appConfig.stylesheets.tedTheme, through BootstrapWebComponent.requiredCss()). So:
+ * - keep it plain ASCII, so that it never needs an @charset rule: with one, Chromium cannot share the parsed
+ *   sheet between the shadow roots, and each of hundreds of cards would parse it again;
+ * - keep it small, because every shadow root loads it.
+ *
+ * One section per increment of the plan; each is filled by its increment.
+ */
+
+/* Foundation (Increment 2): Bootstrap custom properties, links, headings, focus rings, buttons, form controls. */
+
+/* Chrome (Increment 3): the TED header, the pinned bar with the tabs and the loading indicator, the comparison line,
+   the footer. */
+
+/* Home (Increment 4): the text column and the side card. */
+
+/* Cards (Increment 5): headings and breadcrumbs, the card group's header and filter list, index cards,
+   property rows. */
+
+/* Tree and detail (Increment 6): the Fields toolbar, the Structure and Details panels, the tree, the details. */
+
+/* File diff (Increment 7): the Base and Target headings and the diff panel. */
+
+/* States (Increment 8): the error toast, the tour popovers and the hover popovers. */
+
+/* Other tabs (Increment 9): Validation, Schemas, Schematrons, Translations, View templates, Release notes. */

@@ -15,6 +15,8 @@ export const appConfig = {
     unindexedViewTemplates: ['summary.efx'],  // view templates that some versions have without listing them in view-templates.json
     stylesheets: {  // the library stylesheets the web components load into their shadow roots: the same ones index.html loads into the page
         bootstrap: './src/assets/vendor/bootstrap-5.3.8.min.css',  // served from the repository, without the @charset rule of the CDN file (see the comment at the top of the file)
+        tedIcons: './src/assets/ted/icons.css',  // the TED glyph classes (their @font-face is in tokens.css, which only the page loads: its custom properties reach the shadow roots by inheritance)
+        tedTheme: './src/assets/ted/ted-theme.css',
         jstreeTheme: 'https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css',
     },
 };
