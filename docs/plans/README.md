@@ -5,7 +5,8 @@ Each file in this folder is a plan written in a planning session and executed, i
 Current plans:
 
 - `sdk2-support.md` — support for eForms SDK 2 (validation rules, forward-compatible field metadata, version selection). Done.
-- `bug-fixes.md` — the bug-fix pass that precedes the TED design-system restyle.
+- `bug-fixes.md` — the bug-fix pass that precedes the TED design-system restyle. Done.
+- `bootstrap5-upgrade.md` — the upgrade from Bootstrap 4.6.2 to 5.3.8, a prerequisite of the restyle.
 
 ## How an implementation session works
 

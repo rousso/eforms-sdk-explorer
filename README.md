@@ -94,7 +94,7 @@ The test needs network access and uses 2 of the 60 requests per hour that the Gi
 
 This project uses the following open-source libraries:
 
-- [Bootstrap](https://getbootstrap.com/): The most popular HTML, CSS, and JS library in the world. 
+- [Bootstrap](https://getbootstrap.com/) 5.3: The most popular HTML, CSS, and JS library in the world. Its stylesheet is included in `src/assets/vendor/`. 
   Licensed under the [MIT License](https://github.com/twbs/bootstrap/blob/main/LICENSE).
 - [jQuery](https://jquery.com/): A fast, small, and feature-rich JavaScript library. 
   Licensed under the [MIT License](https://github.com/jquery/jquery/blob/main/LICENSE.txt).
