@@ -618,3 +618,41 @@ Questions about the design go to the design session, and questions about the pla
     - In the cloud run, the git-trees stand-in has no listing for 1.13.0/1.12.0, so the Schematrons tab of that pair showed its empty state with the toast ("Error fetching directory listing from GitHub"). This is the stand-in's limit, not the app's; the smoke script's Schematrons checks use the alpha pair, which passes.
   - Smoke: 69 passed.
   - For Increment 10: the comparison line, its two chip-look selects and their labels are in `index.html`'s `div.ted-comparison-line`, and their rules are in the chrome section, now in `ted-page.css`. Tour step 0 is on `.ted-comparison-line__versions` and step 3 on `.ted-legend`, each with `data-bs-placement="bottom"` and `data-bs-fallback-placements='["bottom"]'`. The new picker section goes in `ted-page.css`.
+- 2026-11-02: Increment 10 done (`774545c`). The redesign is complete.
+  - Comparison line: the two selects stay, with `hidden`, their ids and options, `aria-label`s "Base version" and "Target version", and no labels or hover popovers. They are joined by `#base-version-chip` and `#target-version-chip`:
+    - each a `.dropdown` with a `button.dropdown-toggle` (accessible name "Base version" / "Target version", visible text "base:" / "target:" and the version);
+    - a `.dropdown-menu` of `.dropdown-header`, `.dropdown-divider` and `button.dropdown-item` entries;
+    - the caret is `\e90c`; the menus are at most 60vh, scrolling inside;
+    - the chip look and the menu are in the new picker section of `ted-page.css`; the Increment 3 rules for the chip-look selects and their labels are removed.
+  - `src/js/version-picker.js` (`VersionPicker`):
+    - `start()` builds both menus once from the selects' options: Branches (`appConfig.branches`, target only), Pre-releases (`SdkVersion.tryParse().isPreRelease`), Releases, each in the options' order;
+    - it writes the current values into the chips and into Home's "Compare base › target", marks the current item `.active` with `aria-current="true"`, and follows the selects' change events;
+    - an item sets its select and triggers `change` only if the value differs, then returns focus to its chip; Bootstrap closes the menu;
+    - "Compare" shows the Fields tab through `bootstrap.Tab.getOrCreateInstance(...).show()`;
+    - the dialog is filled from the selects on `show.bs.modal`, focuses its base select on `shown.bs.modal`, and gives focus back to "Choose versions…" when it closes (Bootstrap's own behaviour for the trigger). Its Compare applies one or both values as the plan says: with both changed, the base select and `appState.baseVersion` are set silently, and the target select alone triggers `change`.
+  - Deviation, authorised by the planning session and recorded in the plan (Increment 10's picker bullet and the Files section):
+    - `SdkExplorerApplication.init()` is split into `initVersions()` (`populateDropdown()`, the comment about listening to the user, and the two change handlers) and `initTabs()` (the `shown.bs.tab` listener and `#initTabVisibility()`), with the same bodies.
+    - `script.js` runs `initVersions()`, then `new VersionPicker().start()`, then `initTabs()`, while the popovers, the tour and the banner are still set up synchronously.
+    - The reason: `init()` resolves only after the start-up probes, so a picker started after it would have left the chips and the dialog inert during the probes. That was a regression for users, and it would have broken the smoke check that changes the version while the start-up probe is held.
+  - Home:
+    - `main:has(#home-tab-content.active) .ted-comparison-line { display: none; }`;
+    - `.ted-home__actions` under the paragraph: `#compare-versions` (primary) and `#choose-versions` (secondary, `data-bs-toggle="modal"`).
+    - Tour step 0 is on a `span.ted-home__choose` wrapper, not on the button, because one element holds one Bootstrap instance (the modal toggle). Its title is "Choose the versions to compare" and its texts are those of `states.png`; placement `bottom` with the single fallback.
+    - Step 3 is on `ul.ted-home__markers`, with the plan's text, placement `left` with `data-bs-fallback-placements='["left"]'`. The tour no longer leaves Home.
+  - `#version-dialog`: a Bootstrap `.modal` with the mockup's texts:
+    - the scrim, a 600 px dialog with a 2 px radius and `--gs-base-shadow-4`;
+    - the header on gray-5, with a ghost close button (`gs-icon-close`);
+    - the two labelled selects with their explanations in two columns, one column below 576 px;
+    - Cancel (secondary) and Compare (primary), right-aligned.
+  - Smoke script (76 checks from now on, the expected count; was 69):
+    - `startSelectingVersion()` clicks the chip and its `.dropdown-item` with the version's text, without force. When the comparison line is not shown (Home), it chooses through "Choose versions…", the dialog's list and Compare, as the planning session agreed. `selectVersions()` uses it.
+    - `selectVersionWhenRequestsComplete()` and `selectVersionWhenFirstCardAppears()` are unchanged.
+    - New page-object methods: `startComparingInDialog()`, `startCountingVersionChanges()` / `countedVersionChanges()`, `versionMenuSections()`, `compareFromHome()`. The counter is a namespaced jQuery `change` handler, because the app and the picker trigger `change` through jQuery, which dispatches no DOM event.
+    - A new scenario, `#checkVersionPicker()` (1.15.1 / 1.14.2), with four checks: Home hides the comparison line and "Compare 1.14.2 › 1.15.1" shows the Fields tab of the pair; the target menu has Branches, the base menu none; a chip item reloads once with the new pair; the dialog's Compare with both versions changed triggers one change and applies both. With the scenario's three standing checks, that makes 7 new.
+    - Changed text: the tour check expects step 0's new title, "Choose the versions to compare".
+  - Checked in the browser, 1.13.0 vs 1.12.0, against `home.png`, `fields.png` and `version-dialog.png`:
+    - Home with its two buttons and no comparison line; the chips and the open target menu with its three sections; the dialog;
+    - the tour: step 0 below "Choose versions…", step 3 left of the side card's markers, all on Home;
+    - with the keyboard alone: Tab to the target chip, Enter opens the menu, the arrow keys move through develop, efx-2 and 2.0.0-alpha.4, Enter chooses and reloads, and the focus is back on the chip. Escape closes the menu with the focus on the chip;
+    - no console errors.
+  - Smoke: 76 passed, 2 GitHub API requests.
