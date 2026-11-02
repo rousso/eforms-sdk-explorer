@@ -1161,10 +1161,13 @@
             gap: 16px;
         }
 
-        /* The filter list: a white panel that sticks under the pinned bar, hidden while it has no values. */
+        /* The filter list: a white panel that sticks under the pinned bar, hidden while it has no values; it scrolls
+           inside only when it is taller than the window. */
         #nav {
             position: sticky;
             top: calc(var(--ted-bar-height) + 16px);
+            max-height: calc(100vh - var(--ted-bar-height) - 32px);
+            overflow-y: auto;
             flex: 1 1 220px;
             align-self: flex-start;
             max-width: 260px;
