@@ -281,6 +281,13 @@ Files: `index.html`, `ted-theme.css` (other tabs section), `README.md`, `CHANGEL
 - **Schemas, Schematrons, Translations, View templates:** the patterns of Increments 5 and 7 apply; check each one.
 - **Release notes** (`#release-notes`): the TED typography applies to the Markdown HTML: H1 32, H2 28, H3 24, body 16 / 1.62, links, code in monospace 15 px, text width at most 65rem.
 - **README and CHANGELOG:** describe the new look in the README's "Using the SDK Explorer" section if it mentions the old one, and add a CHANGELOG entry.
+- **Clean-up** (added by the planning session after Increment 7):
+  - Remove the dead `.column` and `.column > *:nth-child(2)` rules from `src/assets/style.css`: no element has the class.
+  - Split `ted-theme.css`. It is about 32 KB and every shadow root loads it, but only the rules used inside the components need to be there: the foundation section, and `.ted-marker` from the chrome section, which the index cards' status line uses.
+    - Keep those in `ted-theme.css`, which stays in `appConfig.stylesheets.tedTheme`.
+    - Move the page-only sections to a new `src/assets/ted/ted-page.css`, linked by `index.html` right after `ted-theme.css`: the globan, header, bar, comparison line, legend and footer; home; the breadcrumb; the toolbar and notification; the diff; the states; the other tabs.
+    - Same rules, same order, no visual change. `ted-page.css` stays plain ASCII too.
+    - Measure the Codelists main-thread time before and after, and record both. If there is no gain, keep the split anyway for clarity, and say so.
 - Verification: smoke passes with every check. Go through every tab at 1440 px and at 1024 px with 1.13.0 vs 1.12.0 and with a 2.x pair (Validation visible). Nothing is left in the default Bootstrap look.
 
 ### Increment 10 — version chips, Home actions and the dialog (M/L)
