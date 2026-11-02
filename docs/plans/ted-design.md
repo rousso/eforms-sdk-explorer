@@ -410,3 +410,33 @@ Questions about the design go to the design session, and questions about the pla
     - No slower, within the run-to-run spread. The two extra sheets per shadow root are shared like Bootstrap's.
   - Smoke: 69 passed, 2 GitHub API requests (cloud run, with the git-trees stand-in of `docs/plans/sdk2-support.md`'s Progress). A first run had 66: one schematron download through the proxy ended in `ERR_CONNECTION_RESET`, so that card had no status, and two checks and "no console errors" failed with it. The re-run passed all 69.
   - For Increment 2: the theme sections are in place; fill "Foundation". The components already load `icons.css` and `ted-theme.css`, so rules there reach the shadow roots too. Class rules in `ted-theme.css` apply in both the page and every component.
+- 2026-11-02: Increment 2 done (`26a7a97`).
+  - `ted-theme.css`, foundation section:
+    - the Bootstrap variables of the plan on `:root` (`--bs-link-color-rgb` and `--bs-link-hover-color-rgb` are the triplet 14, 71, 203 of eu-blue-100, commented);
+    - links (underline off on hover), bold headings with a 32 px / 1.15 `h1`;
+    - the focus rings; the buttons (`.btn` m by default, `.btn-sm` and `.btn-group-sm > .btn`, primary, secondary `.btn-outline-primary`, ghost `.btn-link`, disabled `.btn-outline-secondary` / `:disabled`), with the mockups' `inline-flex`, `0.4rem` gap and line height 1.15;
+    - the toggle groups (checked primary, the others secondary-filled);
+    - the 44 px controls at both sizes, `.form-label`, `.form-text`, and the checkbox.
+  - `style.css`: the three background variables and the three highlights point at the surface tints, and `--added-marker-color`, `--removed-marker-color` and `--modified-marker-color` are new.
+  - Deviation, decided by the design session: the plan's design reference contradicted the design system in four places. The design session corrected them, and the corrected values are in the design reference above, in the same commit:
+    - the focus rings follow `focus.css` per variant: primary link-110, not `#1454B7`; the ghost's `#757575` is now the allowed literal;
+    - the checkbox is 18 px with a 2 px radius;
+    - the label gap is 6 px;
+    - the controls use line height 1.4 and the design system's focus rules, and the select's chevron is recoloured gray-75 12 px from the right.
+  - Deviation: `--op-green-color`, `--dark-background-color` and `--light-background-color` stay. The old header in `style.css` and the `#card-group-template` and `#tree-detail-split-view-template` styles in `index.html` still use them; remove each one with the increment that restyles its last user (3, then 5 and 6).
+  - Interim looks, expected until later increments:
+    - the tree's highlighted labels and diff2html's changed words are now only as strong as their tints (Increments 6 and 7 add weight and the underline);
+    - the compact-view switches look like TED checkboxes through rules on `.form-switch .form-check-input` (Bootstrap 5.3 draws the switch from `--bs-form-switch-bg`); those rules can go once Increments 5 and 6 change the markup to a plain `form-check`;
+    - `#start-tour` is a primary m button until Increment 4 makes it tertiary sm, which needs its gray-75 ring;
+    - Compare is a secondary m button until Increment 5;
+    - the two filter selects keep their inline 100 px width, tight for 16 px text, until Increments 5 and 6;
+    - Home's heading keeps `.display-4`'s size until Increment 4;
+    - the card titles are bold.
+  - Checked in the browser, 1.13.0 vs 1.12.0, 1440 px:
+    - body Arial, `#333`;
+    - Start quick tour primary, Compare secondary, the selects and inputs 44 px with the gray-75 chevron, the source toggle checked primary and the other secondary-filled (14 px);
+    - the checkbox 18 px with a 2 px radius and its 16 px label 0.55rem away, unchecked white, checked eu-blue-100 with the tick;
+    - tabbing from the tab bar through the Fields tab: the checked radio link-110 at 2 px, the search input eu-blue-100 at 2 px, the select eu-blue-100 at -1 px, tree links eu-blue-100 at 4 px, tabs and the checkbox link-110 at 2 px, no box-shadow anywhere;
+    - no console errors.
+  - Smoke: 69 passed, twice: before and after the design session's corrections.
+  - For Increment 3: the design session added, at the user's request, that tour step 2's first sentence becomes "A loading indicator will appear here while data is being processed in the background." in the commit that restyles the spinner. Add a line about it to Increment 3's spinner bullet. The header's old `style.css` rules are the last users of `--op-green-color` and `--dark-background-color`.
