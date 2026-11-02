@@ -306,7 +306,7 @@ Files: `index.html` (comparison line, Home buttons, dialog, tour attributes), `t
   - Choosing an item: if it differs from the select's value, set the value and trigger `change` on that select.
 - **Chips and menus.** Use Bootstrap dropdowns, not a new widget: each chip is a `.dropdown` with a `button.dropdown-toggle` and a `.dropdown-menu` with `.dropdown-header`, `.dropdown-divider` and `.dropdown-item` entries.
   - Ids: `#base-version-chip` and `#target-version-chip`.
-  - Each `button` keeps the accessible name "Base version" or "Target version". Its visible text is "base:" or "target:" followed by the version.
+  - Each `button`'s accessible name is "Base version: <version>" or "Target version: <version>", kept up to date by the picker together with the visible text, which is "base:" or "target:" followed by the version. An `aria-label` replaces the visible text for a screen reader, so it must include the version.
   - Style them as the design reference's version chips. Replace Bootstrap's caret (`.dropdown-toggle::after`) with `\e90c`.
   - Menus at most 60vh high, scrolling inside when longer.
   - Bootstrap's dropdown supplies the keyboard behaviour: arrow keys move, Escape closes, focus returns to the chip.
@@ -656,3 +656,4 @@ Questions about the design go to the design session, and questions about the pla
     - with the keyboard alone: Tab to the target chip, Enter opens the menu, the arrow keys move through develop, efx-2 and 2.0.0-alpha.4, Enter chooses and reloads, and the focus is back on the chip. Escape closes the menu with the focus on the chip;
     - no console errors.
   - Smoke: 76 passed, 2 GitHub API requests.
+- 2026-11-02: Increment 10 follow-up, from the planning session's review: the chip buttons' `aria-label` ("Base version", "Target version") replaced their visible text as the accessible name, so a screen reader never heard the selected version. `VersionPicker.#showSelection()` now sets it to "Base version: <version>" or "Target version: <version>" each time it writes the version into the chip. The plan's Increment 10 bullet is corrected. Smoke: 76 passed.

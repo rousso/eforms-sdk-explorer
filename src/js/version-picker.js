@@ -92,11 +92,13 @@ export class VersionPicker {
     }
 
     /**
-     * Shows the selected versions: in each chip, as the current item of its menu, and in Home's "Compare" button.
+     * Shows the selected versions: in each chip (also in its accessible name, which replaces its visible text for a
+     * screen reader), as the current item of its menu, and in Home's "Compare" button.
      */
     #showSelection() {
-        [[this.#chip('base'), this.#baseSelect], [this.#chip('target'), this.#targetSelect]].forEach(([chip, select]) => {
+        [[this.#chip('base'), this.#baseSelect, 'Base version'], [this.#chip('target'), this.#targetSelect, 'Target version']].forEach(([chip, select, name]) => {
             $(chip).find('.ted-version-chip__version').text(select.value);
+            $(chip).find('.dropdown-toggle').attr('aria-label', `${name}: ${select.value}`);
             $(chip).find('.dropdown-item').each(function () {
                 const current = this.dataset.value === select.value;
                 $(this).toggleClass('active', current).attr('aria-current', current ? 'true' : null);
