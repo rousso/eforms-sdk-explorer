@@ -149,12 +149,12 @@
             <span class="ted-comparison-line__versions">
                 <span>Comparing</span>
                 <div class="dropdown ted-version-chip" data-version-role="base">
-                    <button id="base-version-chip" type="button" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Base version"><span class="ted-version-chip__role">base:</span> <span class="ted-version-chip__version"></span></button>
+                    <button id="base-version-chip" type="button" class="dropdown-toggle" disabled data-bs-toggle="dropdown" aria-expanded="false" aria-label="Base version"><span class="ted-version-chip__role">base:</span> <span class="ted-version-chip__version"></span></button>
                     <ul class="dropdown-menu ted-version-menu" aria-label="Base version"></ul>
                 </div>
                 <i class="gs-icon gs-icon-chevron-right ted-comparison-line__separator" aria-hidden="true"></i>
                 <div class="dropdown ted-version-chip" data-version-role="target">
-                    <button id="target-version-chip" type="button" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Target version"><span class="ted-version-chip__role">target:</span> <span class="ted-version-chip__version"></span></button>
+                    <button id="target-version-chip" type="button" class="dropdown-toggle" disabled data-bs-toggle="dropdown" aria-expanded="false" aria-label="Target version"><span class="ted-version-chip__role">target:</span> <span class="ted-version-chip__version"></span></button>
                     <ul class="dropdown-menu ted-version-menu" aria-label="Target version"></ul>
                 </div>
                 <!-- The state holders: the application fills and reads them, and reloads on their change event -->
@@ -186,9 +186,9 @@
                         suggestions for improvement as well as your contributions to the project.
                     </p>
                     <div class="ted-home__actions">
-                        <button id="compare-versions" type="button" class="btn btn-primary">Compare <span class="ted-home__pair"></span></button>
+                        <button id="compare-versions" type="button" class="btn btn-primary" disabled>Compare <span class="ted-home__pair"></span></button>
                         <span class="ted-home__choose" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-fallback-placements='["bottom"]' data-bs-html="true" data-step="0" title="Choose the versions to compare" data-bs-content="<p>Compare the suggested versions of the SDK, or choose the ones you want to compare.</p><p>Select the older version, which you are migrating from, and the newer version, which you are migrating to. The SDK Explorer calls these the <i>base</i> and <i>target</i> versions.</p><div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
-                            <button id="choose-versions" type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#version-dialog">Choose versions&hellip;</button>
+                            <button id="choose-versions" type="button" class="btn btn-outline-primary" disabled data-bs-toggle="modal" data-bs-target="#version-dialog">Choose versions&hellip;</button>
                         </span>
                     </div>
                 </div>

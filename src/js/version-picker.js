@@ -32,7 +32,7 @@ export class VersionPicker {
 
     /**
      * Builds the menus of the two chips from the options of the selects, once (the selects must be filled by then),
-     * shows the selection, and hooks the chips, Home's buttons and the dialog.
+     * shows the selection, hooks the chips, Home's buttons and the dialog, and enables them.
      */
     start() {
         this.#buildMenu(this.#chip('base'), this.#baseSelect);
@@ -50,6 +50,9 @@ export class VersionPicker {
             .on('show.bs.modal', () => this.#fillDialog())
             .on('shown.bs.modal', () => this.#dialogBaseSelect.focus());
         $('#version-dialog-compare').on('click', () => this.#applyDialog());
+
+        // The chips and Home's buttons start disabled in the page, until the picker can serve them.
+        $('#base-version-chip, #target-version-chip, #compare-versions, #choose-versions').prop('disabled', false);
     }
 
     /**
@@ -126,8 +129,9 @@ export class VersionPicker {
     #applyDialog() {
         const base = this.#dialogBaseSelect.value;
         const target = this.#dialogTargetSelect.value;
-        const baseChanged = base !== this.#baseSelect.value;
-        const targetChanged = target !== this.#targetSelect.value;
+        // An empty value (a dialog without options) is no choice.
+        const baseChanged = base !== '' && base !== this.#baseSelect.value;
+        const targetChanged = target !== '' && target !== this.#targetSelect.value;
 
         bootstrap.Modal.getOrCreateInstance(document.getElementById('version-dialog')).hide();
 

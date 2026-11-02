@@ -189,7 +189,23 @@ class ExplorerPage {
      * @param {string} queryString
      */
     async openWithoutWaiting(queryString) {
+        await this.startOpening(queryString);
+        await this.waitForVersions();
+    }
+
+    /**
+     * Loads the explorer without waiting for anything it requests. The console errors collected so far are kept.
+     *
+     * @param {string} queryString
+     */
+    async startOpening(queryString) {
         await this.#page.goto(`${this.#baseUrl}/${queryString}`);
+    }
+
+    /**
+     * Waits until the explorer has filled the version dropdowns (or reported why it could not).
+     */
+    async waitForVersions() {
         await this.#page.waitForFunction(
             () => document.querySelector('#main-version-dropdown').value !== ''
                 || document.querySelector('#apiStatus .toast-body').textContent.trim() !== '',
@@ -230,6 +246,31 @@ class ExplorerPage {
         await this.#page.waitForSelector('#version-dialog.show');
         await this.#page.selectOption('#version-dialog-base', baseVersion);
         await this.#page.selectOption('#version-dialog-target', mainVersion);
+        await this.#page.click('#version-dialog-compare');
+        await this.#page.waitForSelector('#version-dialog', { state: 'hidden' });
+    }
+
+    /**
+     * Forgets the list of versions that the explorer keeps in the browser, so that the next load requests it again.
+     */
+    async forgetCachedVersions() {
+        await this.#page.evaluate(() => localStorage.removeItem('sdk-explorer/versions'));
+    }
+
+    /**
+     * @param {string} selector
+     * @returns {Promise<boolean>} Whether the element is enabled.
+     */
+    async isEnabled(selector) {
+        return this.#page.isEnabled(selector);
+    }
+
+    /**
+     * Opens the "Choose versions…" dialog from Home and presses Compare without changing anything, as a user would.
+     */
+    async compareInDialogUnchanged() {
+        await this.#page.click('#choose-versions');
+        await this.#page.waitForSelector('#version-dialog.show');
         await this.#page.click('#version-dialog-compare');
         await this.#page.waitForSelector('#version-dialog', { state: 'hidden' });
     }
@@ -1320,6 +1361,22 @@ class SmokeTest {
     /** The version chips, Home's comparison buttons and the version dialog. */
     async #checkVersionPicker() {
         await this.#scenario('?version=1.15.1&base=1.14.2', [
+            ['until start-up has filled the versions, Home\'s buttons are disabled; then the dialog\'s Compare without a change changes nothing', async () => {
+                await this.#explorer.forgetCachedVersions();
+                const versions = await this.#explorer.holdRequests('https://data.jsdelivr.com/**');
+                await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                await versions.requested;
+                assert.deepEqual([await this.#explorer.isEnabled('#compare-versions'), await this.#explorer.isEnabled('#choose-versions')], [false, false]);
+                await versions.release();
+                await this.#explorer.waitForVersions();
+                await this.#explorer.waitUntilIdle();
+                assert.deepEqual([await this.#explorer.isEnabled('#compare-versions'), await this.#explorer.isEnabled('#choose-versions')], [true, true]);
+                await this.#explorer.startCountingVersionChanges();
+                await this.#explorer.compareInDialogUnchanged();
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.countedVersionChanges(), 0);
+                assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.15.1', baseVersion: '1.14.2' });
+            }],
             ['on Home the comparison line is hidden, and "Compare 1.14.2 › 1.15.1" shows the Fields tab of the pair', async () => {
                 assert.equal(await this.#explorer.isShown('.ted-comparison-line'), false);
                 assert.equal(await this.#explorer.compareFromHome(), 'Compare 1.14.2 \u203A 1.15.1');
