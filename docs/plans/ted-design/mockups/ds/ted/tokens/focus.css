@@ -1,0 +1,115 @@
+/*
+ * TED Design System — FOCUS INDICATOR
+ *
+ * VERIFIED against gospels/op-focus.css, which captures the rules from OP's
+ * compiled Global Style stylesheet.
+ *
+ * WHY THIS FILE IS CSS AND NOT COMPONENT LOGIC
+ * A focus indicator is an accessibility guarantee, not a component feature.
+ * EN 301 549 requires a visible focus indicator on every interactive element,
+ * so it must apply to plain <a>, <button>, <input> and <select> in consuming
+ * sites that import nothing but this stylesheet — not only to React
+ * components. Component-level focus styling is enhancement on top of this.
+ *
+ * THE SYSTEM IS TWO RULES, NOT ONE
+ *   Links   — eu-blue-100, 4px offset, plus a 0.015rem outline radius.
+ *   Buttons — 2px offset, and the outline MATCHES THE BUTTON'S OWN COLOUR.
+ *
+ * A single blue ring on every control is a defect, not a simplification:
+ * a green TED button must focus green, a grey tertiary grey.
+ *
+ * VARIANT HOOK
+ * Per-variant rings need a selector hook. TED components emit
+ * `data-ted-variant` for this. Hand-written HTML can use the same attribute,
+ * or the OP class names (`gs-btn-main`, `gs-btn-ted`, …) which are matched
+ * below as equivalents.
+ */
+
+/* ── BASELINE ───────────────────────────────────────────────────────────
+   Every focusable element gets a ring. This is the floor: it is what
+   op.europa.eu's own theme applies across the board, and it is what a
+   consuming site inherits before any variant hook exists.
+
+   NOTE the colour: link-110 is #0D40B7. op.europa.eu's theme uses #1454B7
+   here instead — a literal that is NOT a token. Use link-110. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--gs-base-color-link-110);
+  outline-offset: 2px;
+}
+
+/* ── LINKS — 4px offset, eu-blue-100 ────────────────────────────────────
+   The tiny outline radius softens the ring's corners without rounding the
+   link itself. It is deliberate; reproduce it. */
+a:focus-visible {
+  outline: 2px solid var(--gs-base-color-eu-blue-100);
+  outline-offset: 4px;
+  border-radius: 0.015rem;
+  -moz-outline-radius: 0.015rem;
+}
+
+/* A link styled as a button follows the BUTTON rule, not the link rule. */
+a[data-ted-variant]:focus-visible,
+a[class*="gs-btn"]:focus-visible {
+  outline-offset: 2px;
+  border-radius: 0;
+}
+
+/* ── BUTTONS — 2px offset, outline per variant ──────────────────────── */
+[data-ted-variant]:focus-visible,
+[class*="gs-btn"]:focus-visible {
+  outline-offset: 2px;
+}
+
+[data-ted-variant="primary"]:focus-visible,
+.gs-btn-main:focus-visible {
+  outline: 2px solid var(--gs-base-color-link-110); /* #0D40B7 */
+}
+
+[data-ted-variant="secondary"]:focus-visible,
+[data-ted-variant="secondary-filled"]:focus-visible,
+.gs-btn-sec:focus-visible,
+.gs-btn-sec-f:focus-visible {
+  outline: 2px solid var(--gs-base-color-eu-blue-100);
+}
+
+[data-ted-variant="tertiary"]:focus-visible,
+.gs-btn-ter:focus-visible {
+  outline: 2px solid var(--gs-base-color-gray-75);
+}
+
+/* The TED service button focuses in TED's own green. */
+[data-ted-variant="cta"]:focus-visible,
+.gs-btn-ted:focus-visible {
+  outline: 2px solid var(--gs-base-color-ted-button-hover); /* #026B00 */
+}
+
+[data-ted-variant="ghost"]:focus-visible,
+.gs-btn-ghost:focus-visible {
+  outline: 2px solid #757575;
+}
+
+/* On a dark surface the ring must be light enough to be seen. */
+[data-ted-variant="ghost-inverted"]:focus-visible {
+  outline: 2px solid #ffffff;
+}
+
+/* ── DISABLED ───────────────────────────────────────────────────────────
+   A disabled control is not focusable, but an aria-disabled one still is —
+   and it must still show a ring. Do not suppress it. */
+[aria-disabled="true"]:focus-visible {
+  outline: 2px solid var(--gs-base-color-gray-75);
+  outline-offset: 2px;
+}
+
+/*
+ * ── OVERRIDING A THIRD-PARTY FRAMEWORK ─────────────────────────────────
+ * Bootstrap, Material and friends express focus as a box-shadow, not an
+ * outline, so importing this file is not enough on its own — their glow
+ * survives underneath. Add the killer alongside:
+ *
+ *   .btn:focus, .btn:focus-visible, .form-control:focus { box-shadow: none }
+ *
+ * It is not included here because this file must not assume Bootstrap is
+ * present, and a bare `box-shadow: none` on :focus would strip legitimate
+ * elevation from focused cards and dialogs.
+ */
