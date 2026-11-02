@@ -25,10 +25,10 @@ The design was made and reviewed on a canvas in a design session (https://claude
 
 ## Decisions
 
-Decisions marked **(to confirm)** were proposed in the design session and are still waiting for the user's approval. The user's final review of the canvas and these mockups approves or changes them; record the outcome here before Increment 1 starts.
+The user approved every decision below after reviewing the canvas and these mockups. Decision 2 and the destination of Home's "Compare" button (Decision 3) were confirmed last, on 2026-11-02.
 
 1. **Page family and full public chrome.** The TED design system has two families that must never be mixed on one screen. The page family uses `--gs-base-*` tokens and Arial and is meant for public TED sites. The application family (`Eui*`, Inter) is for eNotices2-style applications. The user chose the page family because the explorer is a public tool on docs.ted.europa.eu. For the same reason it gets the full public chrome: the EU global banner, the EU logo row, the service row with the green service stripe, the 8 px green divider, and the full public footer. The `internal` variant (no banner and no EU logo row) is reserved for TED-team applications, so it is not used.
-2. **Header names (to confirm).** Site name "EU tenders" (from the design system's own header example), service chip "Ted ■ eForms SDK Explorer", description "Explore and compare different versions of the eForms SDK". The header's own navigation stays empty.
+2. **Header names (confirmed by the user).** Site name "EU tenders" (from the design system's own header example), service chip "Ted ■ eForms SDK Explorer", description "Explore and compare different versions of the eForms SDK". The header's own navigation stays empty.
 3. **Plain TED header, pinned tabs, a comparison line, and comparison actions on Home** (the user chose this after comparing it on the canvas with selectors in the header):
    - **Header:** the TED header carries no application controls. The design system says the header is identical on every TED site: only the names and the navigation vary.
    - **Pinned bar:** the ten sections are the existing Bootstrap tabs (`ul.nav-tabs`), restyled as TED tabs. They sit in one row under the header with the loading indicator. While the page scrolls, the header scrolls away and this row, about 50 px high, stays pinned at the top.
@@ -36,7 +36,7 @@ Decisions marked **(to confirm)** were proposed in the design session and are st
      - The two chips are Bootstrap dropdown buttons in a light TED style, modelled on GitHub's branch chips.
      - Each chip opens a menu in sections: Branches (target only; a branch cannot be a base), Pre-releases and Releases, the current version highlighted.
      - Choosing a version reloads the comparison, as choosing in today's select does.
-   - **Home:** Home has no comparison line. It offers a primary button "Compare 1.12.0 › 1.13.0", which opens the Fields tab on the pair already selected (**to confirm:** Fields as the destination), and a secondary "Choose versions…". That button opens a TED dialog with both lists, their explanations, Cancel and Compare; Compare applies both choices in one reload.
+   - **Home:** Home has no comparison line. It offers a primary button "Compare 1.12.0 › 1.13.0", which opens the Fields tab on the pair already selected (Fields confirmed by the user), and a secondary "Choose versions…". That button opens a TED dialog with both lists, their explanations, Cancel and Compare; Compare applies both choices in one reload.
    - Choosing versions through chips, menus and a dialog is a behaviour change, so it gets its own increment (Increment 10) after the restyle. Increments 3 to 9 keep today's two selects, placed in the comparison line.
 4. **One page scroll (the user's request).** The page is the only main scroll; panels do not get their own scrollbars. The following stick under the pinned bar:
    - the tree's search/filter header
@@ -303,7 +303,7 @@ Files: `index.html` (comparison line, Home buttons, dialog, tour attributes), `t
 - **Home.**
   - Hide the comparison line while Home is active: `main:has(#home-tab-content.active) .ted-comparison-line { display: none; }`. `:has` works in every current browser; no JavaScript is needed.
   - Add the two buttons under the text, in one row 12 px apart, as in `home.html`:
-    - Primary "Compare 1.12.0 › 1.13.0", with the selected pair, updated by the picker. It shows the Fields tab: `bootstrap.Tab.getOrCreateInstance(document.querySelector('#fields-tab')).show()`. Fields as the destination is Decision 3's open point: if the user picks another tab, only this line changes.
+    - Primary "Compare 1.12.0 › 1.13.0", with the selected pair, updated by the picker. It shows the Fields tab: `bootstrap.Tab.getOrCreateInstance(document.querySelector('#fields-tab')).show()`. The user confirmed Fields as the destination (Decision 3).
     - Secondary "Choose versions…", which opens the dialog.
 - **The dialog** (`version-dialog.html`): a Bootstrap `.modal` with id `#version-dialog`, styled as the design reference's dialog.
   - Text: "Every tab shows what changed from the base version to the target version."
@@ -399,3 +399,4 @@ Questions about the design go to the design session, and questions about the pla
 
 - 2026-11-02: the design session committed the plan, the design-system files (`src/assets/ted/`) and the mockups (`docs/plans/ted-design/mockups/`). The user approved the design with the comparison line, the version chips, the Home actions and the dialog (Decisions 3 and 10). Still to confirm: the header names (Decision 2) and Fields as the destination of "Compare x › y" (Decision 3).
 - 2026-11-02: the planning session reviewed the plan: smoke counts and selectors aligned with the Bootstrap upgrade (69 checks, no Bootstrap 4 fallbacks, methods named instead of line numbers), Increment 10 states when the picker starts and what happens to the hidden selects' popovers. The branch is based on `develop` before the Bootstrap upgrade; it is rebased onto `develop` once the upgrade is merged, before Increment 1 starts.
+- 2026-11-02: the user confirmed the header names (Decision 2) and Fields as the destination of Home's "Compare x › y" (Decision 3). No decision is open.
