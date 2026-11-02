@@ -1,11 +1,16 @@
 /* style.css */
 :root {
-    --added-item-highlight: #CCFFD8;
-    --removed-item-highlight: #FFCCD0;
-    --modified-item-highlight: #CCD3FF;
-    --added-item-background-color: #E6FFEC;
-    --removed-item-background-color: #FFEBE9;
-    --modified-item-background-color: #E6E9FF;
+    /* The change colours (TED tokens): a surface tint for rows and labels, a strong colour for markers. The highlights
+       are the tints too: emphasis comes from weight and an underline. */
+    --added-item-highlight: var(--gs-base-color-success-surface);
+    --removed-item-highlight: var(--gs-base-color-error-surface);
+    --modified-item-highlight: var(--gs-base-color-info-surface);
+    --added-item-background-color: var(--gs-base-color-success-surface);
+    --removed-item-background-color: var(--gs-base-color-error-surface);
+    --modified-item-background-color: var(--gs-base-color-info-surface);
+    --added-marker-color: var(--gs-base-color-success);
+    --removed-marker-color: var(--gs-base-color-error-100);
+    --modified-marker-color: var(--gs-base-color-info);
     --unchanged-item-background-color: #f8f9fa;
     --op-green-color: #2c862d;
     --dark-background-color: #EEEEEE;
