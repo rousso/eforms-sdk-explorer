@@ -6,6 +6,7 @@ Current plans:
 
 - `sdk2-support.md` — support for eForms SDK 2 (validation rules, forward-compatible field metadata, version selection). Done.
 - `bug-fixes.md` — the bug-fix pass that precedes the TED design-system restyle.
+- `ted-design.md` — the restyle with the TED design system, on branch `feature/ted-design`; its mockups and design-system files are beside it.
 
 ## How an implementation session works
 
