@@ -441,3 +441,33 @@ Questions about the design go to the design session, and questions about the pla
     - no console errors.
   - Smoke: 69 passed, twice: before and after the design session's corrections.
   - For Increment 3: the design session added, at the user's request, that tour step 2's first sentence becomes "A loading indicator will appear here while data is being processed in the background." in the commit that restyles the spinner. Add a line about it to Increment 3's spinner bullet. The header's old `style.css` rules are the last users of `--op-green-color` and `--dark-background-color`.
+- 2026-11-02: Increment 3 done (`a0f49be`).
+  - Header:
+    - The EU global banner, with the mockup's own `ted-globan__…` rules; its toggle sets `aria-expanded` and `hidden`, and Escape closes it and returns focus (`script.js`).
+    - The TED header: the EU logo row with `<picture>` (mobile logo below 576 px), "EU tenders" (to ted.europa.eu), the service chip with the green stripe, the description, and the 8 px forest-100 divider. All `ted-site-header__…` classes.
+  - The pinned bar `nav.ted-bar` (sticky, white, gray-20 border):
+    - the tabs restyled as TED tabs, with "Notice types" and "View templates"; the 20 px spacer is gone;
+    - `#centralLoadingSpinner` moved out of the `ul` (a `div` in a `ul` was invalid), as the 20 px `ted-loading` ring with a visually hidden "Loading", and tour step 2's new first sentence;
+    - the `.progress` pair as the 3 px line on the bar's bottom edge.
+    - `--ted-bar-height` defaults to `0px` in `ted-theme.css` and is set by a `ResizeObserver` in `script.js`.
+  - `main.ted-main` (24 px gutter, white) holds `div.ted-comparison-line`, then a new `div.tab-content` around the panes; the panes are not re-indented, to keep the diff readable.
+    - The comparison line holds "Comparing", the "base:" and "target:" labels, the two selects as `form-select ted-version-select` with `aria-label` "Base version" and "Target version" (chip look, chevron recoloured eu-blue-100, commented), the chevron-right separator, a spacer, and the legend `ul.ted-legend` with `.ted-marker--added/removed/modified` (the glyphs and the dot in CSS, colours from the `--*-marker-color` variables).
+    - Tour step 0's popover attributes are on the span around "Comparing" through the target select. Step 3's are on the legend, with "markers" for "color coding".
+  - The TED footer from the mockup, as `ted-footer__…` classes; `#apiStatus` moved unchanged to the end of `body`.
+  - `style.css`: removed the 100vh body, `body > header/nav/main/footer`, the `.navbar*`, `.version-text`, `.comparison-text` (and its arrow), `.ms-auto`, legend and `#centralLoadingSpinner` rules, and `--op-green-color` and `--dark-background-color`, now unused. `--light-background-color` stays: two templates use it.
+  - Deviations and choices, for the design and planning sessions to confirm or correct:
+    - The EU global banner keeps the europa.eu component's literal colours from the mockup's own rules (`#444`, `#fff`, `#004494`, `#ffd617`, `#ccc`, its shadow). This is an exception to "Tokens, not literals", commented in the CSS.
+    - The mockup's two `<header>` elements are one `header.ted-site-header` with two rows, so the page has one banner landmark.
+    - The service chip links to `./`, the explorer itself; the mockup has `#`.
+    - The footer's "Back to top" button is left out: the plan names the two bands only, and the button would need script.
+    - The progress line starts hidden (`display: none`), so its track does not show before the first load. `tab-controller.js`'s `show()`/`hide()` are unchanged.
+    - The bar does not wrap as a whole. On a narrow screen the tabs wrap inside it and the ring stays at its end: one row of 56 px at 1440 px, two rows of tabs (106 px) at 1024 px and 768 px. If the bar itself wraps, the hidden ring takes a third row.
+    - `.form-select { min-width: 150px }` stays in `style.css` for the filter selects; the version selects override it.
+    - Tour placements: the attributes are unchanged, as the plan says, and Bootstrap flips them all to fit: step 0 left becomes right (the anchor is at the page's left edge); step 1 bottom becomes right (Popper's flip rejects bottom because a 276 px popover centred under the Fields tab, now at x = 100, would overflow the left edge by 0.2 px; before, the tab sat further right); step 2 top becomes right; step 3 stays top. All four show, read and close. Increment 8, which restyles the tour popovers, is the place to choose placements.
+  - Checked in the browser, 1.13.0 vs 1.12.0:
+    - 1440 px, against `home.png` and `fields.png`: the header, bar, comparison line and footer match, apart from "Back to top". The bar is 56 px and stays at the top while the page scrolls 1500 px.
+    - 1024 px and 768 px: the tabs wrap inside the bar without overlap. The legend stays on the versions' row at 1024 px and wraps under them at 768 px.
+    - No horizontal scroll at any width, no console errors, no failed requests (apart from the `rules.efx` probes of versions without EFX rules).
+    - The banner opens and closes. The quick tour shows its four steps on the moved anchors and closes after the last.
+  - Smoke: 69 passed, no selector change: the tab ids, `li.nav-item` and `d-none`, the selects' ids, `#centralLoadingSpinner`'s visibility and `#apiStatus` are unchanged.
+  - For Increment 4: the pre-release alert and the jumbotron are still on Home, under the comparison line, which shows on Home until Increment 10. `main` has `padding: 24px 24px 0`.
