@@ -547,3 +547,20 @@ Questions about the design go to the design session, and questions about the pla
     - no console errors.
   - Smoke: 69 passed: `#treeView`, `#tree-search`, `#tree-filter`, `#compactViewSwitch` and `#fields-source-alert` are unchanged.
   - For Increment 7: the diff views' `.view-diff` still has `overflow: hidden`, and `.d2h-code-wrapper` its `max-height`; both go there.
+- 2026-11-02: Increment 7 done (`460ea4e`).
+  - `ted-theme.css`, file diff section, document-level rules for diff2html:
+    - `.d2h-file-wrapper` gets the card look.
+    - The file header: `.d2h-file-name` in monospace 15 px bold; diff2html's `.d2h-tag` (its text, e.g. "CHANGED") as a status line with a `::before` marker per tag class (`d2h-added`, `d2h-deleted`, `d2h-changed`/`d2h-moved`).
+    - "Base" and "Target" are the `::before` of the two `.d2h-file-side-diff` columns, 13 px bold on gray-5.
+    - Lines: monospace 13 px, 22 px high. Line numbers are gray-75 on gray-5, or #333 on the tint of a changed line. The `+`/`-` prefixes are bold in the marker colours.
+    - `del` and `ins` are bold with an inset 2 px underline in the marker colour, `del` also struck through. Hunk headers (`.d2h-info`) are on eu-blue-5 in gray-75.
+  - Deviation: diff2html's stylesheet loads after `ted-theme.css` (Increment 1's order), so equal-specificity rules lost; for example, the panel kept diff2html's 3 px radius and `del` was not struck through. The section's selectors are therefore scoped with `.view-diff`, the class of all six diff containers (codelists, schemas, schematrons, validation, translations, view templates).
+  - `style.css`: `.d2h-code-wrapper` loses its `max-height` and vertical scroll (now `overflow-x: auto; overflow-y: hidden`), and `.view-diff` its `overflow`, so the page is the only vertical scroll. `diff.js`'s horizontal-scroll sync is unchanged and still works: scrolling one side 120 px moves the other 120 px.
+  - Checked in the browser, Codelists, `notice-subtype_can-modif`, 1.13.0 vs 1.12.0, against `codelist-comparison.png`:
+    - the same panel, headings, lines, changed words and hunk headers;
+    - the tag reads "CHANGED", diff2html's own text, as the plan says;
+    - not done: the version numbers in the captions and the item's name in the breadcrumb and as the H1 (O4);
+    - the code wrappers are as tall as their content, with no inner vertical scroll; no console errors.
+  - Codelists main-thread time, run interleaved with the previous commit `1e1592a`: 8.6 s against 8.5–9.0 s, style recalc 0.9 s in both. `ted-theme.css` is now about 32 KB, and its parse is shared between the shadow roots as before.
+  - Smoke: 69 passed (`.d2h-file-header .d2h-file-name` unchanged). A first run hung after its 26th check when the container was paused for about two hours mid-run; it was stopped and re-run.
+  - For later increments: `.column` and `.column > *:nth-child(2)` in `style.css` (an inner scroll) match nothing, since no element has the class; they can go with Increment 9's clean-up.
