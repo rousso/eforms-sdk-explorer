@@ -472,3 +472,14 @@ Questions about the design go to the design session, and questions about the pla
     - The banner opens and closes. The quick tour shows its four steps on the moved anchors and closes after the last.
   - Smoke: 69 passed, no selector change: the tab ids, `li.nav-item` and `d-none`, the selects' ids, `#centralLoadingSpinner`'s visibility and `#apiStatus` are unchanged.
   - For Increment 4: the pre-release alert and the jumbotron are still on Home, under the comparison line, which shows on Home until Increment 10. `main` has `padding: 24px 24px 0`.
+- 2026-11-02: Increment 4 done (`082bd3e`).
+  - The Home pane holds `div.ted-home`: the text column (`.ted-home__text`) with the H1, the lead and the existing paragraph, then the side card `aside.ted-home__card` (`aria-labelledby="reading-title"`) with the tour block and "Reading the comparison", its paragraph and the three marker items. The texts are copied from `home.html`, and the markers reuse Increment 3's `.ted-marker`.
+  - The pre-release alert and the old banner block (the Bootstrap upgrade's `p-5 mb-4 bg-light rounded-3` in place of the jumbotron) are removed, and so is the sentence about the tour.
+  - `#start-tour` keeps its id and becomes `btn btn-tertiary btn-sm` "Start quick tour", with `type="button"`.
+  - `.btn-tertiary` is new, in the home section: gray-75 border and text, gray-10 on hover, a gray-75 focus ring, as in the design system's `focus.css`.
+  - Checked in the browser, 1.13.0 vs 1.12.0:
+    - 1440 px against `home.png`: the same, apart from the two comparison buttons (Increment 10) and the comparison line above, which shows on Home until Increment 10. The text column is 768 px (48rem) at the left; the card is 440 px at the right edge. H1 32 px, lead 20 px.
+    - 768 px: the card goes below the text, no horizontal scroll.
+    - The quick tour runs its four steps from the new button and closes after the last. No console errors.
+  - Smoke: 69 passed (`#start-tour` unchanged).
+  - For Increment 5: `.ted-home__card` already has the card look (gray-20 border, 8 px radius, the card shadow). The tertiary button is in the home section; move it to the foundation if another screen needs it.
