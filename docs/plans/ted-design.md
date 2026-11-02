@@ -595,3 +595,26 @@ Questions about the design go to the design session, and questions about the pla
     - the base select's hover popover has the same look;
     - not done: "Step 1 of 4" (O3), and step 0's text, which changes with its anchor in Increment 10;
     - no console errors.
+- 2026-11-02: Increment 9 done (`5e2f3a4`). This completes the restyle, Increments 1 to 9.
+  - Validation: the overview's H1 and the Source selector form a `.ted-toolbar` (from Increment 6), like Fields. "Source:" is unchanged, and so are `#validation-source`'s ids, names and values.
+  - Release notes:
+    - the pane loses `mh-100 overflow-auto p-3`, an inner scroll, so the page is the only scroll;
+    - `#release-notes` gets the TED typography: H1 32 px, H2 28 px, H3 24 px, body 16 px / 1.62, code in monospace 15 px, at most 65rem wide. The links take the foundation's.
+  - Schemas, Schematrons, Translations and View templates needed nothing more: their overviews and comparisons already use the patterns of Increments 5 and 7.
+  - README: unchanged. Its "Using the SDK Explorer" section does not describe the old look, so the plan's condition does not apply. CHANGELOG: a "New look" entry under 0.2.0.
+  - Clean-up (the planning session's additions):
+    - `.column` and `.column > *:nth-child(2)` are removed from `style.css`.
+    - `ted-theme.css` (11.8 KB, from about 33 KB) keeps the header comment, the foundation section and the change-marker rules (`.ted-marker`, used by the index cards' status line). `ted-page.css` (24.3 KB, new) has the rest, unchanged and in the same order: chrome, home, the breadcrumb, the toolbar and notification, the diff, the states, the other tabs.
+    - `index.html` links `ted-page.css` right after `ted-theme.css`; `appConfig.stylesheets` and the components are unchanged. Both files are plain ASCII, and neither starts with `@charset`.
+    - Codelists main-thread time, 1.13.0 vs 1.12.0, three runs each:
+      - before the split (`035a64f`): 9.3–9.6 s, and 14.4 s for a cold first run; style recalc 0.8–0.9 s;
+      - after: 8.5–9.6 s, style recalc 0.8–0.9 s.
+      - No clear gain, within the run-to-run spread: the parse was already shared between the shadow roots. The split is kept for clarity, as agreed.
+  - Checked in the browser:
+    - 1440 px, 1.13.0 vs 1.12.0, every tab: the overviews, the Schemas, Translations and View templates comparisons, and the release notes. No default Bootstrap look left.
+    - 1440 px, the 2.0.0-alpha.4 / alpha.3 pair: Validation's cards.
+    - 1024 px: Fields, Notice types, Codelists, the release notes, a Schemas comparison, View templates and Validation. The bar wraps its tabs, the Fields panels still fit side by side, and nothing overflows.
+    - No horizontal scroll and no console errors.
+    - In the cloud run, the git-trees stand-in has no listing for 1.13.0/1.12.0, so the Schematrons tab of that pair showed its empty state with the toast ("Error fetching directory listing from GitHub"). This is the stand-in's limit, not the app's; the smoke script's Schematrons checks use the alpha pair, which passes.
+  - Smoke: 69 passed.
+  - For Increment 10: the comparison line, its two chip-look selects and their labels are in `index.html`'s `div.ted-comparison-line`, and their rules are in the chrome section, now in `ted-page.css`. Tour step 0 is on `.ted-comparison-line__versions` and step 3 on `.ted-legend`, each with `data-bs-placement="bottom"` and `data-bs-fallback-placements='["bottom"]'`. The new picker section goes in `ted-page.css`.
