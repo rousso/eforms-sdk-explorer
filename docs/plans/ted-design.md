@@ -41,7 +41,7 @@ The user approved every decision below after reviewing the canvas and these mock
 4. **One page scroll (the user's request).** The page is the only main scroll; panels do not get their own scrollbars. The following stick under the pinned bar:
    - the tree's search/filter header
    - the Details panel, which scrolls on its own only when a field's details are taller than the window
-   - the card group's filter list
+   - the card group's filter list, which, like the Details panel, scrolls on its own only when it is taller than the window (amended by Increment 11c)
    This replaces today's fixed-height layout (`84px`, `42px`, `calc(100vh - 84px - 42px - 42px - 44px)` in `style.css`), which also breaks the page at 1024 px and 768 px.
 5. **Change colours.** Added, removed and modified are the product's core signal. They use TED semantic tokens: a strong colour for markers and a surface tint for rows and labels.
 
@@ -340,6 +340,29 @@ Files: `index.html` (comparison line, Home buttons, dialog, tour attributes), `t
     - the dialog's Compare with two changed values starts exactly one reload. Count the calls to `versionChanged`, or the spinner's hidden-to-visible transitions.
   - Record the new check count in Progress. From this increment on, it is the expected count.
 - Verification: the smoke script passes with the new count. Compare Home with `home.png`, the Fields comparison line and open menu with `fields.png`, and the dialog with `version-dialog.png`. Run the tour: step 0 on "Choose versions…", step 3 on the side card. Then choose versions with the keyboard alone: Tab to a chip, Enter, the arrow keys, Enter.
+
+### Increment 11 — follow-ups from an external review (S)
+An external review (Codex) of `feature/ted-design` at `8570135` found five defects; the planning session checked them against the code. One commit per item, `npm run smoke` before each push, a Progress line per item.
+- **a. The dialog opened before the picker starts** (`index.html`, `src/js/version-picker.js`).
+  - Symptom: "Choose versions…" opens the dialog through Bootstrap's `data-bs-toggle="modal"`, before `start()` has attached its `show.bs.modal` handler. The dialog is then empty, and its Compare sets both selects to `''` and `appState.mainVersion` to `null`.
+  - Fix: `#compare-versions`, `#choose-versions` and the two chip buttons start with the `disabled` attribute in `index.html`; `start()` enables them once the menus are built (the selects are filled by then). In addition, `#applyDialog()` takes an empty value as no change, so an empty dialog can never apply anything.
+  - Verify: a smoke check opens Home before `initVersions()` has resolved, by forgetting the cached version list and holding its request. It asserts that the two buttons are disabled, then enabled once start-up is done, and that Compare in the dialog with its values unchanged triggers no change.
+- **b. The scroll position across tab switches** (`src/js/script.js`).
+  - Symptom: the page keeps its scroll offset, clamped to the new tab's height, so after scrolling down a long tab and clicking Home the work area is above the window.
+  - Fix: next to the `--ted-bar-height` observer, a `shown.bs.tab` listener on `ul.nav-tabs`. If the page is scrolled past the top of `main`, it scrolls so that `main`'s top sits just under the pinned bar; if the page is still at the top, it leaves it, so the header stays in view. No change to `app.js`.
+  - Verify: a smoke check scrolls far down a long tab, clicks Home, and asserts that `#compare-versions` is within the window.
+- **c. The tall sticky filter list** (`#card-group-template`).
+  - Symptom: the Codelists parent filter is about 886 px tall at 1440×768 and sticks at 72 px, so its lower options are out of reach until the end of the cards.
+  - Fix: `#nav` gets what the Details panel already has: `max-height: calc(100vh - var(--ted-bar-height) - 32px)` and `overflow-y: auto`. It stays sticky and scrolls inside only when it is taller than the window. This amends Decision 4.
+  - Verify by eye at 1440×768: scroll Codelists; the filter list stays in view, and its last options (`timeperiod`) are reachable by scrolling the list.
+- **d. Tour step 3 at 768 px** (`index.html`, the attributes of `ul.ted-home__markers`).
+  - Symptom: with the side card stacked under the text, `left` with the single fallback `["left"]` puts the 420 px popover off the left edge.
+  - Fix: `data-bs-placement="left" data-bs-fallback-placements='["bottom"]'`. When `left` does not fit, the popover goes below the list, and the shift keeps it in view. This amends Increment 8's placement note and Increment 10's step 3.
+  - Verify at 1440 px (still left) and 768 px (below, fully visible, Done reachable); the tour smoke check still passes.
+- **e. Long tree labels** (`#tree-detail-split-view-template`).
+  - Symptom: the Structure panel has `overflow: clip`, so at 1024 px long field names vanish past its 480 px. `develop` allowed a horizontal scroll.
+  - Fix: `overflow-x: auto` on `#treeViewContainer`, the tree's own container. It is not an ancestor of the sticky Structure header, so the header keeps sticking, and its height is unrestricted, so the page stays the vertical scroll. A horizontal scrollbar appears only when a label is wider than the panel.
+  - Verify at 1024 px with 1.13.0 vs 1.12.0: expand the tree. The long labels are reachable by horizontal scroll, the Structure header still sticks under the bar, and the panel has no vertical scrollbar of its own.
 
 ## Optional items (each needs the user's go-ahead; not part of the restyle)
 
