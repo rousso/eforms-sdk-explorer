@@ -203,18 +203,21 @@
 
         <!-- Fields -->
         <div class="tab-pane h-100 fade show" id="fields-tab-content" role="tabpanel" aria-labelledby="fields-tab">
-            <div class="container-fluid h-100 d-flex flex-column">
-                <div class="d-flex align-items-center flex-shrink-0 pt-2">
-                    <span id="fields-source-label" class="me-2">Metadata source:</span>
-                    <div id="fields-source" class="btn-group btn-group-sm" role="group" aria-labelledby="fields-source-label">
-                        <input type="radio" class="btn-check" name="fields-source" id="fields-source-fields-json" value="fields-json" autocomplete="off" checked>
-                        <label class="btn btn-outline-secondary" for="fields-source-fields-json">fields.json</label>
-                        <input type="radio" class="btn-check" name="fields-source" id="fields-source-fwd" value="fwd" autocomplete="off">
-                        <label class="btn btn-outline-secondary" for="fields-source-fwd">fwd/</label>
+            <div class="ted-fields">
+                <div class="ted-toolbar">
+                    <h1>Fields</h1>
+                    <div class="ted-toolbar__source">
+                        <span id="fields-source-label">Metadata source:</span>
+                        <div id="fields-source" class="btn-group btn-group-sm" role="group" aria-labelledby="fields-source-label">
+                            <input type="radio" class="btn-check" name="fields-source" id="fields-source-fields-json" value="fields-json" autocomplete="off" checked>
+                            <label class="btn btn-outline-secondary" for="fields-source-fields-json">fields.json</label>
+                            <input type="radio" class="btn-check" name="fields-source" id="fields-source-fwd" value="fwd" autocomplete="off">
+                            <label class="btn btn-outline-secondary" for="fields-source-fwd">fwd/</label>
+                        </div>
                     </div>
                 </div>
-                <div id="fields-source-alert" class="alert alert-warning flex-shrink-0 mt-2 mb-0 d-none" role="alert"></div>
-                <tree-detail-split-view id="fields-explorer" class="flex-grow-1" style="min-height: 0;"></tree-detail-split-view>
+                <div id="fields-source-alert" class="ted-notification ted-notification--warning d-none" role="alert"></div>
+                <tree-detail-split-view id="fields-explorer"></tree-detail-split-view>
             </div>
         </div>
 
@@ -241,8 +244,7 @@
                     </nav>
 
                     <!-- Content -->
-                    <tree-detail-split-view id="notice-type-explorer" class="flex-grow-1"
-                        style="overflow-x: hidden; overflow-y: auto;"></tree-detail-split-view>
+                    <tree-detail-split-view id="notice-type-explorer"></tree-detail-split-view>
 
                 </div> <!-- End of notice-type comparison row -->
 
@@ -647,17 +649,70 @@
 <!-- PropertyCard template - used by property-card.js -->
 <template id="property-card-template">
     <style>
+        /* A row: in a card, the label above the value, inset 16px; in the details (tree-detail-split-view sets the
+           --property-row-* properties), a 170px label column beside the value. A gray-10 divider below. */
         .property-flex {
-            display: flex;
-            flex-direction: row;
+            display: var(--property-row-display, flex);
             flex-wrap: wrap;
+            grid-template-columns: var(--property-row-columns, none);
+            gap: var(--property-row-gap, 0);
+        }
+
+        #list-item {
+            margin: var(--property-row-margin, 0 16px);
+            padding: var(--property-row-padding, 8px 0);
+            border: 0;
+            border-bottom: 1px solid var(--gs-base-color-gray-10);
+        }
+
+        .unchanged-property {
+            display: var(--compact-view-unchanged-display, var(--property-row-display, flex));
         }
 
         .property-label {
+            display: flex;
             flex-basis: 100%;
-            font-size: var(--gs-base-font-size-xs);
+            align-items: flex-start;
+            gap: 8px;
+            padding-top: var(--property-label-padding-top, 0);
+            font-size: var(--property-label-size, var(--gs-base-font-size-xs));
             font-weight: 700;
             line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        /* The marker of a changed property, before its label. */
+        .added-property .property-label::before,
+        .removed-property .property-label::before,
+        .modified-property .property-label::before {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            margin-top: 2px;
+            border-radius: 2px;
+            color: var(--gs-base-color-white);
+            font-family: "gs-icon";
+            font-size: 10px;
+            font-weight: 400;
+            line-height: 1;
+        }
+
+        .added-property .property-label::before { content: "\e900"; background: var(--added-marker-color); }
+        .removed-property .property-label::before { content: "\e92c"; background: var(--removed-marker-color); }
+        .modified-property .property-label::before {
+            content: "";
+            background: radial-gradient(circle, var(--gs-base-color-white) 3px, transparent 3.5px), var(--modified-marker-color);
+        }
+
+        .property-values {
+            display: flex;
+            flex-basis: 100%;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
         }
 
         .property-value {
@@ -669,204 +724,345 @@
             overflow-wrap: anywhere;
         }
 
+        /* A changed value in a box: Base (the removed or old value) above Target (the added or new one), each with
+           its caption strip. */
+        .removed-property #old-property-value,
+        .added-property #new-property-value,
+        .old-property-value,
         .new-property-value {
-            background-color: var(--added-item-background-color);
-            color: black;
-            margin: 1px 0px 1px 4px;
-            border-radius: 5px;
-            border-top: 6px solid #B8E6C2;
-            box-shadow: 1px 1px 3px 1px #A3A9CC;
-            padding: 2px 4px;
-            flex-basis: calc(50% - 4px);
+            margin-top: 0;
+            padding: 8px 10px;
+            overflow: hidden;
+            border: 1px solid var(--gs-base-color-gray-20);
+            border-radius: var(--gs-base-radius-s);
         }
 
-        .old-property-value {
-            background-color: var(--removed-item-background-color);
-            color: black;
-            margin: 1px 4px 1px 0px;
-            border-radius: 5px;
-            border-top: 6px solid #E6B8BC;
-            box-shadow: 1px 1px 3px 1px #A3A9CC;
-            padding: 2px 4px;
-            flex-basis: calc(50% - 4px);
+        .removed-property #old-property-value::before,
+        .added-property #new-property-value::before,
+        .old-property-value::before,
+        .new-property-value::before {
+            display: block;
+            margin: -8px -10px 8px;
+            padding: 4px 10px;
+            font-family: var(--font-sans);
+            font-size: var(--gs-base-font-size-xs);
+            font-weight: 700;
         }
 
-        .added-property {
-            background-color: var(--added-item-background-color);
-            color: black;
+        .removed-property #old-property-value::before,
+        .old-property-value::before {
+            content: "Base";
+            background: var(--removed-item-background-color);
         }
 
-        .removed-property {
-            background-color: var(--removed-item-background-color);
-            color: black;
-        }
-
-        .modified-property {
-            background-color: var(--modified-item-background-color);
-            color: black;
-        }
-
-        .unchanged-property {
-            display: var(--compact-view-unchanged-display, flex);
-        }
-
-        /* A row: 8px above and below, a gray-10 divider, inset 16px in the card. */
-        #list-item {
-            margin: 0 16px;
-            padding: 8px 0;
-            border: 0;
-            border-bottom: 1px solid var(--gs-base-color-gray-10);
+        .added-property #new-property-value::before,
+        .new-property-value::before {
+            content: "Target";
+            background: var(--added-item-background-color);
         }
     </style>
     <li id="list-item" class="list-group-item property-flex">
         <span id="property-name" class="property-label"></span>
-        <div id="old-property-value" class="property-value"></div>
-        <div id="new-property-value" class="property-value"></div>
+        <div class="property-values">
+            <div id="old-property-value" class="property-value"></div>
+            <div id="new-property-value" class="property-value"></div>
+        </div>
     </li>
 </template>
 
 <!-- Tree/Detail split-view template - used by tree-detail-split-view-.js -->
 <template id="tree-detail-split-view-template">
     <style>
-        .tree-container {
-            padding: 8px;
+        /* The Structure and Details panels side by side, stacked on a narrow screen; nothing while there is no tree. */
+        #split-view {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 16px;
         }
 
-        .details-container {
-            padding: 0px;
+        #split-view:has(#treeView:empty) {
+            display: none;
         }
 
-        .tree-container,
-        .details-container {
-            overflow-x: hidden;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            background-color: #f8f9fa;
-            background-color: white;
-            box-shadow: 1px 1px 3px 1px lightgray;
-            margin: 4px;
+        .panel {
+            flex: 1 1 480px;
+            min-width: 0;
+            background: var(--gs-base-color-white);
+            border: 1px solid var(--gs-base-color-gray-20);
+            border-radius: var(--gs-base-radius-m);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
         }
 
-        .removed-node>a {
-            color: black !important;
-            background-color: var(--removed-item-highlight) !important;
-            border-radius: 5px !important;
-            border-left: 1px solid white;
-            border-right: 1px solid white;
+        .panel-title {
+            margin: 0;
+            font-size: var(--gs-base-font-size-l);
+            font-weight: 700;
+            line-height: 1.15;
         }
 
-        .added-node>a {
-            background-color: var(--added-item-highlight) !important;
-            color: black !important;
-            border-radius: 5px !important;
-            border-left: 1px solid white;
-            border-right: 1px solid white;
+        /* Structure: the header sticks under the pinned bar; the tree has no scroll of its own. */
+        #structure-panel {
+            overflow: clip;
         }
 
-        .modified-node>a {
-            background-color: var(--modified-item-highlight) !important;
-            color: black !important;
-            border-radius: 5px !important;
-            border-left: 1px solid white;
-            border-right: 1px solid white;
+        #structure-header {
+            position: sticky;
+            top: var(--ted-bar-height);
+            z-index: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 12px;
+            padding: 16px;
+            background: var(--gs-base-color-white);
+            border-bottom: 1px solid var(--gs-base-color-gray-20);
         }
 
-        .card-header {
-            border-bottom-width: 5px;
+        #structure-header .panel-title {
+            flex: 1 1 auto;
+            align-self: center;
+        }
+
+        #tree-search-control {
+            width: 240px;
+        }
+
+        #tree-filter-control {
+            width: 140px;
+        }
+
+        #treeViewContainer {
+            padding: 8px 0;
+        }
+
+        /* Details: sticks under the pinned bar; its properties scroll inside only when they are taller than the window. */
+        #details-panel {
+            position: sticky;
+            top: calc(var(--ted-bar-height) + 16px);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - var(--ted-bar-height) - 32px);
+            overflow: hidden;
+        }
+
+        #details-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border-bottom: 1px solid var(--gs-base-color-gray-20);
+        }
+
+        #details-header .panel-title {
+            flex: 1 1 auto;
+        }
+
+        #details-header .form-check {
+            margin-bottom: 0;
+        }
+
+        #detail-heading {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 16px;
+            border-bottom: 1px solid var(--gs-base-color-gray-20);
+        }
+
+        #detail-title {
+            margin: 0;
+            font-size: var(--gs-base-font-size-l);
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        #detail-subtitle {
+            margin: 0;
+            color: var(--gs-base-color-gray-75);
+            font-family: var(--font-mono);
+            font-size: var(--gs-base-font-size-s);
         }
 
         #compact-view-warning {
             display: var(--compact-view-warning-display, none);
+            margin: 8px 0 0;
+            color: var(--gs-base-color-gray-75);
+            font-size: var(--gs-base-font-size-xs);
         }
 
-        /* Headings that group the tree-nodes (forward-compatible metadata in the Fields tab) */
-        .root-node > .jstree-anchor {
-            font-weight: bold;
-            color: inherit !important;
+        /* The properties: a grid of a 170px label and its value (see the property-card template). */
+        #detail-view {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
         }
 
-        /* jQuery Treeview */
-        .jstree-wholerow-ul {
-            background-color: white;
-            display: block;
+        #detail-view property-card {
+            --property-row-display: grid;
+            --property-row-columns: 170px minmax(0, 1fr);
+            --property-row-gap: 8px 16px;
+            --property-row-margin: 0;
+            --property-row-padding: 12px 16px;
+            --property-label-size: var(--gs-base-font-size-s);
+            --property-label-padding-top: 4px;
+        }
+
+        /* The tree: 28px rows, no icons. */
+        .jstree-default .jstree-node,
+        .jstree-default .jstree-icon {
+            min-height: 28px;
+            line-height: 28px;
+        }
+
+        .jstree-default .jstree-icon {
+            height: 28px;
+        }
+
+        .jstree-default .jstree-anchor {
+            height: 28px;
+            line-height: 28px;
+            color: var(--gs-base-color-gray-100);
+            font-size: var(--gs-base-font-size-s);
+        }
+
+        .jstree-default .jstree-wholerow {
+            height: 28px;
         }
 
         .jstree-default .jstree-wholerow-hovered {
-            height: 24px;
-            background: #fcfcfd;
+            background: var(--gs-base-color-gray-5);
         }
 
+        /* The selected row: gray-10, its label bold. */
         .jstree-default .jstree-wholerow-clicked {
-            height: 24px;
-            background: #d6d6d6;
+            background: var(--gs-base-color-gray-10);
+        }
+
+        #treeView .jstree-clicked {
+            font-weight: 700;
+        }
+
+        /* A node row (ND-...): its id in monospace. Headings that group the tree-nodes (forward-compatible metadata in
+           the Fields tab) are bold. */
+        #treeView .jstree-node:not(.jstree-leaf):not(.root-node) > .jstree-anchor {
+            font-family: var(--font-mono);
+            font-size: var(--gs-base-font-size-xs);
+        }
+
+        #treeView .root-node > .jstree-anchor {
+            font-weight: bold;
+            color: inherit;
+        }
+
+        /* A changed field: its marker, then its label on the tint with a 4px radius. */
+        #treeView .added-node > .jstree-anchor,
+        #treeView .removed-node > .jstree-anchor,
+        #treeView .modified-node > .jstree-anchor {
+            position: relative;
+            height: 22px;
+            margin: 3px 0 3px 22px;
+            padding: 0 6px;
+            line-height: 22px;
+            border-radius: var(--gs-base-radius-s);
+        }
+
+        #treeView .added-node > .jstree-anchor { background: var(--added-item-highlight); }
+        #treeView .removed-node > .jstree-anchor { background: var(--removed-item-highlight); }
+        #treeView .modified-node > .jstree-anchor { background: var(--modified-item-highlight); }
+
+        #treeView .added-node > .jstree-anchor::before,
+        #treeView .removed-node > .jstree-anchor::before,
+        #treeView .modified-node > .jstree-anchor::before {
+            position: absolute;
+            top: 3px;
+            left: -22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+            color: var(--gs-base-color-white);
+            font-family: "gs-icon";
+            font-size: 10px;
+            font-weight: 400;
+            line-height: 1;
+        }
+
+        #treeView .added-node > .jstree-anchor::before { content: "\e900"; background: var(--added-marker-color); }
+        #treeView .removed-node > .jstree-anchor::before { content: "\e92c"; background: var(--removed-marker-color); }
+        #treeView .modified-node > .jstree-anchor::before {
+            content: "";
+            background: radial-gradient(circle, var(--gs-base-color-white) 3px, transparent 3.5px), var(--modified-marker-color);
         }
     </style>
-    <div class="row row-cols-2 h-100">
-        <slot name="search-popover-title" style="display: none;">Looking for a particular item?</slot>
-        <slot name="search-popover-content" style="display: none;">
-            <p>Search and highlight items by {searchableProperties}.</p>
-            <ul>
-                <li>Example: search for <code>cbc:ID</code> to find all items with "cbc:ID" in their xpathRelative.</li>
-            </ul>
-            <p>Use space or comma (<code>,</code>) to separate multiple search terms:</p>
-            <ul>
-                <li><code>term1 term2,term3</code> means "(term1 AND term2) OR term3"</li>
-            </ul>
-            <p>Prefix a property name with plus (<code>+</code>), minus (<code>-</code>) or tilde (<code>~</code>) to
-                search for items with the specified property added, removed or modified.</p>
-            <ul>
-                <li>Example: search for <code>~codeList</code> to find all items with their "codeList" property
-                    modified.</li>
-            </ul>
-            <p>Prefix with asterisk (<code>*</code>) to detect any change in the property.</p>
-            <ul>
-                <li>Example: search for <code>*codeList</code> to find all items with their "codeList" property added,
-                    removed or modified.</li>
-            </ul>
-            <p>Property names are <code>caseSensitive</code>.</p>
-        </slot>
-
-        <!-- Tree -->
-        <div class="col d-flex flex-column h-100">
-            <header class="d-flex flex-grow-0 flex-shrink-0 fw-bold">
-                <div style="flex: 1; align-self: self-end;">Structure</div>
-                <input type="text" id="tree-search" placeholder="Search" class="form-control form-control-sm m-1"
-                    style="width: 200px;" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="left"
-                    data-bs-html="true">
-                <select id="tree-filter" class="form-select form-select-sm m-1" style="width:100px;">
-                    <option value="all">all</option>
-                    <option value="added">added</option>
-                    <option value="removed">removed</option>
-                    <option value="modified">modified</option>
-                </select>
+    <slot name="search-popover-title" style="display: none;">Looking for a particular item?</slot>
+    <slot name="search-popover-content" style="display: none;">
+        <p>Search and highlight items by {searchableProperties}.</p>
+        <ul>
+            <li>Example: search for <code>cbc:ID</code> to find all items with "cbc:ID" in their xpathRelative.</li>
+        </ul>
+        <p>Use space or comma (<code>,</code>) to separate multiple search terms:</p>
+        <ul>
+            <li><code>term1 term2,term3</code> means "(term1 AND term2) OR term3"</li>
+        </ul>
+        <p>Prefix a property name with plus (<code>+</code>), minus (<code>-</code>) or tilde (<code>~</code>) to
+            search for items with the specified property added, removed or modified.</p>
+        <ul>
+            <li>Example: search for <code>~codeList</code> to find all items with their "codeList" property
+                modified.</li>
+        </ul>
+        <p>Prefix with asterisk (<code>*</code>) to detect any change in the property.</p>
+        <ul>
+            <li>Example: search for <code>*codeList</code> to find all items with their "codeList" property added,
+                removed or modified.</li>
+        </ul>
+        <p>Property names are <code>caseSensitive</code>.</p>
+    </slot>
+    <div id="split-view">
+        <!-- Structure -->
+        <section id="structure-panel" class="panel" aria-labelledby="structure-title">
+            <header id="structure-header">
+                <h2 id="structure-title" class="panel-title">Structure</h2>
+                <div id="tree-search-control">
+                    <label class="form-label" for="tree-search">Search</label>
+                    <input type="text" id="tree-search" placeholder="Name, ID or property" class="form-control form-control-sm"
+                        data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="left" data-bs-html="true">
+                </div>
+                <div id="tree-filter-control">
+                    <label class="form-label" for="tree-filter">Show</label>
+                    <select id="tree-filter" class="form-select form-select-sm">
+                        <option value="all">all</option>
+                        <option value="added">added</option>
+                        <option value="removed">removed</option>
+                        <option value="modified">modified</option>
+                    </select>
+                </div>
             </header>
-            <!-- Tree View Container -->
-            <div id="treeViewContainer" class="tree-container flex-grow-1 overflow-auto">
+            <div id="treeViewContainer">
                 <div id="treeView"></div>
             </div>
-        </div>
+        </section>
 
         <!-- Details -->
-        <div class="col d-flex flex-column h-100 overflow-x-hidden">
-            <header class="d-flex flex-shrink-0 fw-bold">
-                <div style="flex: 1; align-self: self-end;">Details</div>
-                <div class="form-check form-switch">
+        <section id="details-panel" class="panel" aria-labelledby="details-title">
+            <header id="details-header">
+                <h2 id="details-title" class="panel-title">Details</h2>
+                <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="compactViewSwitch">
-                    <label class="form-check-label fw-normal" for="compactViewSwitch">Compact view</label>
+                    <label class="form-check-label" for="compactViewSwitch">Compact view</label>
                 </div>
             </header>
-            <div class="card details-container flex-grow-1">
-                <div class="card-header" style="flex:none">
-                    <h5 id="detail-title" class="card-title"></h5>
-                    <h6 id="detail-subtitle" class="card-subtitle">Select a node to see details.</h6>
-                </div>
-                <ul id="detail-view" class="list-group list-group-flush">
-                </ul>
-                <div id="compact-view-warning" class="card-body" style="flex:none">
-                    <div class="alert alert-warning" role="alert">Unchanged properties are hidden in compact view.</div>
-                </div>
+            <div id="detail-heading">
+                <h3 id="detail-title"></h3>
+                <p id="detail-subtitle">Select a node to see details.</p>
+                <p id="compact-view-warning">Unchanged properties are hidden in compact view.</p>
             </div>
-        </div>
+            <ul id="detail-view" class="list-group list-group-flush">
+            </ul>
+        </section>
     </div>
 </template>
 

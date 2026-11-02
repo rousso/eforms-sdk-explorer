@@ -137,7 +137,9 @@ export class TreeDetailSplitView extends BootstrapWebComponent {
                 data: dataCallback(),
                 check_callback: true,
                 // The labels are SDK names and ids: show them as text, never as HTML.
-                force_text: true
+                force_text: true,
+                // No folder or file icons: changed fields show their markers instead (see the template).
+                themes: { icons: false }
             },
             plugins: ["wholerow", "search"],
             search: {

@@ -852,6 +852,43 @@ a:not(.btn):focus-visible {
 
 /* Tree and detail (Increment 6): the Fields toolbar, the Structure and Details panels, the tree, the details. */
 
+/* A tab's toolbar: its heading at the left, its source selector at the right. (The tree/detail-split-view template
+   styles the panels, the tree and the details.) */
+.ted-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+    margin-bottom: 16px;
+}
+
+.ted-toolbar h1 {
+    margin: 0;
+}
+
+.ted-toolbar__source {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+/* A TED Notification: a 4px bar in the status colour on its surface tint. */
+.ted-notification {
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    color: var(--gs-base-color-gray-100);
+    font-size: var(--gs-base-font-size-m);
+    line-height: 1.62;
+    border-left: 4px solid;
+}
+
+.ted-notification--warning {
+    background: var(--gs-base-color-warning-surface);
+    border-left-color: var(--gs-base-color-warning);
+}
+
 /* File diff (Increment 7): the Base and Target headings and the diff panel. */
 
 /* States (Increment 8): the error toast, the tour popovers and the hover popovers. */
