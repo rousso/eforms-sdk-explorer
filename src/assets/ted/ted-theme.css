@@ -1056,4 +1056,120 @@ a:not(.btn):focus-visible {
 
 /* States (Increment 8): the error toast, the tour popovers and the hover popovers. */
 
+/* The error toast: a TED error Notification, fixed at the bottom right. */
+#apiStatus {
+    --bs-toast-max-width: 420px;
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 1050;
+    width: auto;
+    max-width: min(420px, calc(100vw - 32px));
+    padding: 14px 16px;
+    color: var(--gs-base-color-gray-100);
+    background: var(--gs-base-color-error-surface);
+    border: 0;
+    border-left: 4px solid var(--gs-base-color-error);
+    border-radius: var(--gs-base-radius-xs);
+    box-shadow: var(--gs-base-shadow-2);
+}
+
+#apiStatus .toast-header {
+    margin-bottom: 4px;
+    padding: 0;
+    color: var(--gs-base-color-gray-100);
+    background: none;
+    border: 0;
+}
+
+#apiStatus .toast-header strong {
+    font-weight: 700;
+}
+
+#apiStatus .btn-close {
+    /* Bootstrap's close glyph in --gs-base-color-gray-75 (#666666). */
+    --bs-btn-close-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23666666'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414'/%3e%3c/svg%3e");
+    --bs-btn-close-opacity: 1;
+    --bs-btn-close-hover-opacity: 1;
+    margin: 0 0 0 auto;
+}
+
+#apiStatus .toast-body {
+    max-height: 33vh;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+}
+
+#apiStatus .toast-body li {
+    margin-bottom: 4px;
+    font-size: var(--gs-base-font-size-m);
+    line-height: 1.62;
+    list-style-type: none;
+}
+
+#apiStatus .toast-body li .detail {
+    display: block;
+    color: var(--gs-base-color-gray-75);
+}
+
+/* Popovers (the quick tour, the hover popovers of the version selects, the search help): white, a gray-20 border,
+   a 4px radius, the shadow-2 elevation; the title 18px bold without a band, the body 14px. */
+.popover {
+    --bs-popover-max-width: 420px;
+    --bs-popover-border-color: var(--gs-base-color-gray-20);
+    --bs-popover-border-radius: var(--gs-base-radius-s);
+    --bs-popover-inner-border-radius: calc(var(--gs-base-radius-s) - 1px);
+    --bs-popover-font-size: var(--gs-base-font-size-s);
+    --bs-popover-header-bg: var(--gs-base-color-white);
+    --bs-popover-header-color: var(--gs-base-color-gray-100);
+    --bs-popover-header-font-size: var(--gs-base-font-size-l);
+    --bs-popover-header-padding-x: 20px;
+    --bs-popover-header-padding-y: 20px;
+    --bs-popover-body-color: var(--gs-base-color-gray-100);
+    --bs-popover-body-padding-x: 20px;
+    --bs-popover-body-padding-y: 20px;
+    font-family: var(--font-sans);
+    box-shadow: var(--gs-base-shadow-2);
+}
+
+.popover-header {
+    padding-bottom: 0;
+    font-weight: 700;
+    line-height: 1.15;
+    border-bottom: 0;
+}
+
+.popover-header + .popover-body {
+    padding-top: 12px;
+}
+
+.popover-body {
+    line-height: 1.5;
+}
+
+.popover-body p {
+    margin: 0 0 12px;
+}
+
+/* The tour's buttons, right-aligned: Cancel a ghost button, Next a primary sm button. */
+.tour-button-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 4px;
+}
+
+.tour-button-container .cancel-tour,
+.tour-button-container .next-step {
+    --bs-btn-font-size: var(--gs-base-font-size-s);
+    --bs-btn-font-weight: 400;
+}
+
+.tour-button-container .next-step {
+    --bs-btn-padding-y: 8px;
+    --bs-btn-padding-x: 12px;
+}
+
 /* Other tabs (Increment 9): Validation, Schemas, Schematrons, Translations, View templates, Release notes. */

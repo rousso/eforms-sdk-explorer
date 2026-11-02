@@ -97,7 +97,7 @@
                 <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home-tab-content"
                     type="button" role="tab" aria-controls="home-tab-content" aria-selected="true">Home</button>
             </li>
-            <li class="nav-item" role="presentation" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-html="true" data-step="1" title="Switch between sections" data-bs-content="<p>Use the tabs to explore and compare different sections of the SDK.</p><p>Depending on the nature and structure of the information you will find appropriate options for filtering and searching the data.</p><div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
+            <li class="nav-item" role="presentation" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-fallback-placements='["bottom"]' data-bs-html="true" data-step="1" title="Switch between sections" data-bs-content="<p>Use the tabs to explore and compare different sections of the SDK.</p><p>Depending on the nature and structure of the information you will find appropriate options for filtering and searching the data.</p><div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
                 <button class="nav-link" id="fields-tab" data-bs-toggle="tab" data-bs-target="#fields-tab-content"
                     type="button" role="tab" aria-controls="fields-tab-content" aria-selected="false">Fields</button>
             </li>
@@ -134,7 +134,7 @@
                     type="button" role="tab" aria-controls="release-notes" aria-selected="false">Release notes</button>
             </li>
         </ul>
-        <div class="ted-loading" role="status" id="centralLoadingSpinner" style="visibility: hidden;" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="top" data-bs-html="true" data-step="2" title="Loading indicator" data-bs-content="<p>A loading indicator will appear here while data is being processed in the background.</p><p>The SDK Explorer downloads and compares SDK versions from GitHub every time you switch to a different tab. This is done to conserve memory on your browser.</p><div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
+        <div class="ted-loading" role="status" id="centralLoadingSpinner" style="visibility: hidden;" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-fallback-placements='["bottom"]' data-bs-html="true" data-step="2" title="Loading indicator" data-bs-content="<p>A loading indicator will appear here while data is being processed in the background.</p><p>The SDK Explorer downloads and compares SDK versions from GitHub every time you switch to a different tab. This is done to conserve memory on your browser.</p><div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
             <span class="visually-hidden">Loading</span>
         </div>
         <div class="progress" style="display: none;">
@@ -145,7 +145,7 @@
     <main class="ted-main">
         <!-- Comparison line: the two versions, and the legend of the change markers -->
         <div class="ted-comparison-line" role="group" aria-label="Versions compared">
-            <span class="ted-comparison-line__versions" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="left" data-bs-html="true" data-step="0" title="Select versions to compare" data-bs-content="<p>Use these dropdowns to select the versions of the SDK that you want to compare.</p><p>Select the older version (that you are migrating from) and the newer version (that you are migrating to).</p><p>SDK Explorer calls these the <i>base</i> and <i>target</i> version respectively.</p> <div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
+            <span class="ted-comparison-line__versions" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-fallback-placements='["bottom"]' data-bs-html="true" data-step="0" title="Select versions to compare" data-bs-content="<p>Use these dropdowns to select the versions of the SDK that you want to compare.</p><p>Select the older version (that you are migrating from) and the newer version (that you are migrating to).</p><p>SDK Explorer calls these the <i>base</i> and <i>target</i> version respectively.</p> <div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
                 <span>Comparing</span>
                 <label class="ted-comparison-line__label" for="base-version-dropdown">base:</label>
                 <select id="base-version-dropdown" class="form-select ted-version-select" aria-label="Base version" data-bs-toggle="popover" data-bs-trigger="hover"
@@ -160,7 +160,7 @@
                 </select>
             </span>
             <span class="ted-comparison-line__spacer"></span>
-            <ul class="ted-legend" aria-label="Change markers" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="top" data-bs-html="true" data-step="3" title="Identify changes" data-bs-content="<p>The SDK Explorer highlights changed items using the markers you see in this legend.</p><div class='tour-button-container'><a href='#' class='btn btn-primary next-step'>Done</a></div>">
+            <ul class="ted-legend" aria-label="Change markers" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-fallback-placements='["bottom"]' data-bs-html="true" data-step="3" title="Identify changes" data-bs-content="<p>The SDK Explorer highlights changed items using the markers you see in this legend.</p><div class='tour-button-container'><a href='#' class='btn btn-primary next-step'>Done</a></div>">
                 <li><span class="ted-marker ted-marker--added" aria-hidden="true"></span>Added</li>
                 <li><span class="ted-marker ted-marker--removed" aria-hidden="true"></span>Removed</li>
                 <li><span class="ted-marker ted-marker--modified" aria-hidden="true"></span>Modified</li>
@@ -526,9 +526,6 @@
     <!-- Error toast, fixed at the bottom right -->
     <div id="apiStatus" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false" >
         <div class="toast-header">
-            <svg width="16" height="16" class="rounded me-2">
-                <rect width="16" height="16" fill="red"></rect>
-            </svg>                
             <strong class="me-auto">Error</strong>
             <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>

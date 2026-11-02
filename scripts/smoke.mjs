@@ -1127,7 +1127,7 @@ class SmokeTest {
                     message: 'Error while downloading file fwd/data-types.json for SDK 2.0.0-alpha.3',
                     detail: body,
                     elements: [],
-                    detailStyle: { color: 'rgb(255, 0, 0)', display: 'block' }
+                    detailStyle: { color: 'rgb(102, 102, 102)', display: 'block' }  // --gs-base-color-gray-75, on a line of its own
                 });
                 assert.equal(await this.#explorer.globalIsSet('smokeTestInjected'), false);
             }],
