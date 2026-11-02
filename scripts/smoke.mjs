@@ -81,6 +81,9 @@ class ExplorerPage {
     /** How long a card group takes to apply a selected filter (it does so in a timeout), in milliseconds. */
     static #FILTER_PERIOD = 200;
 
+    /** How long a popover takes to show or to hide (Bootstrap fades it), in milliseconds. */
+    static #POPOVER_PERIOD = 500;
+
     /**
      * Files that the explorer requests to find out whether a version has them: for these, the browser's "404" console
      * error is expected and is not collected.
@@ -418,6 +421,38 @@ class ExplorerPage {
     async openTab(tabId) {
         await this.#page.click(`#${tabId}`);
         await this.waitUntilIdle();
+    }
+
+    /**
+     * Starts the quick tour from the Home tab, as a user would, and waits for its popover to show.
+     */
+    async startTour() {
+        await this.openTab('home-tab');
+        await this.#page.click('#start-tour');
+        await this.#page.waitForTimeout(ExplorerPage.#POPOVER_PERIOD);
+    }
+
+    /**
+     * Clicks the Next button of the shown step of the quick tour and waits for the popovers to change.
+     */
+    async nextTourStep() {
+        await this.#page.click('.popover.show .next-step');
+        await this.#page.waitForTimeout(ExplorerPage.#POPOVER_PERIOD);
+    }
+
+    /**
+     * Clicks the Cancel button of the shown step of the quick tour and waits for its popover to hide.
+     */
+    async cancelTour() {
+        await this.#page.click('.popover.show .cancel-tour');
+        await this.#page.waitForTimeout(ExplorerPage.#POPOVER_PERIOD);
+    }
+
+    /**
+     * @returns {Promise<string[]>} The titles of the popovers on the page (Bootstrap removes a popover once hidden).
+     */
+    async popoverTitles() {
+        return this.#page.$$eval('.popover', popovers => popovers.map(popover => popover.querySelector('.popover-header')?.textContent.trim()));
     }
 
     /**
@@ -976,6 +1011,23 @@ class SmokeTest {
                 assert.deepEqual(await this.#explorer.appState(), { mainVersion: '2.0.0-alpha.4', baseVersion: '1.14.2' });
                 assert.ok(validationShown, 'the Validation tab was not shown for 2.0.0-alpha.4');
                 await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+            }],
+            ['the quick tour shows its steps one at a time, also once the Fields tab has been opened, and Cancel ends it', async () => {
+                await this.#explorer.openTab('fields-tab');
+                await this.#explorer.startTour();
+                const shown = [await this.#explorer.popoverTitles()];
+                for (let step = 0; step < 4; step++) {
+                    await this.#explorer.nextTourStep();
+                    shown.push(await this.#explorer.popoverTitles());
+                }
+                assert.deepEqual(shown, [['Select versions to compare'], ['Switch between sections'], ['Loading indicator'], ['Identify changes'], []]);
+                await this.#explorer.startTour();
+                await this.#explorer.nextTourStep();
+                await this.#explorer.cancelTour();
+                assert.deepEqual(await this.#explorer.popoverTitles(), []);
+                await this.#explorer.startTour();
+                assert.deepEqual(await this.#explorer.popoverTitles(), ['Select versions to compare']);
+                await this.#explorer.cancelTour();
             }],
         ]);
     }
