@@ -131,11 +131,19 @@ export class SdkExplorerApplication {
     }
 
     /**
+     * @param {TabController} tab
+     * @returns {HTMLButtonElement} The button of the tab in the tab bar.
+     */
+    #tabButton(tab) {
+        return document.getElementById(tab.getId());
+    }
+
+    /**
      * @param {TabController} tab 
      * @returns {HTMLElement} The nav item that holds the button of the tab.
      */
     #navItem(tab) {
-        return document.getElementById(tab.getId()).closest('li.nav-item');
+        return this.#tabButton(tab).closest('li.nav-item');
     }
 
     /**
@@ -233,7 +241,11 @@ export class SdkExplorerApplication {
      * @returns {boolean} true if the active tab is still shown, false if the Home tab is being activated instead.
      */
     #showApplicableTabs(applicable) {
-        applicable.forEach((isApplicable, tab) => $(this.#navItem(tab)).toggleClass('d-none', !isApplicable));
+        applicable.forEach((isApplicable, tab) => {
+            $(this.#navItem(tab)).toggleClass('d-none', !isApplicable);
+            // Disabled as well as hidden: the arrow keys of the tab bar skip disabled buttons, not hidden ones.
+            this.#tabButton(tab).disabled = !isApplicable;
+        });
 
         const activeTabIsShown = !this.#activeTab || applicable.get(this.#activeTab);
         if (!activeTabIsShown) {

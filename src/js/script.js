@@ -11,7 +11,7 @@ $(document).ready(() => {
     SdkExplorerApplication.init();
 
     // Enable Bootstrap popovers everywhere
-    $('[data-toggle="popover"]').popover({html:true});
+    $('[data-bs-toggle="popover"]').popover({html:true});
 
     var currentStep = 0;
 

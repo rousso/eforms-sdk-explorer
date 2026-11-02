@@ -81,6 +81,9 @@ class ExplorerPage {
     /** How long a card group takes to apply a selected filter (it does so in a timeout), in milliseconds. */
     static #FILTER_PERIOD = 200;
 
+    /** How long a popover takes to show or to hide (Bootstrap fades it), in milliseconds. */
+    static #POPOVER_PERIOD = 500;
+
     /**
      * Files that the explorer requests to find out whether a version has them: for these, the browser's "404" console
      * error is expected and is not collected.
@@ -421,6 +424,51 @@ class ExplorerPage {
     }
 
     /**
+     * Starts the quick tour from the Home tab, as a user would, and waits for its popover to show.
+     */
+    async startTour() {
+        await this.openTab('home-tab');
+        await this.#page.click('#start-tour');
+        await this.#page.waitForTimeout(ExplorerPage.#POPOVER_PERIOD);
+    }
+
+    /**
+     * Clicks the Next button of the shown step of the quick tour and waits for the popovers to change.
+     */
+    async nextTourStep() {
+        await this.#page.click('.popover.show .next-step');
+        await this.#page.waitForTimeout(ExplorerPage.#POPOVER_PERIOD);
+    }
+
+    /**
+     * Clicks the Cancel button of the shown step of the quick tour and waits for its popover to hide.
+     */
+    async cancelTour() {
+        await this.#page.click('.popover.show .cancel-tour');
+        await this.#page.waitForTimeout(ExplorerPage.#POPOVER_PERIOD);
+    }
+
+    /**
+     * @returns {Promise<string[]>} The titles of the popovers on the page (Bootstrap removes a popover once hidden).
+     */
+    async popoverTitles() {
+        return this.#page.$$eval('.popover', popovers => popovers.map(popover => popover.querySelector('.popover-header')?.textContent.trim()));
+    }
+
+    /**
+     * Focuses the button of a tab and presses a key, as a user who moves along the tab bar with the keyboard, and
+     * waits until the explorer is idle.
+     *
+     * @param {string} tabId The id of the button of the tab.
+     * @param {string} key For example `ArrowRight`.
+     */
+    async pressKeyOnTab(tabId, key) {
+        await this.#page.focus(`#${tabId}`);
+        await this.#page.keyboard.press(key);
+        await this.waitUntilIdle();
+    }
+
+    /**
      * Opens a tab that is hidden for the selected versions, through Bootstrap, to compare it with another tab.
      *
      * @param {string} tabId The id of the button of the tab.
@@ -451,12 +499,13 @@ class ExplorerPage {
     /**
      * @param {string} groupId The id of a toggle button group of radio inputs.
      * @returns {Promise<{checked: string, active: string[]}>} The value of the checked radio input, and the values of
-     *          the radio inputs whose button shows the active state.
+     *          the radio inputs whose button shows the selected state: the checked ones (Bootstrap's `.btn-check:checked`
+     *          styles the button that follows the radio input).
      */
     async selectedToggleButton(groupId) {
         return this.#page.$eval(`#${groupId}`, group => ({
             checked: group.querySelector('input[type="radio"]:checked')?.value,
-            active: Array.from(group.querySelectorAll('label.active input[type="radio"]'), input => input.value)
+            active: Array.from(group.querySelectorAll('input[type="radio"]:checked'), input => input.value)
         }));
     }
 
@@ -468,7 +517,7 @@ class ExplorerPage {
      * @param {string} value
      */
     async #clickToggleButton(groupId, value) {
-        await this.#page.click(`#${groupId} label:has(input[value="${value}"])`);
+        await this.#page.click(`#${groupId} input[value="${value}"] + label`);
         await this.waitUntilIdle();
     }
 
@@ -976,6 +1025,23 @@ class SmokeTest {
                 assert.ok(validationShown, 'the Validation tab was not shown for 2.0.0-alpha.4');
                 await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
             }],
+            ['the quick tour shows its steps one at a time, also once the Fields tab has been opened, and Cancel ends it', async () => {
+                await this.#explorer.openTab('fields-tab');
+                await this.#explorer.startTour();
+                const shown = [await this.#explorer.popoverTitles()];
+                for (let step = 0; step < 4; step++) {
+                    await this.#explorer.nextTourStep();
+                    shown.push(await this.#explorer.popoverTitles());
+                }
+                assert.deepEqual(shown, [['Select versions to compare'], ['Switch between sections'], ['Loading indicator'], ['Identify changes'], []]);
+                await this.#explorer.startTour();
+                await this.#explorer.nextTourStep();
+                await this.#explorer.cancelTour();
+                assert.deepEqual(await this.#explorer.popoverTitles(), []);
+                await this.#explorer.startTour();
+                assert.deepEqual(await this.#explorer.popoverTitles(), ['Select versions to compare']);
+                await this.#explorer.cancelTour();
+            }],
         ]);
     }
 
@@ -1135,6 +1201,14 @@ class SmokeTest {
                 assert.deepEqual(this.#explorer.githubApiRequests.slice(before), []);
                 assert.deepEqual(await this.#explorer.indexCards('schematrons-overview-card-group'), validationCards);
                 assert.deepEqual(await this.#explorer.cardFilter('schematrons-overview-card-group'), validationFilter);
+            }],
+            ['the arrow keys of the tab bar skip the hidden Schematrons tab, between Schemas and Validation', async () => {
+                // Bootstrap handles the keys on the buttons of the tabs opened before (here Validation); Schemas
+                // lists its folder from the git trees that the Schematron source fetched above.
+                await this.#explorer.pressKeyOnTab('validation-tab', 'ArrowLeft');
+                assert.equal(await this.#explorer.activeTab(), 'schemas-tab');
+                await this.#explorer.pressKeyOnTab('schemas-tab', 'ArrowRight');
+                assert.equal(await this.#explorer.activeTab(), 'validation-tab');
             }],
         ]);
     }
