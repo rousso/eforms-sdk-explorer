@@ -41,8 +41,6 @@
 
 .view-diff {
     flex: 1;
-    overflow-x: hidden; 
-    overflow-y: hidden;
 }
 
 .view-container card-group {
@@ -129,9 +127,10 @@
     display: none !important;
   }
 
+/* The page is the only vertical scroll; each side scrolls horizontally, in step with the other (diff.js). */
 .d2h-code-wrapper {
-    max-height: calc(100vh - 320px); 
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .d2h-file-side-diff {

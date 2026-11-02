@@ -891,6 +891,169 @@ a:not(.btn):focus-visible {
 
 /* File diff (Increment 7): the Base and Target headings and the diff panel. */
 
+/* diff2html renders in the document, after this sheet: the rules are scoped to the diff containers (.view-diff) to
+   take precedence over diff2html's own. The diff panel: the card look. */
+.view-diff .d2h-file-wrapper {
+    margin-bottom: 0;
+    overflow: clip;
+    background: var(--gs-base-color-white);
+    border: 1px solid var(--gs-base-color-gray-20);
+    border-radius: var(--gs-base-radius-m);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* The file header: the file name in monospace, then diff2html's change tag as a status line. */
+.view-diff .d2h-file-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    height: auto;
+    padding: 14px 16px;
+    font-family: var(--font-sans);
+    background: var(--gs-base-color-white);
+    border-bottom: 1px solid var(--gs-base-color-gray-20);
+}
+
+.view-diff .d2h-file-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: inherit;
+}
+
+.view-diff .d2h-file-name-wrapper .d2h-icon {
+    fill: var(--gs-base-color-gray-75);
+}
+
+.view-diff .d2h-file-name {
+    color: var(--gs-base-color-gray-100);
+    font-family: var(--font-mono);
+    font-size: var(--gs-base-font-size-sp-15);
+    font-weight: 700;
+}
+
+.view-diff .d2h-file-name-wrapper .d2h-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: auto;
+    margin-left: 0;
+    padding: 0;
+    color: var(--gs-base-color-gray-75);
+    font-family: var(--font-sans);
+    font-size: var(--gs-base-font-size-xs);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    background: none;
+    border: 0;
+    border-radius: 0;
+}
+
+.view-diff .d2h-file-name-wrapper .d2h-tag::before {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    color: var(--gs-base-color-white);
+    font-family: "gs-icon";
+    font-size: 10px;
+    line-height: 1;
+    text-transform: none;
+}
+
+.view-diff .d2h-file-name-wrapper .d2h-added::before { content: "\e900"; background: var(--added-marker-color); }
+.view-diff .d2h-file-name-wrapper .d2h-deleted::before { content: "\e92c"; background: var(--removed-marker-color); }
+.view-diff .d2h-file-name-wrapper .d2h-changed::before,
+.view-diff .d2h-file-name-wrapper .d2h-moved::before {
+    content: "";
+    background: radial-gradient(circle, var(--gs-base-color-white) 3px, transparent 3.5px), var(--modified-marker-color);
+}
+
+/* The Base and Target headings above the two sides. */
+.view-diff .d2h-file-side-diff::before {
+    display: block;
+    padding: 8px 12px;
+    content: "Base";
+    font-family: var(--font-sans);
+    font-size: var(--gs-base-font-size-xs);
+    font-weight: 700;
+    background: var(--gs-base-color-gray-5);
+    border-bottom: 1px solid var(--gs-base-color-gray-20);
+}
+
+.view-diff .d2h-file-side-diff + .d2h-file-side-diff::before {
+    content: "Target";
+}
+
+.view-diff .d2h-file-side-diff:first-child {
+    border-right: 1px solid var(--gs-base-color-gray-20);
+}
+
+/* The lines: monospace 13px, 22px high; line numbers gray-75 on gray-5, or on the tint of a changed line. */
+.view-diff .d2h-diff-table {
+    font-family: var(--font-mono);
+    font-size: var(--gs-base-font-size-xs);
+}
+
+.view-diff .d2h-code-side-line,
+.view-diff .d2h-code-side-linenumber {
+    line-height: 22px;
+}
+
+.view-diff .d2h-diff-table .d2h-code-side-linenumber {
+    color: var(--gs-base-color-gray-75);
+    background: var(--gs-base-color-gray-5);
+    border: 0;
+}
+
+.view-diff .d2h-diff-table .d2h-code-side-linenumber.d2h-del {
+    color: var(--gs-base-color-gray-100);
+    background: var(--gs-base-color-error-surface);
+}
+
+.view-diff .d2h-diff-table .d2h-code-side-linenumber.d2h-ins {
+    color: var(--gs-base-color-gray-100);
+    background: var(--gs-base-color-success-surface);
+}
+
+/* The + and - signs in the marker colours. */
+.view-diff .d2h-del .d2h-code-line-prefix {
+    color: var(--removed-marker-color);
+    font-weight: 700;
+}
+
+.view-diff .d2h-ins .d2h-code-line-prefix {
+    color: var(--added-marker-color);
+    font-weight: 700;
+}
+
+/* Changed words: bold, with an inset 2px underline in the marker colour; removed ones struck through too. */
+.view-diff .d2h-code-line del,
+.view-diff .d2h-code-side-line del {
+    font-weight: 700;
+    text-decoration: line-through;
+    text-decoration-color: var(--removed-marker-color);
+    box-shadow: inset 0 -2px 0 var(--removed-marker-color);
+}
+
+.view-diff .d2h-code-line ins,
+.view-diff .d2h-code-side-line ins {
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: inset 0 -2px 0 var(--added-marker-color);
+}
+
+/* Hunk headers on eu-blue-5. */
+.view-diff .d2h-diff-table .d2h-info {
+    color: var(--gs-base-color-gray-75);
+    background: var(--gs-base-color-eu-blue-5);
+    border-color: var(--gs-base-color-gray-10);
+}
+
 /* States (Increment 8): the error toast, the tour popovers and the hover popovers. */
 
 /* Other tabs (Increment 9): Validation, Schemas, Schematrons, Translations, View templates, Release notes. */
