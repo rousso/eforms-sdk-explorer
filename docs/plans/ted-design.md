@@ -571,3 +571,27 @@ Questions about the design go to the design session, and questions about the pla
   - Codelists main-thread time, run interleaved with the previous commit `1e1592a`: 8.6 s against 8.5–9.0 s, style recalc 0.9 s in both. `ted-theme.css` is now about 32 KB, and its parse is shared between the shadow roots as before.
   - Smoke: 69 passed (`.d2h-file-header .d2h-file-name` unchanged). A first run hung after its 26th check when the container was paused for about two hours mid-run; it was stopped and re-run.
   - For later increments: `.column` and `.column > *:nth-child(2)` in `style.css` (an inner scroll) match nothing, since no element has the class; they can go with Increment 9's clean-up.
+- 2026-11-02: Increment 8 done (`8b03f8e`).
+  - `#apiStatus`: the red `svg` is removed; otherwise the markup and behaviour are unchanged. The states section of `ted-theme.css` makes it a TED error notification:
+    - fixed 16 px from the bottom right, at most `min(420px, 100vw - 32px)` wide;
+    - a 4 px `--gs-base-color-error` bar on error-surface, padding 14 px 16 px, a 2 px radius, `--gs-base-shadow-2`;
+    - "Error" bold, and `btn-close` recoloured gray-75 (Bootstrap's glyph as a data URI with `#666666`, commented);
+    - list items 16 px / 1.62 in #333, and `span.detail` in gray-75 on a line of its own. The list keeps its 33vh scroll.
+  - The old `#apiStatus`, `.toast-body`, `.toast-body li`, `.detail` and `.tour-button-container` rules are removed from `style.css`: it loads last, so they would have overridden the theme.
+  - Popovers (the tour, the selects' hover popovers, the tree search help): Bootstrap's popover variables set from the tokens:
+    - white, a gray-20 border, a 4 px radius, `--gs-base-shadow-2`, at most 420 px wide;
+    - the header 18 px bold on white without the band or its rule, 20 px padding;
+    - the body 14 px / 1.5, paragraphs 12 px apart.
+  - `.tour-button-container` is a right-aligned flex row: Cancel (`.btn-link`, the ghost) at 14 px regular, Next (`.btn-primary`) as sm.
+  - Tour placements (the note in this increment): every step has `data-bs-placement="bottom"` and `data-bs-fallback-placements='["bottom"]'`. Bootstrap 5 has no `bottom-start`, and its flip rejects a placement that sticks out sideways, so without the second attribute steps 0, 1 and 2 flipped to `right`. Now every step opens below its anchor, shifted into the window, as in `states.png`. Measured at 1440 px:
+    - step 0 at x 66–486 under the versions;
+    - step 1 at x 0–420 under the Fields tab;
+    - step 2 at x 835–1255 under the ring;
+    - step 3 at x 1020–1440 under the legend.
+  - Smoke: the check "the error toast shows the body of a failed response as text, never as HTML, under the message" expected the detail in red (`rgb(255, 0, 0)`). It now expects gray-75 (`rgb(102, 102, 102)`, commented), still `display: block`. This is the plan's change, so the script changes with it in the same commit, as the Constraints require. The first run had 68 passed and this one failure; with the new expectation, 69 passed.
+  - Checked in the browser, 1.13.0 vs 1.12.0, against `states.png`:
+    - a failed `CHANGELOG.md` shows the toast as in the mockup, and its close button hides it;
+    - the four tour steps open below their anchors, with the TED title and buttons, and none is left open after Done;
+    - the base select's hover popover has the same look;
+    - not done: "Step 1 of 4" (O3), and step 0's text, which changes with its anchor in Increment 10;
+    - no console errors.
