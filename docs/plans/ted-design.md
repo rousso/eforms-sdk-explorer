@@ -156,6 +156,7 @@ Files: `index.html` (header, bar, comparison line, tabs, footer), `src/assets/st
 - **Pinned bar.** One row, `position: sticky; top: 0`, white, `1px solid gray-20` bottom border, padding `4px 24px 0`:
   - The existing `ul.nav-tabs` (ids, `li.nav-item`, `button.nav-link` and `d-none` unchanged), restyled as TED tabs, with sentence-case labels. Remove the 20 px spacer `div`.
   - Then `#centralLoadingSpinner` (id, tour step 2 and the `visibility` contract unchanged), restyled as the TED loading indicator: the 20 px ring only, with a visually hidden "Loading" text, so the bar stays one row at 1440 px.
+    - Tour step 2's first sentence becomes "A loading indicator will appear here while data is being processed in the background.", since the ring does not flash. The rest of the popover stays. Added by the design session at the user's request.
   - Nothing else: the legend goes to the comparison line, not the bar.
   - The row wraps on narrow screens.
   - The `.progress`/`.progress-bar` pair moves to the bar's bottom edge as the 3 px progress line. Its classes stay, so `tab-controller.js` is unchanged.

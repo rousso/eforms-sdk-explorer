@@ -13,6 +13,24 @@ $(document).ready(() => {
     // Enable Bootstrap popovers everywhere
     $('[data-bs-toggle="popover"]').popover({html:true});
 
+    // The EU banner's "How do you know?" button shows and hides its explanation; Escape hides it again
+    const $globanToggle = $('.ted-globan__toggle');
+    const showGlobanExplanation = (shown) => {
+        $globanToggle.attr('aria-expanded', String(shown));
+        $('#ted-globan-dropdown').prop('hidden', !shown);
+    };
+    $globanToggle.on('click', () => showGlobanExplanation($globanToggle.attr('aria-expanded') !== 'true'));
+    $(document).on('keydown', (event) => {
+        if (event.key === 'Escape' && $globanToggle.attr('aria-expanded') === 'true') {
+            showGlobanExplanation(false);
+            $globanToggle.trigger('focus');
+        }
+    });
+
+    // Keep --ted-bar-height at the height of the pinned bar, for the elements of the work area that stick under it
+    const bar = document.querySelector('.ted-bar');
+    new ResizeObserver(() => document.documentElement.style.setProperty('--ted-bar-height', `${bar.offsetHeight}px`)).observe(bar);
+
     var currentStep = 0;
 
     // Move to the next step when the "Next" button is clicked

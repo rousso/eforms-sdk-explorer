@@ -305,6 +305,416 @@ a:not(.btn):focus-visible {
 /* Chrome (Increment 3): the TED header, the pinned bar with the tabs and the loading indicator, the comparison line,
    the footer. */
 
+/* The height of the pinned bar, set by script.js; the sticky elements of the work area sit under it. */
+:root {
+    --ted-bar-height: 0px;
+}
+
+/* EU global banner: the europa.eu component's own values. */
+.ted-globan, .ted-globan * { box-sizing: border-box; }
+.ted-globan { position: relative; z-index: 40; display: flex; align-items: center; min-height: 28px; background: #444; color: #fff; }
+.ted-globan, .ted-globan * { font-family: Arial, sans-serif; font-size: 14px; line-height: 22px; }
+.ted-globan__bar { position: relative; display: flex; align-items: center; }
+.ted-globan__flag { display: block; width: 24px; height: 16px; margin: 0 8px 0 16px; border: 1px solid rgba(255, 255, 255, 0.25); }
+.ted-globan__text-short { display: none; }
+.ted-globan__toggle { display: flex; align-items: center; margin: 0 0 0 8px; padding: 0 7px; border: 3px solid #444; border-radius: 0; background: transparent; color: #fff; font-weight: 400; text-decoration: none; white-space: nowrap; cursor: pointer; outline: none; }
+.ted-globan__toggle:hover { border-color: #fff; background: #fff; color: #004494; }
+.ted-globan__toggle[aria-expanded="true"], .ted-globan__toggle:focus-visible { border-color: #ffd617; background: #fff; color: #004494; outline: none; }
+.ted-globan__toggle-text { display: block; }
+.ted-globan__arrow { display: block; flex: none; width: 12px; height: 12px; margin: 0 0 0 8px; transform: rotate(180deg); }
+.ted-globan__arrow path { fill: currentColor; stroke: currentColor; stroke-width: 5px; }
+.ted-globan__toggle[aria-expanded="true"] .ted-globan__arrow { transform: none; }
+.ted-globan__dropdown { position: absolute; top: 100%; right: 0; max-width: 500px; margin: 0; padding: 12px 16px; border: 1px solid #ccc; background: #fff; box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.4); color: #444; }
+.ted-globan__dropdown[hidden] { display: none; }
+.ted-globan__dropdown p { margin: 0; padding: 0; line-height: 1.4; }
+.ted-globan__dropdown p + p { margin-top: 10px; line-height: 22px; }
+.ted-globan__dropdown b { font-weight: 700; }
+.ted-globan__dropdown a { color: #004494; text-decoration: none; }
+.ted-globan__dropdown a:hover { text-decoration: underline; }
+@media (max-width: 767px) {
+    .ted-globan__bar { width: 100%; }
+    .ted-globan__flag { margin: 0 8px; }
+    .ted-globan__text-long { display: none; }
+    .ted-globan__text-short { display: block; }
+    .ted-globan__toggle { margin: 0 0 0 auto; }
+}
+@media (max-width: 480px) {
+    .ted-globan__toggle-text { display: flex; width: 0; overflow: hidden; opacity: 0; }
+    .ted-globan__arrow { margin: 0; }
+}
+
+/* TED header: the EU logo row, then the service row above the 8px green divider. */
+.ted-site-header {
+    background: var(--gs-base-color-white);
+    font-family: var(--font-sans);
+    color: var(--gs-base-color-eu-gray-80);
+    border-bottom: 8px solid var(--gs-base-color-forest-100);
+}
+
+.ted-site-header__logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 24px;
+    padding: 16px 0;
+    border-bottom: 2px solid var(--gs-base-color-eu-blue-20);
+}
+
+.ted-site-header__logo {
+    height: 48px;
+}
+
+.ted-site-header__service {
+    display: flex;
+    flex-direction: column;
+    padding: 0 24px 10px;
+}
+
+.ted-site-header__site-name {
+    margin-bottom: 2px;
+    color: var(--gs-base-color-eu-gray-80);
+    font-size: var(--gs-base-font-size-3xl);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.ted-site-header__service-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.ted-site-header__service-chip {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 10px;
+    padding: var(--gs-base-spacing-xs) var(--gs-base-spacing-s);
+    background: var(--gs-base-color-gray-5);
+    border-radius: var(--gs-base-radius-s);
+    text-decoration: none;
+}
+
+.ted-site-header__stripe {
+    align-self: stretch;
+    width: 6px;
+    min-height: 1em;
+    margin-right: var(--gs-base-spacing-xs);
+    background: var(--gs-base-color-forest-100);
+    border-radius: 6px;
+}
+
+.ted-site-header__service-name {
+    color: var(--gs-base-color-eu-gray-80);
+    font-size: var(--gs-base-font-size-l);
+    font-weight: 700;
+}
+
+.ted-site-header__square {
+    font-size: 10px;
+    vertical-align: middle;
+}
+
+.ted-site-header__description {
+    margin-left: 12px;
+    color: var(--gs-base-color-eu-gray-80);
+    font-size: 15px;
+}
+
+/* Pinned bar: the TED tabs, then the loading indicator; the progress line on its bottom edge. On a narrow screen the
+   tabs wrap inside the bar and the indicator stays at its end. */
+.ted-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 8px 24px;
+    padding: 4px 24px 0;
+    background: var(--gs-base-color-white);
+    border-bottom: 1px solid var(--gs-base-color-gray-20);
+}
+
+.ted-bar .nav-tabs {
+    --bs-nav-tabs-border-width: 0;
+    flex: 0 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0;
+    border-bottom: 1px solid var(--gs-base-color-gray-20);
+}
+
+.ted-bar .nav-tabs .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: -1px;
+    padding: 12px 16px;
+    color: var(--gs-base-color-gray-100);
+    font-size: var(--gs-base-font-size-m);
+    font-weight: 400;
+    background: none;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+}
+
+.ted-bar .nav-tabs .nav-link.active {
+    font-weight: 700;
+    color: var(--gs-base-color-gray-100);
+    background: none;
+    border-bottom-color: var(--gs-base-color-forest-110);
+}
+
+.ted-loading {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    border: 2px solid var(--gs-base-color-gray-20);
+    border-top-color: var(--gs-base-color-forest-110);
+    border-radius: 50%;
+    animation: ted-loading-spin 0.8s linear infinite;
+}
+
+@keyframes ted-loading-spin {
+    to { transform: rotate(360deg); }
+}
+
+.ted-bar .progress {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    background: var(--gs-base-color-gray-20);
+    border-radius: 0;
+}
+
+.ted-bar .progress-bar {
+    background: var(--gs-base-color-forest-110);
+}
+
+/* Work area: white, with the 24px gutter. */
+.ted-main {
+    padding: 24px 24px 0;
+    background: var(--gs-base-color-white);
+}
+
+/* Comparison line: "Comparing base > target", the legend at the right; it scrolls with the page. */
+.ted-comparison-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--gs-base-color-gray-10);
+    font-size: var(--gs-base-font-size-s);
+    color: var(--gs-base-color-gray-75);
+}
+
+.ted-comparison-line__versions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.ted-comparison-line__label {
+    margin-right: -6px;
+    color: var(--gs-base-color-eu-gray-80);
+    font-size: var(--gs-base-font-size-s);
+}
+
+.ted-comparison-line__separator {
+    font-size: 14px;
+    color: var(--gs-base-color-gray-75);
+}
+
+.ted-comparison-line__spacer {
+    flex: 1 1 auto;
+}
+
+/* The two version selects in the look of the version chips. */
+.form-select.ted-version-select {
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    padding: 5px 28px 5px 10px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--gs-base-color-eu-blue-100);
+    background-color: var(--gs-base-color-eu-blue-10);
+    /* Bootstrap's chevron in --gs-base-color-eu-blue-100 (#0E47CB), 10px, 10px from the right. */
+    --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230E47CB' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-position: right 10px center;
+    background-size: 10px;
+    border: 1px solid var(--gs-base-color-eu-blue-20);
+    border-radius: var(--gs-base-radius-s);
+    transition: background-color 0.12s, border-color 0.12s;
+}
+
+.form-select.ted-version-select:hover {
+    background-color: var(--gs-base-color-eu-blue-20);
+}
+
+.form-select.ted-version-select:focus {
+    border-color: var(--gs-base-color-eu-blue-20);
+}
+
+/* The legend of the change markers. */
+.ted-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    list-style: none;
+}
+
+.ted-legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* A change marker: a 16px square in the marker colour with a white 10px glyph (plus, minus) or a 6px dot. */
+.ted-marker {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    color: var(--gs-base-color-white);
+    font-family: "gs-icon";
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.ted-marker--added { background: var(--added-marker-color); }
+.ted-marker--added::before { content: "\e900"; }
+.ted-marker--removed { background: var(--removed-marker-color); }
+.ted-marker--removed::before { content: "\e92c"; }
+.ted-marker--modified { background: var(--modified-marker-color); }
+.ted-marker--modified::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* TED footer: the band with the Publications Office lockup and the link columns, then the europa.eu band. */
+.ted-footer {
+    position: relative;
+    width: 100%;
+    flex-shrink: 0;
+    padding: var(--gs-base-spacing-l);
+    background: var(--gs-base-color-eu-blue-5);
+    color: var(--gs-base-color-gray-75);
+    font-family: var(--font-sans);
+    font-size: var(--gs-base-font-size-s);
+    line-height: 1.6;
+}
+
+.ted-footer a {
+    color: var(--gs-base-color-eu-blue-100);
+    text-decoration: none;
+    text-underline-offset: 0.15rem;
+}
+
+.ted-footer a:hover {
+    text-decoration: underline;
+}
+
+.ted-footer__band {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    background: var(--gs-base-color-eu-blue-5);
+    border-bottom: 1px solid var(--gs-base-color-eu-blue-20);
+}
+
+.ted-footer__band--europa {
+    border-bottom: none;
+}
+
+.ted-footer__brand {
+    flex: 0 1 30%;
+    min-width: min(22.25rem, 100%);
+    padding: 1rem;
+}
+
+.ted-footer__managed {
+    padding-right: var(--gs-base-spacing-l);
+}
+
+.ted-footer__managed-label {
+    margin-bottom: 0.5rem;
+    font-size: 14px;
+}
+
+.ted-footer__lockup {
+    display: inline-block;
+    flex: 0 0 auto;
+}
+
+.ted-footer__lockup-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.ted-footer__column {
+    flex: 1 1 0;
+    min-width: min(15rem, 100%);
+    padding: 1rem;
+}
+
+.ted-footer__heading {
+    display: block;
+    margin-top: 1.5rem;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    color: var(--gs-base-color-gray-100);
+    font-size: var(--gs-base-font-size-l);
+    font-weight: 400;
+    line-height: var(--gs-base-line-height-s);
+    border-bottom: 1px solid var(--gs-base-color-eu-blue-20);
+}
+
+.ted-footer__links {
+    margin: 0;
+    padding: 0;
+    font-size: var(--gs-base-font-size-s);
+    line-height: 2rem;
+    list-style-type: none;
+}
+
+.ted-footer__social-icon {
+    margin-right: 0.45rem;
+    color: var(--gs-base-color-social-icon);
+    font-size: 1.125rem;
+    vertical-align: -0.15em;
+}
+
+.ted-footer__flag {
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.ted-footer__flag-image {
+    width: auto;
+    max-height: 54px;
+}
+
+.ted-footer__discover {
+    margin: 1.5rem 0 0;
+    color: var(--gs-base-color-eu-gray-140);
+    font-size: var(--gs-base-font-size-s);
+    line-height: 1.35;
+}
+
 /* Home (Increment 4): the text column and the side card. */
 
 /* Cards (Increment 5): headings and breadcrumbs, the card group's header and filter list, index cards,

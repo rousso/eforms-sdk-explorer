@@ -51,30 +51,48 @@
 
 <body>
 
-    <header class="navbar navbar-expand-lg navbar-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                <img src="./src/assets/ted-logo.png" alt="TED - Publications Office of the EU" width="60"
-                    class="d-inline-block align-middle me-2"><span>eForms SDK Explorer</span>
+    <!-- EU global banner -->
+    <div class="ted-globan">
+        <div class="ted-globan__bar">
+            <img class="ted-globan__flag" src="./src/assets/ted/img/eu.svg" alt="">
+            <span class="ted-globan__text-long">An official website of the European Union</span>
+            <span class="ted-globan__text-short">An official EU website</span>
+            <button type="button" class="ted-globan__toggle" aria-expanded="false" aria-controls="ted-globan-dropdown">
+                <span class="ted-globan__toggle-text">How do you know?</span>
+                <svg class="ted-globan__arrow" viewBox="0 0 48 48" width="12" height="12" aria-hidden="true" focusable="false"><path d="m45 30.12-2.73 2.82-18.24-18.36L5.73 33 3 30.18 24.03 9z"></path></svg>
+            </button>
+        </div>
+        <div class="ted-globan__dropdown" id="ted-globan-dropdown" hidden>
+            <p>All official European Union website addresses are in the <b>europa.eu</b> domain.</p>
+            <p><a href="https://european-union.europa.eu/institutions-law-budget/institutions-and-bodies/search-all-eu-institutions-and-bodies_en">See all EU institutions and bodies</a></p>
+        </div>
+    </div>
+
+    <!-- TED header: the EU logo row, then the service row above the green divider -->
+    <header class="ted-site-header">
+        <div class="ted-site-header__logo-row">
+            <a href="https://european-union.europa.eu/index_en" target="_blank" rel="noopener noreferrer">
+                <picture>
+                    <source media="(max-width: 575.98px)" srcset="./src/assets/ted/img/logo-eu--mobile.svg">
+                    <img class="ted-site-header__logo" src="./src/assets/ted/img/logo-eu--en.svg" alt="European Union">
+                </picture>
             </a>
-            <div class="d-flex align-items-center arrow">
-                <div class="version-text me-2" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="left" data-bs-html="true" data-step="0" title="Select versions to compare" data-bs-content="<p>Use these dropdowns to select the versions of the SDK that you want to compare.</p><p>Select the older version (that you are migrating from) and the newer version (that you are migrating to).</p><p>SDK Explorer calls these the <i>base</i> and <i>target</i> version respectively.</p> <div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">Compare SDK versions</div>
-                <select id="base-version-dropdown" class="form-select" data-bs-toggle="popover" data-bs-trigger="hover"
-                    data-bs-placement="left" title="Older SDK version" data-bs-html="true"
-                    data-bs-content="This is the base version for the comparison. Items that exist only in this version are indicated as 'removed'.">
-                </select>
-                <div class="comparison-text me-2"></div>
-                <select id="main-version-dropdown" class="form-select me-2" data-bs-toggle="popover" data-bs-trigger="hover"
-                    data-bs-placement="left" title="Newer SDK version" data-bs-html="true"
-                    data-bs-content="This is the target version for the comparison. Items that exist only in this version are indicated as 'added'.">
-                </select>
+        </div>
+        <div class="ted-site-header__service">
+            <a class="ted-site-header__site-name" href="https://ted.europa.eu" target="_blank" rel="noopener noreferrer">EU tenders</a>
+            <div class="ted-site-header__service-row">
+                <a class="ted-site-header__service-chip" href="./">
+                    <span class="ted-site-header__stripe" aria-hidden="true"></span>
+                    <span class="ted-site-header__service-name">Ted <span class="ted-site-header__square" aria-hidden="true">&#9632;</span> eForms SDK Explorer</span>
+                </a>
+                <span class="ted-site-header__description">Explore and compare different versions of the eForms SDK</span>
             </div>
         </div>
     </header>
 
-    <nav>
+    <!-- Pinned bar: the sections, the loading indicator and the progress line -->
+    <nav class="ted-bar" aria-label="Sections">
         <ul class="nav nav-tabs" role="tablist">
-            <div style="width: 20px;"><!-- leaves some space before the first tab --></div>
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home-tab-content"
                     type="button" role="tab" aria-controls="home-tab-content" aria-selected="true">Home</button>
@@ -85,7 +103,7 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="notice-types-tab" data-bs-toggle="tab" data-bs-target="#notice-types"
-                    type="button" role="tab" aria-controls="notice-types" aria-selected="false">Notice Types</button>
+                    type="button" role="tab" aria-controls="notice-types" aria-selected="false">Notice types</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="codelists-tab" data-bs-toggle="tab" data-bs-target="#codelists" type="button"
@@ -109,22 +127,47 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="view-templates-tab" data-bs-toggle="tab" data-bs-target="#view-templates"
-                    type="button" role="tab" aria-controls="view-templates" aria-selected="false">View
-                    Templates</button>
+                    type="button" role="tab" aria-controls="view-templates" aria-selected="false">View templates</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="release-notes-tab" data-bs-toggle="tab" data-bs-target="#release-notes"
                     type="button" role="tab" aria-controls="release-notes" aria-selected="false">Release notes</button>
             </li>
-            <div class="spinner-grow spinner-grow-sm text-info ms-auto" role="status" id="centralLoadingSpinner"
-                style="visibility: hidden;" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="top" data-bs-html="true"
-                data-step="2" title="Loading indicator"
-                data-bs-content="<p>A flashing indicator will appear here while data is being processed in the background.</p><p>The SDK Explorer downloads and compares SDK versions from GitHub every time you switch to a different tab. This is done to conserve memory on your browser.</p><div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
-            </div>
         </ul>
+        <div class="ted-loading" role="status" id="centralLoadingSpinner" style="visibility: hidden;" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="top" data-bs-html="true" data-step="2" title="Loading indicator" data-bs-content="<p>A loading indicator will appear here while data is being processed in the background.</p><p>The SDK Explorer downloads and compares SDK versions from GitHub every time you switch to a different tab. This is done to conserve memory on your browser.</p><div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
+            <span class="visually-hidden">Loading</span>
+        </div>
+        <div class="progress" style="display: none;">
+            <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
+        </div>
     </nav>
 
-    <main class="tab-content">
+    <main class="ted-main">
+        <!-- Comparison line: the two versions, and the legend of the change markers -->
+        <div class="ted-comparison-line" role="group" aria-label="Versions compared">
+            <span class="ted-comparison-line__versions" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="left" data-bs-html="true" data-step="0" title="Select versions to compare" data-bs-content="<p>Use these dropdowns to select the versions of the SDK that you want to compare.</p><p>Select the older version (that you are migrating from) and the newer version (that you are migrating to).</p><p>SDK Explorer calls these the <i>base</i> and <i>target</i> version respectively.</p> <div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
+                <span>Comparing</span>
+                <label class="ted-comparison-line__label" for="base-version-dropdown">base:</label>
+                <select id="base-version-dropdown" class="form-select ted-version-select" aria-label="Base version" data-bs-toggle="popover" data-bs-trigger="hover"
+                    data-bs-placement="left" title="Older SDK version" data-bs-html="true"
+                    data-bs-content="This is the base version for the comparison. Items that exist only in this version are indicated as 'removed'.">
+                </select>
+                <i class="gs-icon gs-icon-chevron-right ted-comparison-line__separator" aria-hidden="true"></i>
+                <label class="ted-comparison-line__label" for="main-version-dropdown">target:</label>
+                <select id="main-version-dropdown" class="form-select ted-version-select" aria-label="Target version" data-bs-toggle="popover" data-bs-trigger="hover"
+                    data-bs-placement="left" title="Newer SDK version" data-bs-html="true"
+                    data-bs-content="This is the target version for the comparison. Items that exist only in this version are indicated as 'added'.">
+                </select>
+            </span>
+            <span class="ted-comparison-line__spacer"></span>
+            <ul class="ted-legend" aria-label="Change markers" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="top" data-bs-html="true" data-step="3" title="Identify changes" data-bs-content="<p>The SDK Explorer highlights changed items using the markers you see in this legend.</p><div class='tour-button-container'><a href='#' class='btn btn-primary next-step'>Done</a></div>">
+                <li><span class="ted-marker ted-marker--added" aria-hidden="true"></span>Added</li>
+                <li><span class="ted-marker ted-marker--removed" aria-hidden="true"></span>Removed</li>
+                <li><span class="ted-marker ted-marker--modified" aria-hidden="true"></span>Modified</li>
+            </ul>
+        </div>
+
+        <div class="tab-content">
 
         <!-- Home -->
         <div class="tab-pane h-100 fade show active" id="home-tab-content" role="tabpanel" aria-labelledby="home-tab">
@@ -401,32 +444,107 @@
             aria-labelledby="release-notes-tab">
             <!-- Release Notes will appear here -->
         </div>
+        </div><!-- .tab-content -->
     </main>
 
-    <footer class="d-flex w-100">
-        <!-- Legend -->
-        <div class="legend-container flex-grow-1 ms-3">
-            <span class="legend-title" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="top" data-bs-html="true" data-step="3" title="Identify changes" data-bs-content="<p>The SDK Explorer highlights changed items using the color coding you see in this legend.</p><div class='tour-button-container'><a href='#' class='btn btn-primary next-step'>Done</a></div>">Legend:</span>
-            <span class="legend-item added">added</span>
-            <span class="legend-item removed">removed</span>
-            <span class="legend-item modified">modified</span>
-        </div>
-        <div class="progress me-3" style="width: 10%; min-width: 100px">
-            <div class="progress-bar bg-info" role="progressbar" style="width: 0%;"></div>
-        </div>
-        <div id="apiStatus" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false" >
-            <div class="toast-header">
-                <svg width="16" height="16" class="rounded me-2">
-                    <rect width="16" height="16" fill="red"></rect>
-                </svg>                
-                <strong class="me-auto">Error</strong>
-                <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close"></button>
+    <!-- TED footer -->
+    <footer class="ted-footer">
+        <div class="ted-footer__band">
+            <div class="ted-footer__brand">
+                <div class="ted-footer__managed">
+                    <div class="ted-footer__managed-label">
+                        This website is managed by:
+                    </div>
+                    <a class="ted-footer__lockup" href="https://op.europa.eu/en/" target="_blank" rel="noopener noreferrer"><img class="ted-footer__lockup-image" alt="Publications Office of the European Union — Law | Data | Publications" src="./src/assets/ted/img/op-lockup-blue.png" width="300"></a>
+                </div>
             </div>
-            <ul class="toast-body">
-                <!-- Error message will be inserted here -->
-            </ul>
+            <div class="ted-footer__column">
+                <h3 class="ted-footer__heading">Need help?</h3>
+                <ul class="ted-footer__links">
+                    <li><a href="https://ted.europa.eu/en/help" target="_blank" rel="noopener noreferrer">Help</a></li>
+                    <li><a href="https://ted.europa.eu/en/contact" target="_blank" rel="noopener noreferrer">Contact the TED helpdesk</a></li>
+                </ul>
+                <h3 class="ted-footer__heading">Follow us</h3>
+                <ul class="ted-footer__links">
+                    <li><a href="https://respublicae.eu/@EUPublications" target="_blank" rel="noopener noreferrer"><i class="gs-icon gs-icon-mastodon ted-footer__social-icon" aria-hidden="true"></i>Mastodon</a></li>
+                    <li><a href="https://www.linkedin.com/company/publications-office-of-the-european-union/" target="_blank" rel="noopener noreferrer"><i class="gs-icon gs-icon-linkedin ted-footer__social-icon" aria-hidden="true"></i>LinkedIn</a></li>
+                    <li><a href="https://bsky.app/profile/eupublications.bsky.social" target="_blank" rel="noopener noreferrer"><i class="gs-icon gs-icon-bluesky ted-footer__social-icon" aria-hidden="true"></i>Bluesky</a></li>
+                    <li><a href="https://www.facebook.com/EULawandPublications/" target="_blank" rel="noopener noreferrer"><i class="gs-icon gs-icon-facebook ted-footer__social-icon" aria-hidden="true"></i>Facebook</a></li>
+                    <li><a href="https://www.youtube.com/user/PublicationsOffice" target="_blank" rel="noopener noreferrer"><i class="gs-icon gs-icon-youtube ted-footer__social-icon" aria-hidden="true"></i>YouTube</a></li>
+                    <li><a href="https://european-union.europa.eu/contact-eu/social-media-channels_en" target="_blank" rel="noopener noreferrer"><i class="gs-icon gs-icon-social-share ted-footer__social-icon" aria-hidden="true"></i>Other</a></li>
+                </ul>
+                <h3 class="ted-footer__heading">Legal</h3>
+                <ul class="ted-footer__links">
+                    <li><a href="https://ted.europa.eu/en/legal-notice" target="_blank" rel="noopener noreferrer">Legal notice</a></li>
+                    <li><a href="https://ted.europa.eu/en/cookie-choice" target="_blank" rel="noopener noreferrer">Cookies</a></li>
+                    <li><a href="https://ted.europa.eu/en/accessibility" target="_blank" rel="noopener noreferrer">Accessibility</a></li>
+                </ul>
+            </div>
+            <div class="ted-footer__column">
+                <h3 class="ted-footer__heading">About us</h3>
+                <ul class="ted-footer__links">
+                    <li><a href="https://ted.europa.eu/en/about-ted" target="_blank" rel="noopener noreferrer">About TED</a></li>
+                    <li><a href="https://ted.europa.eu/en/sitemap" target="_blank" rel="noopener noreferrer">Site map</a></li>
+                </ul>
+                <h3 class="ted-footer__heading">Other services</h3>
+                <ul class="ted-footer__links">
+                    <li><a href="https://eur-lex.europa.eu" target="_blank" rel="noopener noreferrer">EU law</a></li>
+                    <li><a href="https://data.europa.eu" target="_blank" rel="noopener noreferrer">European Data</a></li>
+                    <li><a href="https://cordis.europa.eu/" target="_blank" rel="noopener noreferrer">EU research results</a></li>
+                    <li><a href="https://op.europa.eu/web/who-is-who" target="_blank" rel="noopener noreferrer">EU Whoiswho</a></li>
+                    <li><a href="https://op.europa.eu/web/general-publications/publications" target="_blank" rel="noopener noreferrer">EU Publications</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="ted-footer__band ted-footer__band--europa">
+            <div class="ted-footer__brand">
+                <div class="ted-footer__flag">
+                    <img class="ted-footer__flag-image" alt="Official flag of the European Union" src="./src/assets/ted/img/EU-flag.png">
+                </div>
+                <p class="ted-footer__discover">Discover more on <a href="https://european-union.europa.eu/" target="_blank" rel="noopener noreferrer">europa.eu</a></p>
+            </div>
+            <div class="ted-footer__column">
+                <h3 class="ted-footer__heading">Contact the EU</h3>
+                <ul class="ted-footer__links">
+                    <li><a href="tel:0080067891011" target="_blank" rel="noopener noreferrer">Call us 00 800 6 7 8 9 10 11</a></li>
+                    <li><a href="https://european-union.europa.eu/contact-eu/call-us_en" target="_blank" rel="noopener noreferrer">Use other telephone options</a></li>
+                    <li><a href="https://european-union.europa.eu/contact-eu/write-us_en" target="_blank" rel="noopener noreferrer">Write to us via our contact form</a></li>
+                    <li><a href="https://european-union.europa.eu/contact-eu/meet-us_en" target="_blank" rel="noopener noreferrer">Meet us at one of the EU centres</a></li>
+                </ul>
+            </div>
+            <div class="ted-footer__column">
+                <h3 class="ted-footer__heading">Social media</h3>
+                <ul class="ted-footer__links">
+                    <li><a href="https://european-union.europa.eu/contact-eu/social-media-channels_en" target="_blank" rel="noopener noreferrer">Search for EU social media channels</a></li>
+                </ul>
+                <h3 class="ted-footer__heading">Legal</h3>
+                <ul class="ted-footer__links">
+                    <li><a href="https://european-union.europa.eu/languages-our-websites_en" target="_blank" rel="noopener noreferrer">Languages on our websites</a></li>
+                    <li><a href="https://european-union.europa.eu/privacy-policy_en" target="_blank" rel="noopener noreferrer">Privacy policy</a></li>
+                    <li><a href="https://european-union.europa.eu/legal-notice_en" target="_blank" rel="noopener noreferrer">Legal notice</a></li>
+                    <li><a href="https://european-union.europa.eu/cookies_en" target="_blank" rel="noopener noreferrer">Cookies</a></li>
+                </ul>
+                <h3 class="ted-footer__heading">EU institutions and bodies</h3>
+                <ul class="ted-footer__links">
+                    <li><a href="https://european-union.europa.eu/institutions-law-budget/institutions-and-bodies/search-all-eu-institutions-and-bodies_en" target="_blank" rel="noopener noreferrer">Search all EU institutions and bodies</a></li>
+                </ul>
+            </div>
         </div>
     </footer>
+
+    <!-- Error toast, fixed at the bottom right -->
+    <div id="apiStatus" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false" >
+        <div class="toast-header">
+            <svg width="16" height="16" class="rounded me-2">
+                <rect width="16" height="16" fill="red"></rect>
+            </svg>                
+            <strong class="me-auto">Error</strong>
+            <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <ul class="toast-body">
+            <!-- Error message will be inserted here -->
+        </ul>
+    </div>
 </body>
 
 <!-- Index Card Template - used by idex-card.js -->
