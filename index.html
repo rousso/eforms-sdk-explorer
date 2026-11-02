@@ -171,22 +171,33 @@
 
         <!-- Home -->
         <div class="tab-pane h-100 fade show active" id="home-tab-content" role="tabpanel" aria-labelledby="home-tab">
-            <div class="alert alert-warning" role="alert"><b>Please note</b>: This is a pre-release version of the SDK
-                Explorer. Some features may not be fully functional.</div>
-            <div class="p-5 mb-4 bg-light rounded-3">
-                <h1 class="display-4">SDK Explorer</h1>
-                <p class="lead">Explore and compare different versions of the eForms SDK.</p>
-                <hr class="my-4">
-                <p>The eForms SDK Explorer is a web application that allows you to explore the contents as well as
-                    changes between any two versions of the eForms SDK.
-                    The application is being developed by the Publications Office of the EU and is available as open
-                    source on <a href="https://github.com/OP-TED/eforms-sdk-explorer">GitHub</a>. We welcome your feedback,
-                    suggestions for improvement as well as your contributions to the project.
-                </p>
-                <p>
-                    If you are new to the SDK Explorer, we recommend that you take our quick tour.
-                </p>
-                <button id="start-tour" class="btn btn-primary">Start Quick Tour</button>
+            <div class="ted-home">
+                <div class="ted-home__text">
+                    <div class="ted-home__intro">
+                        <h1 class="ted-home__title">eForms SDK Explorer</h1>
+                        <p class="ted-home__lead">Explore and compare different versions of the eForms SDK.</p>
+                    </div>
+                    <p class="ted-home__paragraph">The eForms SDK Explorer is a web application that allows you to explore the contents as well as
+                        changes between any two versions of the eForms SDK.
+                        The application is being developed by the Publications Office of the EU and is available as open
+                        source on <a href="https://github.com/OP-TED/eforms-sdk-explorer">GitHub</a>. We welcome your feedback,
+                        suggestions for improvement as well as your contributions to the project.
+                    </p>
+                </div>
+                <aside class="ted-home__card" aria-labelledby="reading-title">
+                    <div class="ted-home__tour">
+                        <h2 class="ted-home__card-heading">New to the SDK Explorer?</h2>
+                        <p class="ted-home__card-text">The quick tour shows where to choose the versions, how to switch between sections and how changes are marked.</p>
+                        <button id="start-tour" type="button" class="btn btn-tertiary btn-sm">Start quick tour</button>
+                    </div>
+                    <h2 class="ted-home__card-heading" id="reading-title">Reading the comparison</h2>
+                    <p class="ted-home__card-text">Select the base version, the one you are migrating from, and the target version, the one you are migrating to. Every tab then shows what changed between the two.</p>
+                    <ul class="ted-home__markers">
+                        <li><span class="ted-marker ted-marker--added" aria-hidden="true"></span><span><b>Added</b>: exists only in the target version.</span></li>
+                        <li><span class="ted-marker ted-marker--removed" aria-hidden="true"></span><span><b>Removed</b>: exists only in the base version.</span></li>
+                        <li><span class="ted-marker ted-marker--modified" aria-hidden="true"></span><span><b>Modified</b>: exists in both versions, with differences.</span></li>
+                    </ul>
+                </aside>
             </div>
         </div>
 

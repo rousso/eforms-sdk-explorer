@@ -717,6 +717,119 @@ a:not(.btn):focus-visible {
 
 /* Home (Increment 4): the text column and the side card. */
 
+.ted-home {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 32px 48px;
+    padding: 40px 0 64px;
+}
+
+.ted-home__text {
+    display: flex;
+    flex: 1 1 560px;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+    max-width: 48rem;
+}
+
+.ted-home__intro {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ted-home__title {
+    margin: 0;
+}
+
+.ted-home__lead {
+    margin: 0;
+    font-size: var(--gs-base-font-size-xl);
+    line-height: 1.75;
+}
+
+.ted-home__paragraph {
+    margin: 0;
+    font-size: var(--gs-base-font-size-m);
+    line-height: 1.62;
+}
+
+/* The side card: the quick tour, then how to read the comparison. */
+.ted-home__card {
+    display: flex;
+    flex: 1 1 320px;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 440px;
+    padding: 24px;
+    background: var(--gs-base-color-white);
+    border: 1px solid var(--gs-base-color-gray-20);
+    border-radius: var(--gs-base-radius-m);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
+.ted-home__tour {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--gs-base-color-gray-10);
+}
+
+.ted-home__card-heading {
+    margin: 0;
+    font-size: var(--gs-base-font-size-l);
+    line-height: 1.15;
+}
+
+.ted-home__card-text {
+    margin: 0;
+    font-size: var(--gs-base-font-size-s);
+    line-height: 1.5;
+}
+
+.ted-home__markers {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    font-size: var(--gs-base-font-size-s);
+    line-height: 1.5;
+    list-style: none;
+}
+
+.ted-home__markers li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.ted-home__markers .ted-marker {
+    margin-top: 2px;
+}
+
+/* Tertiary button (Start quick tour): transparent, gray-75 border and text, gray-10 on hover; its focus ring gray-75. */
+.btn-tertiary {
+    --bs-btn-color: var(--gs-base-color-gray-75);
+    --bs-btn-bg: transparent;
+    --bs-btn-border-color: var(--gs-base-color-gray-75);
+    --bs-btn-hover-color: var(--gs-base-color-gray-75);
+    --bs-btn-hover-bg: var(--gs-base-color-gray-10);
+    --bs-btn-hover-border-color: var(--gs-base-color-gray-75);
+    --bs-btn-active-color: var(--gs-base-color-gray-75);
+    --bs-btn-active-bg: var(--gs-base-color-gray-10);
+    --bs-btn-active-border-color: var(--gs-base-color-gray-75);
+}
+
+.btn-tertiary:focus-visible {
+    outline-color: var(--gs-base-color-gray-75);
+}
+
 /* Cards (Increment 5): headings and breadcrumbs, the card group's header and filter list, index cards,
    property rows. */
 
