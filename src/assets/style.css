@@ -11,8 +11,6 @@
     --added-marker-color: var(--gs-base-color-success);
     --removed-marker-color: var(--gs-base-color-error-100);
     --modified-marker-color: var(--gs-base-color-info);
-    --unchanged-item-background-color: #f8f9fa;
-    --light-background-color: #f8f9fa;
     --border-color: #ddd;
     /* diff2html color overrides */
     --d2h-ins-highlight-bg-color: var(--added-item-highlight) !important;

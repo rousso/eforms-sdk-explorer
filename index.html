@@ -224,12 +224,9 @@
 
                 <!-- Notice-types overview -->
                 <div id="notice-types-overview" class="view-container">
-                    <nav aria-label="breadcrumb" class="view-breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item" aria-current="page">Overview</li>
-                        </ol>
-                    </nav>
-                    <card-group id="notice-types-overview-card-group" filter-property="formType" filter-prompt="Filter by form type"></card-group>
+                    <card-group id="notice-types-overview-card-group" filter-property="formType" filter-prompt="Filter by form type">
+                        <h1 slot="heading">Notice types</h1>
+                    </card-group>
                 </div>
 
                 <!-- Notice-type Explorer -->
@@ -238,7 +235,7 @@
                     <!-- Breadcrumbs -->
                     <nav aria-label="breadcrumb" class="view-breadcrumb">
                         <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="#" id="notice-types-overview-link">Overview</a></li>
+                            <li class="breadcrumb-item"><a href="#" id="notice-types-overview-link">Notice types</a></li>
                             <li class="breadcrumb-item" aria-current="page">Comparison</li>
                         </ol>
                     </nav>
@@ -257,12 +254,9 @@
             <div class="tab-container">
                 <!-- Code-lists overview -->
                 <div id="code-lists-overview" class="view-container">
-                    <nav aria-label="breadcrumb" class="view-breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item" aria-current="page">Overview</li>
-                        </ol>
-                    </nav>
-                    <card-group id="code-lists-overview-card-group" filter-property="parentId" filter-prompt="Filter by parent codelist"></card-group>
+                    <card-group id="code-lists-overview-card-group" filter-property="parentId" filter-prompt="Filter by parent codelist">
+                        <h1 slot="heading">Codelists</h1>
+                    </card-group>
                 </div>
 
                 <!-- Codelist  diff view -->
@@ -271,7 +265,7 @@
                     <!-- Breadcrumbs -->
                     <nav aria-label="breadcrumb" class="view-breadcrumb">
                         <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="#" id="code-lists-overview-link">Overview</a></li>
+                            <li class="breadcrumb-item"><a href="#" id="code-lists-overview-link">Codelists</a></li>
                             <li class="breadcrumb-item" aria-current="page">Comparison</li>
                         </ol>
                     </nav>
@@ -288,12 +282,9 @@
             <div class="tab-container">
                 <!-- schemas overview -->
                 <div id="schemas-overview" class="view-container">
-                    <nav aria-label="breadcrumb" class="view-breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item" aria-current="page">Overview</li>
-                        </ol>
-                    </nav>
-                    <card-group id="schemas-overview-card-group" filter-property="standard" filter-prompt="Filter by standard"></card-group>
+                    <card-group id="schemas-overview-card-group" filter-property="standard" filter-prompt="Filter by standard">
+                        <h1 slot="heading">Schemas</h1>
+                    </card-group>
                 </div>
         
                 <!-- schemas  diff -->
@@ -302,7 +293,7 @@
                     <!-- Breadcrumbs -->
                     <nav aria-label="breadcrumb" class="view-breadcrumb">
                         <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="#" id="schemas-overview-link">Overview</a></li>
+                            <li class="breadcrumb-item"><a href="#" id="schemas-overview-link">Schemas</a></li>
                             <li class="breadcrumb-item" aria-current="page">Comparison</li>
                         </ol>
                     </nav>
@@ -320,12 +311,9 @@
                 
                 <!-- Schematrons overview -->
                 <div id="schematrons-overview" class="view-container">
-                    <nav aria-label="breadcrumb" class="view-breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item" aria-current="page">Overview</li>
-                        </ol>
-                    </nav>
-                    <card-group id="schematrons-overview-card-group" filter-property="folder" filter-prompt="Filter by folder"></card-group>
+                    <card-group id="schematrons-overview-card-group" filter-property="folder" filter-prompt="Filter by folder">
+                        <h1 slot="heading">Schematrons</h1>
+                    </card-group>
                 </div>
 
                 <!-- Schematrons diff view -->
@@ -334,7 +322,7 @@
                     <!-- Breadcrumbs -->
                     <nav aria-label="breadcrumb" class="view-breadcrumb">
                         <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="#" id="schematrons-overview-link">Overview</a></li>
+                            <li class="breadcrumb-item"><a href="#" id="schematrons-overview-link">Schematrons</a></li>
                             <li class="breadcrumb-item" aria-current="page">Comparison</li>
                         </ol>
                     </nav>
@@ -352,11 +340,7 @@
 
                 <!-- Validation overview -->
                 <div id="validation-overview" class="view-container">
-                    <nav aria-label="breadcrumb" class="view-breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item" aria-current="page">Overview</li>
-                        </ol>
-                    </nav>
+                    <h1>Validation</h1>
                     <div class="d-flex align-items-center px-3">
                         <span id="validation-source-label" class="me-2">Source:</span>
                         <div id="validation-source" class="btn-group btn-group-sm" role="group" aria-labelledby="validation-source-label">
@@ -375,7 +359,7 @@
                     <!-- Breadcrumbs -->
                     <nav aria-label="breadcrumb" class="view-breadcrumb">
                         <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="#" id="validation-overview-link">Overview</a></li>
+                            <li class="breadcrumb-item"><a href="#" id="validation-overview-link">Validation</a></li>
                             <li class="breadcrumb-item" aria-current="page">Comparison</li>
                         </ol>
                     </nav>
@@ -392,12 +376,9 @@
             <div class="tab-container">
                 <!-- translations overview -->
                 <div id="translations-overview" class="view-container">
-                    <nav aria-label="breadcrumb" class="view-breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item" aria-current="page">Overview</li>
-                        </ol>
-                    </nav>
-                    <card-group id="translations-overview-card-group" filter-property="twoLetterCode" filter-prompt="Filter by language"></card-group>
+                    <card-group id="translations-overview-card-group" filter-property="twoLetterCode" filter-prompt="Filter by language">
+                        <h1 slot="heading">Translations</h1>
+                    </card-group>
                 </div>
 
                 <!-- Translations  diff -->
@@ -406,7 +387,7 @@
                     <!-- Breadcrumbs -->
                     <nav aria-label="breadcrumb" class="view-breadcrumb">
                         <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="#" id="translations-overview-link">Overview</a></li>
+                            <li class="breadcrumb-item"><a href="#" id="translations-overview-link">Translations</a></li>
                             <li class="breadcrumb-item" aria-current="page">Comparison</li>
                         </ol>
                     </nav>
@@ -424,12 +405,9 @@
             <div class="tab-container">
                 <!-- View-templates overview -->
                 <div id="view-templates-overview" class="view-container">
-                    <nav aria-label="breadcrumb" class="view-breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item" aria-current="page">Overview</li>
-                        </ol>
-                    </nav>
-                    <card-group id="view-templates-overview-card-group" class="flex-grow-1 mh-100"></card-group>
+                    <card-group id="view-templates-overview-card-group" class="flex-grow-1 mh-100">
+                        <h1 slot="heading">View templates</h1>
+                    </card-group>
                 </div>
 
                 <!-- View-template diff -->
@@ -438,7 +416,7 @@
                     <!-- Breadcrumb -->
                     <nav aria-label="breadcrumb" class="view-breadcrumb">
                         <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="#" id="view-templates-overview-link">Overview</a></li>
+                            <li class="breadcrumb-item"><a href="#" id="view-templates-overview-link">View templates</a></li>
                             <li class="breadcrumb-item" aria-current="page">Comparison</li>
                         </ol>
                     </nav>
@@ -561,75 +539,104 @@
 <!-- Index Card Template - used by idex-card.js -->
 <template id="index-card-template">
     <style>
-        .added-card {
-            background-color: var(--added-item-background-color);
-            color: black;
-        }
-
-        .removed-card {
-            background-color: var(--removed-item-background-color);
-            color: black;
-        }
-
-        .modified-card {
-            background-color: var(--modified-item-background-color);
-            color: black;
-        }
-
-        .unchanged-card {
-            background-color: var(--unchanged-item-background-color);
-            color: black;
-            animation: none;
-        }
-
         :host(.unchanged-card) {
             display: var(--compact-view-unchanged-display, block);
         }
 
+        /* The TED card. */
         .card {
-            box-shadow: 1px 1px 3px 1px lightgray;
-        }
-
-        .card-header {
-            animation: fadeToWhite 1s infinite;
-            /* border-bottom-width: 5px; */
-        }
-
-        .card-header.added-card,
-        .card-header.removed-card,
-        .card-header.modified-card,
-        .card-header.unchanged-card {
-            animation: none;
-        }
-
-        @keyframes fadeToWhite {
-
-            0%,
-            100% {
-                background-color: var(--light-background-color);
-            }
-
-            50% {
-                background-color: white;
-            }
-        }
-
-        h2 {
-            white-space: nowrap;
+            --bs-card-border-color: var(--gs-base-color-gray-20);
+            --bs-card-border-radius: var(--gs-base-radius-m);
+            --bs-card-inner-border-radius: calc(var(--gs-base-radius-m) - 1px);
             overflow: hidden;
-            text-overflow: ellipsis;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
         }
 
+        /* The header on the status tint; gray-5 while the status is still unknown. */
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px;
+            background-color: var(--gs-base-color-gray-5);
+            border-bottom: 1px solid var(--gs-base-color-gray-20);
+        }
+
+        .card-header.added-card { background-color: var(--added-item-background-color); }
+        .card-header.removed-card { background-color: var(--removed-item-background-color); }
+        .card-header.modified-card { background-color: var(--modified-item-background-color); }
+        .card-header.unchanged-card { background-color: var(--gs-base-color-white); }
+
+        #card-heading {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        /* The status line: the marker and the status, hidden while the status is unknown. */
+        #status-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: var(--gs-base-font-size-xs);
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: var(--gs-base-color-gray-75);
+            line-height: 1.5;
+            visibility: hidden;
+        }
+
+        .added-card #status-line,
+        .removed-card #status-line,
+        .modified-card #status-line,
+        .unchanged-card #status-line {
+            visibility: visible;
+        }
+
+        #status-marker { display: none; }
+        .added-card #status-marker { display: inline-flex; background: var(--added-marker-color); }
+        .added-card #status-marker::before { content: "\e900"; }
+        .removed-card #status-marker { display: inline-flex; background: var(--removed-marker-color); }
+        .removed-card #status-marker::before { content: "\e92c"; }
+        .modified-card #status-marker { display: inline-flex; background: var(--modified-marker-color); }
+        .modified-card #status-marker::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+        #title {
+            margin: 0;
+            overflow: hidden;
+            font-size: var(--gs-base-font-size-l);
+            font-weight: 700;
+            line-height: 1.3;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #subtitle {
+            margin: 4px 0 0;
+            color: var(--gs-base-color-gray-75);
+            font-size: var(--gs-base-font-size-m);
+            line-height: 1.5;
+        }
+
+        /* Compare: a secondary sm button. */
         #action-button {
-            margin-left: 24px;
-            margin-top: 4px;
+            --bs-btn-font-size: var(--gs-base-font-size-s);
+            --bs-btn-font-weight: 400;
+            --bs-btn-padding-y: 8px;
+            --bs-btn-padding-x: 12px;
+            flex: 0 0 auto;
+        }
+
+        #property-list {
+            padding: 4px 0 8px;
         }
     </style>
     <div class="card">
-        <div class="card-header" id="card-header" style="display: flex; flex-direction: row; align-items: flex-start;">
-            <div style="flex: 1;">
+        <div class="card-header" id="card-header">
+            <div id="card-heading">
+                <div id="status-line"><span id="status-marker" class="ted-marker" aria-hidden="true"></span><span id="status-label"></span></div>
                 <h2 id="title" class="card-title"></h2>
-                <h5 id="subtitle" class="card-subtitle"></h5>
+                <p id="subtitle" class="card-subtitle"></p>
             </div>
         </div>
         <ul id="property-list" class="list-group list-group-flush">
@@ -647,17 +654,19 @@
         }
 
         .property-label {
-            font-weight: bold;
             flex-basis: 100%;
-            font-size: smaller;
+            font-size: var(--gs-base-font-size-xs);
+            font-weight: 700;
+            line-height: 1.5;
         }
 
         .property-value {
-            font-family: 'Courier New', Courier, monospace;
-            overflow-wrap: anywhere;
-            font-size: smaller;
-            float: right;
             box-sizing: border-box;
+            margin-top: 2px;
+            font-family: var(--font-mono);
+            font-size: var(--gs-base-font-size-xs);
+            line-height: 1.5;
+            overflow-wrap: anywhere;
         }
 
         .new-property-value {
@@ -701,8 +710,12 @@
             display: var(--compact-view-unchanged-display, flex);
         }
 
-        :host-context(.list-group-flush) .list-group-item {
-            border-width: 0 0 1px;
+        /* A row: 8px above and below, a gray-10 divider, inset 16px in the card. */
+        #list-item {
+            margin: 0 16px;
+            padding: 8px 0;
+            border: 0;
+            border-bottom: 1px solid var(--gs-base-color-gray-10);
         }
     </style>
     <li id="list-item" class="list-group-item property-flex">
@@ -861,26 +874,7 @@
 <template id="card-group-template">
     <style>
         :host {
-            overflow-y: hidden;
-            display: flex;
-            height: 100%;
-            /* border: 1px solid red; */
-        }
-
-        .card-group {
-            /* height: calc(100vh - 290px); */
-            overflow-y: auto;
-            background-color: var(--light-background-color);
-            border: 1px solid var(--border-color);
-            padding: 15px;
-            /* display: flex; */
-            flex-wrap: wrap;
-            align-content: flex-start;
-        }
-
-        .card-group index-card {
-            flex: 1 0 300px;
-            margin: 10px;
+            display: block;
         }
 
         .card-group .added-card {
@@ -895,79 +889,122 @@
             display: var(--filter-status-modified, var(--filter-status-all, none));
         }
 
-        #card-group-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-            overflow-x: hidden;
-            /* border: 1px solid red; */
-        }
-
+        /* The heading's row: the tab's heading (slotted from the page) at the left, Show and Compact view at the right. */
         #head {
             display: flex;
-            flex: 0 0 auto;
-            align-items: center;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px 24px;
+            margin-bottom: 16px;
+        }
+
+        ::slotted(h1) {
+            margin: 0;
+        }
+
+        #head-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 16px 24px;
+            margin-left: auto;
+        }
+
+        #status-filter-control {
+            width: 140px;
+        }
+
+        #compact-view-control {
+            margin-bottom: 0;
+            padding-bottom: 10px;
         }
 
         #body {
-            flex: 1;
             display: flex;
-            flex-direction: row;
-            overflow: hidden;
-            /* height: 100%;
-            max-height: calc(100% - 24px); */
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 16px;
         }
 
+        /* The filter list: a white panel that sticks under the pinned bar, hidden while it has no values. */
         #nav {
-            flex: 1 1 10%;
-            overflow-x: hidden;
-            overflow-y: auto;
-            min-width: 200px;
-            border-top: 1px solid var(--border-color);
+            position: sticky;
+            top: calc(var(--ted-bar-height) + 16px);
+            flex: 1 1 220px;
+            align-self: flex-start;
+            max-width: 260px;
+            padding: 16px 8px;
+            background: var(--gs-base-color-white);
+            border: 1px solid var(--gs-base-color-gray-20);
+            border-radius: var(--gs-base-radius-m);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
         }
 
-        #cards-container {
-            height: 100%;
-            width: 100%;
-            flex: 0 1 100% !important;
-            overflow-y: auto;
+        #nav:has(#filter-options:empty) {
+            display: none;
         }
 
         #filter-prompt {
-            margin: 0px 4px;
+            margin: 0 8px 12px;
+            font-size: var(--gs-base-font-size-l);
+            font-weight: 700;
+            line-height: 1.15;
         }
 
-        .nav-link {
-            padding: .3rem;
+        #filter-options {
+            gap: 2px;
+            font-size: var(--gs-base-font-size-s);
         }
 
-        .nav-link.active {
-            font-weight: bold;
+        #filter-options .nav-link {
+            display: block;
+            padding: 8px;
+            color: var(--gs-base-color-eu-blue-100);
+            border-radius: var(--gs-base-radius-s);
+            text-decoration: none;
         }
 
-        #status-filter {
-            margin-right: 12px;
+        #filter-options .nav-link.active {
+            color: var(--gs-base-color-gray-100);
+            font-weight: 700;
+            background: var(--gs-base-color-eu-blue-10);
+        }
+
+        /* The cards: a grid of 300px columns at least. */
+        #cards-container {
+            display: grid;
+            flex: 999 1 560px;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            align-items: start;
+            gap: 16px;
+            min-width: 0;
         }
     </style>
     <div id="card-group-container">
         <header id="head">
-            <label style="flex:1;" id="filter-prompt"></label>
-            <select id="status-filter" class="form-select form-select-sm m-3" style="width:100px;">
-                <option value="all">all</option>
-                <option value="added">added</option>
-                <option value="removed">removed</option>
-                <option value="modified">modified</option>
-            </select>
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="compactViewSwitch">
-                <label class="form-check-label" for="compactViewSwitch">Compact view</label>
+            <slot name="heading"></slot>
+            <div id="head-controls">
+                <div id="status-filter-control">
+                    <label class="form-label" for="status-filter">Show</label>
+                    <select id="status-filter" class="form-select form-select-sm">
+                        <option value="all">all</option>
+                        <option value="added">added</option>
+                        <option value="removed">removed</option>
+                        <option value="modified">modified</option>
+                    </select>
+                </div>
+                <div id="compact-view-control" class="form-check">
+                    <input class="form-check-input" type="checkbox" id="compactViewSwitch">
+                    <label class="form-check-label" for="compactViewSwitch">Compact view</label>
+                </div>
             </div>
         </header>
         <div id="body">
-            <div id="nav">
+            <nav id="nav" aria-labelledby="filter-prompt">
+                <h2 id="filter-prompt"></h2>
                 <ul id="filter-options" class="nav flex-column"></ul>
-            </div>
+            </nav>
             <div id="cards-container" class="card-group" style="--filter-all-all: block;"></div>
         </div>
     </div>

@@ -833,6 +833,23 @@ a:not(.btn):focus-visible {
 /* Cards (Increment 5): headings and breadcrumbs, the card group's header and filter list, index cards,
    property rows. */
 
+/* The breadcrumb of the comparison views: 14px, chevron separators in gray-75, the current item #333. (The card group,
+   index card and property card templates style their own parts.) */
+.breadcrumb {
+    --bs-breadcrumb-margin-bottom: 16px;
+    --bs-breadcrumb-font-size: var(--gs-base-font-size-s);
+    --bs-breadcrumb-item-padding-x: 8px;
+    --bs-breadcrumb-divider-color: var(--gs-base-color-gray-75);
+    --bs-breadcrumb-item-active-color: var(--gs-base-color-gray-100);
+    align-items: center;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: "\e911";
+    font-family: "gs-icon";
+    font-size: 12px;
+}
+
 /* Tree and detail (Increment 6): the Fields toolbar, the Structure and Details panels, the tree, the details. */
 
 /* File diff (Increment 7): the Base and Target headings and the diff panel. */
