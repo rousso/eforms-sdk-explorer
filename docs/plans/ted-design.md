@@ -483,3 +483,32 @@ Questions about the design go to the design session, and questions about the pla
     - The quick tour runs its four steps from the new button and closes after the last. No console errors.
   - Smoke: 69 passed (`#start-tour` unchanged).
   - For Increment 5: `.ted-home__card` already has the card look (gray-20 border, 8 px radius, the card shadow). The tertiary button is in the home section; move it to the foundation if another screen needs it.
+- 2026-11-02: Increment 5 done (`f38ee3e`).
+  - Headings:
+    - The six card overviews (Notice types, Codelists, Schemas, Schematrons, Translations, View templates) have `<h1 slot="heading">` with the tab's name inside their `<card-group>`. The card-group template's heading row has a named `<slot name="heading">`, so the page's H1 sits on the same row as Show and Compact view. `card-group.js` is unchanged: its cards live in the shadow root's `#cards-container`, and it never touches its light-DOM children.
+    - Validation's H1 is a plain `<h1>` above the Source toggle, where its breadcrumb was; Increment 9 lays out that row.
+    - The comparison breadcrumbs keep their link ids. Their first item reads the tab's name; the TED breadcrumb (14 px, `gs-icon-chevron-right` separators in gray-75, current item #333) is in the cards section of `ted-theme.css`.
+  - Card-group template:
+    - The heading row: the slot, then `#status-filter` under a visible `label.form-label` "Show" (140 px wide), then Compact view as a plain `form-check` (same `#compactViewSwitch`), right-aligned.
+    - `#nav` is now a `nav` labelled by `#filter-prompt`, which is now an `h2` with the same text. It is the white 220–260 px panel, sticky at `top: calc(var(--ted-bar-height) + 16px)`, and hidden by `#nav:has(#filter-options:empty)` while it has no values, so an empty pane shows only the heading row. The option texts and `.nav-link.active` are unchanged; the active one is bold on eu-blue-10.
+    - The cards: `#cards-container` as a grid of `repeat(auto-fill, minmax(300px, 1fr))` with 16 px gaps. The status-filter display rules stay.
+  - Index-card template:
+    - the TED card (gray-20 border, 8 px radius, the card shadow);
+    - the header on the status tint, gray-5 while the status is unknown, and white when unchanged: the mockup shows no unchanged card, and white keeps it apart from a pending one;
+    - the status line `#status-marker` and `#status-label`, hidden while the status is unknown. The marker uses Increment 3's `.ted-marker`, with the glyph and colour set by the template from the header's status class, so no further JavaScript;
+    - `#title` 18 px bold and `#subtitle` (now a `p`) 16 px gray-75;
+    - `#action-button` sized as a secondary sm button by the template; `index-card.js` still picks `btn-outline-primary`, or `btn-outline-secondary` when disabled for added and removed.
+    - `fadeToWhite` is removed.
+  - `IndexCard.render()` writes `this.status` into `#status-label`; the template shows it in capitals. This is the only JavaScript change.
+  - Property-card template: labels 13 px bold, values monospace 13 px, rows inset 16 px with a gray-10 divider (replacing `:host-context(.list-group-flush)`). These apply to the details view too until Increment 6 gives it its own layout. The old/new value boxes are left to Increment 6.
+  - `style.css`: `--light-background-color` (its last users were the two templates) and `--unchanged-item-background-color` are removed.
+  - Checked in the browser, 1.13.0 vs 1.12.0:
+    - Notice types, form type `cont-modif`, against `notice-types.png`: the same layout, with 38, 39 and 40 modified and E6 added. Texts differ where the plan keeps the app's: the panel heading is "Filter by form type" and its first item "(all)". The app's cards also list the properties the mockup leaves out.
+    - Show "modified" leaves 38, 39 and 40. Compact view hides the unchanged property rows.
+    - The Codelists comparison breadcrumb reads "Codelists › Comparison". No console errors.
+  - Codelists main-thread time, 1.13.0 vs 1.12.0, three runs each, served with `max-age=600`:
+    - this increment: 7.8–8.1 s, style recalc 0.9 s;
+    - the previous commit `a76ccb1`: 8.5–9.1 s, style recalc 1.7–1.9 s;
+    - idle after about 10 s in both. Faster, most likely because the looping `fadeToWhite` animation of the pending cards is gone.
+  - Smoke: 69 passed. `#filter-prompt`'s text, the option texts, `#nav`'s computed display, `#status-filter` and `#action-button` are all as before.
+  - For Increment 6: the tree/detail template's switch is still `form-switch`, and the property-card rows now carry the card look in the details too.
