@@ -38,6 +38,15 @@ $(document).ready(() => {
     const bar = document.querySelector('.ted-bar');
     new ResizeObserver(() => document.documentElement.style.setProperty('--ted-bar-height', `${bar.offsetHeight}px`)).observe(bar);
 
+    // After a tab switch, bring the start of the work area under the pinned bar if the page was scrolled past it (the
+    // new tab may be shorter than the offset it inherits); a page still at the top stays there, with the header in view
+    $('ul.nav-tabs').on('shown.bs.tab', () => {
+        const workAreaTop = document.querySelector('main').getBoundingClientRect().top + window.scrollY - bar.offsetHeight;
+        if (window.scrollY > workAreaTop) {
+            window.scrollTo({ top: workAreaTop, behavior: 'instant' });
+        }
+    });
+
     var currentStep = 0;
 
     // Move to the next step when the "Next" button is clicked

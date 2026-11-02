@@ -266,6 +266,24 @@ class ExplorerPage {
     }
 
     /**
+     * Scrolls the page to its bottom, as a user would.
+     */
+    async scrollToBottom() {
+        await this.#page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+    }
+
+    /**
+     * @param {string} selector
+     * @returns {Promise<boolean>} Whether the element is entirely within the window.
+     */
+    async isInWindow(selector) {
+        return this.#page.$eval(selector, element => {
+            const box = element.getBoundingClientRect();
+            return box.top >= 0 && box.bottom <= window.innerHeight;
+        });
+    }
+
+    /**
      * Opens the "Choose versions…" dialog from Home and presses Compare without changing anything, as a user would.
      */
     async compareInDialogUnchanged() {
@@ -1395,6 +1413,11 @@ class SmokeTest {
                 assert.equal(await this.#explorer.countedVersionChanges(), 1);
                 assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.15.1', baseVersion: '1.14.1' });
                 assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+            }],
+            ['after scrolling far down a tab, switching to Home shows its comparison buttons', async () => {
+                await this.#explorer.scrollToBottom();
+                await this.#explorer.openTab('home-tab');
+                assert.equal(await this.#explorer.isInWindow('#compare-versions'), true);
             }],
             ['the dialog\'s Compare with both versions changed applies them with one reload', async () => {
                 await this.#explorer.openTab('home-tab');
