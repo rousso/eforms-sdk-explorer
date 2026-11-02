@@ -20,7 +20,7 @@ The design was made and reviewed on a canvas in a design session (https://claude
   - `fonts/gs-icon.woff`: the OP Global Style icon font.
   - `img/`: `eu.svg` (banner flag), `logo-eu--en.svg`, `logo-eu--mobile.svg`, `EU-flag.png` (footer) and `op-lockup-blue.png` (Publications Office lockup, footer).
   - `ted-theme.css` is not among them: Increment 1 creates it and the later increments fill it.
-- **Prerequisite:** `docs/plans/bootstrap5-upgrade.md`, merged into `develop` before Increment 1 starts. The increments name Bootstrap 5 classes (`form-select`, `form-check`, `form-switch`, `btn-check`, `ms-*`/`me-*`, `btn-close`, `data-bs-*`). Where the Bootstrap 4.6.2 class differs, it is given once in brackets, so that the plan also works without the upgrade.
+- **Prerequisite:** `docs/plans/bootstrap5-upgrade.md`, merged into `develop` before Increment 1 starts. The increments name Bootstrap 5 classes (`form-select`, `form-check`, `form-switch`, `btn-check`, `ms-*`/`me-*`, `btn-close`, `data-bs-*`).
 - **Working method:** as in `docs/plans/README.md`, on branch `feature/ted-design`. Use one implementation session per increment or per group of increments, one commit per increment, `npm run smoke` before each push, and a dated entry in Progress at the end.
 
 ## Decisions
@@ -68,11 +68,11 @@ Decisions marked **(to confirm)** were proposed in the design session and are st
 
 ## Constraints
 
-- **No behaviour change**, except in Increment 10, which changes how versions are chosen and nothing else. Everything the application does today, it still does, in the same way. `npm run smoke` (`scripts/smoke.mjs`, 67 checks) passes after every increment. From Increment 10 on, the expected count is the new one recorded in Progress. A run with a lower pass count is a failed increment.
+- **No behaviour change**, except in Increment 10, which changes how versions are chosen and nothing else. Everything the application does today, it still does, in the same way. `npm run smoke` (`scripts/smoke.mjs`) passes after every increment with every check, 69 after the Bootstrap upgrade (the count is recorded in the Progress section of `docs/plans/bootstrap5-upgrade.md`). An increment that adds a check records the new count in Progress, and that count is the expected one from then on. A run with a lower pass count is a failed increment.
 - **Smoke selectors.** The script relies on the elements below. An increment that changes one of them, or a text the script reads, updates `scripts/smoke.mjs` in the same commit, and says so in Progress.
   - `#main-version-dropdown` and `#base-version-dropdown`.
   - The tab buttons, found with `ul.nav-tabs button.nav-link.active` and by their ids (`#home-tab` … `#release-notes-tab`, `#validation-tab`, `#schematrons-tab`). The `li.nav-item` wrappers stay, and visibility stays the `d-none` class on the `li`.
-  - `#fields-source` and `#validation-source`: ids, radio names and values unchanged. After the Bootstrap upgrade the script reads `input[type="radio"]:checked`.
+  - `#fields-source` and `#validation-source`: ids, radio names and values unchanged. The script reads `input[type="radio"]:checked`.
   - `#fields-source-alert`.
   - `#centralLoadingSpinner`, through its CSS `visibility` (`hidden` when idle): the script's idle wait uses it.
   - `#apiStatus .toast-body` with its `li` items and `span.detail`.
@@ -129,16 +129,16 @@ Files: `index.html` (head), `src/js/config.js`, `src/js/components/bootstrap-web
 - In `index.html`, link the stylesheets in this order: Bootstrap, `src/assets/ted/tokens.css`, `src/assets/ted/icons.css`, `src/assets/ted/ted-theme.css`, the existing library sheets (jsTree theme, github-markdown, diff2html), then `src/assets/style.css` last.
 - Add `tedIcons` and `tedTheme` to `appConfig.stylesheets`, with paths relative to `index.html` (`./src/assets/ted/icons.css`, `./src/assets/ted/ted-theme.css`).
 - `BootstrapWebComponent.requiredCss()` returns Bootstrap, then `tedIcons`, then `tedTheme`; `TreeDetailSplitView` keeps adding the jsTree theme. `tokens.css` is not loaded into the shadow roots: its custom properties inherit, and its `@font-face` belongs in the document.
-- Verification: smoke 67/67. No visible change yet, because the theme is empty. In the inspector, every component's shadow root has the two new links, and `document.fonts` lists `gs-icon`. Neither new sheet starts with `@charset`. With 1.13.0 vs 1.12.0, the Codelists tab loads no slower than before this increment: compare the Performance panel's main-thread time with the previous commit.
+- Verification: smoke passes with every check. No visible change yet, because the theme is empty. In the inspector, every component's shadow root has the two new links, and `document.fonts` lists `gs-icon`. Neither new sheet starts with `@charset`. With 1.13.0 vs 1.12.0, the Codelists tab loads no slower than before this increment: compare the Performance panel's main-thread time with the previous commit.
 
 ### Increment 2 — theme foundation (M)
 Files: `ted-theme.css` (foundation section), `src/assets/style.css` (variables).
-- Bootstrap 5.3 custom properties on `:root`: `--bs-body-font-family: var(--font-sans)`, `--bs-body-color` and `--bs-heading-color: var(--gs-base-color-gray-100)`, `--bs-link-color` and `--bs-link-hover-color: var(--gs-base-color-eu-blue-100)` (and their `-rgb` variants), `--bs-border-color: var(--gs-base-color-gray-20)`, `--bs-border-radius: var(--gs-base-radius-s)`. [On 4.6.2: the same values as rules on `body`, `a`, `h1`–`h6`.]
+- Bootstrap 5.3 custom properties on `:root`: `--bs-body-font-family: var(--font-sans)`, `--bs-body-color` and `--bs-heading-color: var(--gs-base-color-gray-100)`, `--bs-link-color` and `--bs-link-hover-color: var(--gs-base-color-eu-blue-100)` (and their `-rgb` variants), `--bs-border-color: var(--gs-base-color-gray-20)`, `--bs-border-radius: var(--gs-base-radius-s)`.
 - Links, headings and focus rings as in the design reference.
-- Buttons as in the design reference: `.btn-primary`; `.btn-outline-primary` as secondary; `.btn-outline-secondary` and `.btn:disabled` as disabled; `.btn-link` as ghost; `.btn-sm`. Toggle groups: `.btn-check:checked + .btn` is primary, `.btn-check:not(:checked) + .btn` is secondary-filled. [On 4.6.2: `.btn-group-toggle .btn.active` and `.btn:not(.active)`.]
-- Form controls: `.form-select`, `.form-control` and `.form-control-sm` get the 44 px TED look, with the `-sm` variants at the same size, as the mockups show. `.form-check-input[type=checkbox]` gets the TED checkbox look. [On 4.6.2: `.custom-select`, `.custom-control-input`.]
+- Buttons as in the design reference: `.btn-primary`; `.btn-outline-primary` as secondary; `.btn-outline-secondary` and `.btn:disabled` as disabled; `.btn-link` as ghost; `.btn-sm`. Toggle groups: `.btn-check:checked + .btn` is primary, `.btn-check:not(:checked) + .btn` is secondary-filled.
+- Form controls: `.form-select`, `.form-control` and `.form-control-sm` get the 44 px TED look, with the `-sm` variants at the same size, as the mockups show. `.form-check-input[type=checkbox]` gets the TED checkbox look.
 - `style.css` variables: point `--added-item-background-color`, `--removed-item-background-color` and `--modified-item-background-color` at the three surface tints. Point `--added-item-highlight` and its removed and modified siblings at the same tints, because emphasis now comes from weight and an underline (Increments 6 and 7). Add `--added-marker-color`, `--removed-marker-color` and `--modified-marker-color` (the three strong colours). Remove `--op-green-color`, `--dark-background-color` and `--light-background-color` once nothing uses them.
-- Verification: smoke 67/67. Open the app and check:
+- Verification: smoke passes with every check. Open the app and check:
   - The text is Arial and #333.
   - Start quick tour, Compare, the selects and the toggle groups look like the mockups.
   - Tabbing through the page shows the TED focus rings and no blue glow.
@@ -183,7 +183,7 @@ Files: `index.html` (header, bar, comparison line, tabs, footer), `src/assets/st
   - Replace the old `<footer>` with the TED footer, taken from `mockups/home.html`'s `<footer>`: the band with the OP lockup and the Need help? / Follow us / Legal / About us / Other services columns, then the europa.eu band.
   - Links as in the mockup. Social links in the mandated order: Mastodon, LinkedIn, Bluesky, Facebook, YouTube, Other.
   - Move `#apiStatus` out of the footer to the end of `body`, unchanged.
-- Verification: smoke 67/67. At 1440 px, compare the header, bar and footer with `home.png`, and the comparison line with the one in `fields.png`; the selects stand in for the chips until Increment 10. At 1024 px and 768 px, check that the bar wraps without overlapping the tabs, that the tabs wrap or scroll inside the bar, and that the legend wraps under the versions. The quick tour still shows four steps on the moved anchors.
+- Verification: smoke passes with every check. At 1440 px, compare the header, bar and footer with `home.png`, and the comparison line with the one in `fields.png`; the selects stand in for the chips until Increment 10. At 1024 px and 768 px, check that the bar wraps without overlapping the tabs, that the tabs wrap or scroll inside the bar, and that the legend wraps under the versions. The quick tour still shows four steps on the moved anchors.
 
 ### Increment 4 — Home (S)
 Files: `index.html` (Home pane), `ted-theme.css` (home section).
@@ -198,7 +198,7 @@ Files: `index.html` (Home pane), `ted-theme.css` (home section).
   - Then "Reading the comparison" (18 px), its paragraph, and the three marker items. Copy the texts from `home.html`.
   - The old sentence "If you are new to the SDK Explorer, take the quick tour." goes: the first block replaces it.
 - Until Increment 10, the comparison line, with its legend, still shows above Home. That is expected.
-- Verification: smoke 67/67. Compare with `home.png`, apart from the two buttons and the comparison line above. Start quick tour runs the four steps.
+- Verification: smoke passes with every check. Compare with `home.png`, apart from the two buttons and the comparison line above. Start quick tour runs the four steps.
 
 ### Increment 5 — card overview (M)
 Files: `index.html` (the overview panes of Notice types, Codelists, Schemas, Schematrons, Validation, Translations and View templates: headings and breadcrumbs), `#card-group-template`, `#index-card-template` and `#property-card-template` in `index.html`, `ted-theme.css` (cards section), `src/js/components/index-card.js` (status label).
@@ -207,7 +207,7 @@ Files: `index.html` (the overview panes of Notice types, Codelists, Schemas, Sch
   - The comparison views keep their breadcrumb, restyled as the TED breadcrumb. Its first item reads the tab's name instead of "Overview" (same link ids). The second stays "Comparison"; showing the compared item's name instead, as the mockup does, is optional item O4.
 - **Card group header:**
   - The status filter `#status-filter` gets a visible label "Show".
-  - The compact-view switch becomes a TED checkbox: `form-check` without `form-switch` [4.6.2: `custom-checkbox` instead of `custom-switch`], same id and label.
+  - The compact-view switch becomes a TED checkbox: `form-check` without `form-switch`, same id and label.
   - Both sit right-aligned on the heading's row.
 - **Filter list** `#nav`:
   - A white panel 220–260 px wide, with the existing `#filter-prompt` text as its 18 px heading. Keep the texts: the smoke script reads them; the mockup's "Form type" is illustrative.
@@ -220,7 +220,7 @@ Files: `index.html` (the overview panes of Notice types, Codelists, Schemas, Sch
   - `#action-button` as a secondary sm button, styled in the template; disabled for added and removed as today.
   - Grid: `repeat(auto-fill, minmax(300px, 1fr))`, 16 px gap.
 - **Property rows** (`#property-card-template`, card use): label 13 px bold, value monospace 13 px, `1px solid gray-10` dividers.
-- Verification: smoke 67/67. Compare Notice types (1.13.0 vs 1.12.0, form type `cont-modif`) with `notice-types.png`. The status filter and compact view still filter as before.
+- Verification: smoke passes with every check. Compare Notice types (1.13.0 vs 1.12.0, form type `cont-modif`) with `notice-types.png`. The status filter and compact view still filter as before.
 
 ### Increment 6 — tree and detail (M/L)
 Files: `index.html` (Fields toolbar, `#tree-detail-split-view-template`, `#property-card-template`), `ted-theme.css` (tree section), `src/js/components/tree-detail-split-view.js` (one jsTree option).
@@ -242,7 +242,7 @@ Files: `index.html` (Fields toolbar, `#tree-detail-split-view-template`, `#prope
   - Property rows: a two-column grid, 170 px label (14 px bold, with the marker of a changed property) and the value (monospace 13 px).
   - A modified property shows two boxes stacked: "Base" (the error-surface caption strip) above "Target" (the success-surface caption strip), each with a 1 px gray-20 border and a 4 px radius. An added property shows only the Target box, a removed one only the Base box.
   - The captions are static template text. Showing the version numbers is O4.
-- Verification: smoke 67/67. Compare Fields (1.13.0 vs 1.12.0, `fields.json`, the review nodes expanded, `BT-799-ReviewBody` selected, Compact view on) with `fields.png`. The mockup's highlighting inside the values is optional item O1, and its JSON layout O2; do not attempt them here. Search, the Show filter and Compact view behave as before.
+- Verification: smoke passes with every check. Compare Fields (1.13.0 vs 1.12.0, `fields.json`, the review nodes expanded, `BT-799-ReviewBody` selected, Compact view on) with `fields.png`. The mockup's highlighting inside the values is optional item O1, and its JSON layout O2; do not attempt them here. Search, the Show filter and Compact view behave as before.
 
 ### Increment 7 — file diff (M)
 Files: `ted-theme.css` (diff section), `src/assets/style.css` (diff2html overrides).
@@ -256,13 +256,13 @@ Files: `ted-theme.css` (diff section), `src/assets/style.css` (diff2html overrid
   - Above the two sides, "Base" and "Target" headings in 13 px bold on gray-5, as CSS `::before` on the two `.d2h-file-side-diff` columns. The mockup's sticky heading row needs new markup and is not required.
   - Remove `.d2h-code-wrapper`'s `max-height` and inner scroll, so the page is the only vertical scroll. The horizontal scroll and its synchronisation in `diff.js` stay.
 - **The diff panel** gets the panel look (border, radius, shadow).
-- Verification: smoke 67/67 (`.d2h-file-header .d2h-file-name` unchanged). Compare the Codelists comparison of `notice-subtype_can-modif` (1.13.0 vs 1.12.0) with `codelist-comparison.png`, except the H1 with the codelist name, which is O4.
+- Verification: smoke passes with every check (`.d2h-file-header .d2h-file-name` unchanged). Compare the Codelists comparison of `notice-subtype_can-modif` (1.13.0 vs 1.12.0) with `codelist-comparison.png`, except the H1 with the codelist name, which is O4.
 
 ### Increment 8 — toast, tour and loading states (S/M)
 Files: `index.html` (`#apiStatus`), `ted-theme.css` (states section), `src/assets/style.css`.
 - **`#apiStatus`** stays fixed at the bottom right (16 px from the edges), at most 420 px wide, with `--gs-base-shadow-2`, styled as a TED error Notification:
   - Remove the header's red `svg`, because the left bar replaces it.
-  - "Error" bold; the close button is `btn-close` [4.6.2: `.close`] in gray-75.
+  - "Error" bold; the close button is `btn-close` in gray-75.
   - List items 16 px / 1.62 in #333, `span.detail` in gray-75 (it is red today).
   - Behaviour unchanged.
 - **Tour popovers:**
@@ -270,7 +270,7 @@ Files: `index.html` (`#apiStatus`), `ted-theme.css` (states section), `src/asset
   - Title 18 px bold, without Bootstrap's grey header band; body 14 px / 1.5.
   - The tour's Cancel link styled as a ghost button and Next as a primary sm button, through their existing classes (`.cancel-tour`, `.next-step`).
 - **The hover popovers** of the selects get the same look.
-- Verification: smoke 67/67 (the toast's `li` and `span.detail` unchanged). Compare with `states.png`: force an error, for example by blocking `raw.githubusercontent.com` in the inspector, then run the tour and watch a tab load.
+- Verification: smoke passes with every check (the toast's `li` and `span.detail` unchanged). Compare with `states.png`: force an error, for example by blocking `raw.githubusercontent.com` in the inspector, then run the tour and watch a tab load.
 
 ### Increment 9 — remaining tabs, release notes, documentation (S)
 Files: `index.html`, `ted-theme.css` (other tabs section), `README.md`, `CHANGELOG.md`.
@@ -278,16 +278,15 @@ Files: `index.html`, `ted-theme.css` (other tabs section), `README.md`, `CHANGEL
 - **Schemas, Schematrons, Translations, View templates:** the patterns of Increments 5 and 7 apply; check each one.
 - **Release notes** (`#release-notes`): the TED typography applies to the Markdown HTML: H1 32, H2 28, H3 24, body 16 / 1.62, links, code in monospace 15 px, text width at most 65rem.
 - **README and CHANGELOG:** describe the new look in the README's "Using the SDK Explorer" section if it mentions the old one, and add a CHANGELOG entry.
-- Verification: smoke 67/67. Go through every tab at 1440 px and at 1024 px with 1.13.0 vs 1.12.0 and with a 2.x pair (Validation visible). Nothing is left in the default Bootstrap look.
+- Verification: smoke passes with every check. Go through every tab at 1440 px and at 1024 px with 1.13.0 vs 1.12.0 and with a 2.x pair (Validation visible). Nothing is left in the default Bootstrap look.
 
 ### Increment 10 — version chips, Home actions and the dialog (M/L)
 This is the one increment that changes behaviour (Decision 3): how the user chooses versions, not what a choice does.
 Files: `index.html` (comparison line, Home buttons, dialog, tour attributes), `ted-theme.css` (new picker section), new `src/js/version-picker.js`, `src/js/script.js` (start the picker, tour), `scripts/smoke.mjs`.
-- **The selects stay, hidden.** `#main-version-dropdown` and `#base-version-dropdown` remain the state holders: `app.js` fills them, reads them, and reloads on their `change` event (lines 91–100).
-  - Hide them with the `hidden` attribute, so that neither the keyboard nor a screen reader reaches them, since the chips replace them. Remove their labels from the comparison line.
+- **The selects stay, hidden.** `#main-version-dropdown` and `#base-version-dropdown` remain the state holders: `app.js` fills them, reads them, and reloads on their `change` event (the two handlers in `init()`).
+  - Hide them with the `hidden` attribute, so that neither the keyboard nor a screen reader reaches them, since the chips replace them. Remove their labels from the comparison line, and remove their hover popovers (`data-bs-*` attributes): a hidden element cannot be hovered, and the dialog's explanations carry the same text.
   - The picker never reloads anything itself. It sets a select's value and triggers `change`, so `app.js` and every tab controller stay unchanged.
-- **`src/js/version-picker.js`**, a small class started from `script.js`:
-  - It builds both chips' menus from the selects' options once `app.js` has filled them. Rebuild when the options change: `populateDropdown()` can append an option for a version given in the query string.
+- **`src/js/version-picker.js`**, a small class started from `script.js` once `SdkExplorerApplication.init()` has resolved (`script.js` awaits it; today it does not). By then `populateDropdown()` has filled both selects, including an option appended for a version given in the query string, so the picker builds the menus once and never rebuilds them.
   - Sections:
     - Branches: the values in `appConfig.branches`. Target menu only; a branch cannot be a base.
     - Pre-releases: the values whose `SdkVersion.tryParse()` result has `isPreRelease` (`src/js/sdk-version.js`).
@@ -304,7 +303,7 @@ Files: `index.html` (comparison line, Home buttons, dialog, tour attributes), `t
 - **Home.**
   - Hide the comparison line while Home is active: `main:has(#home-tab-content.active) .ted-comparison-line { display: none; }`. `:has` works in every current browser; no JavaScript is needed.
   - Add the two buttons under the text, in one row 12 px apart, as in `home.html`:
-    - Primary "Compare 1.12.0 › 1.13.0", with the selected pair, updated by the picker. It shows the Fields tab: `bootstrap.Tab.getOrCreateInstance(document.querySelector('#fields-tab')).show()` [4.6.2: `$('#fields-tab').tab('show')`]. Fields as the destination is Decision 3's open point: if the user picks another tab, only this line changes.
+    - Primary "Compare 1.12.0 › 1.13.0", with the selected pair, updated by the picker. It shows the Fields tab: `bootstrap.Tab.getOrCreateInstance(document.querySelector('#fields-tab')).show()`. Fields as the destination is Decision 3's open point: if the user picks another tab, only this line changes.
     - Secondary "Choose versions…", which opens the dialog.
 - **The dialog** (`version-dialog.html`): a Bootstrap `.modal` with id `#version-dialog`, styled as the design reference's dialog.
   - Text: "Every tab shows what changed from the base version to the target version."
@@ -320,16 +319,16 @@ Files: `index.html` (comparison line, Home buttons, dialog, tour attributes), `t
   - Step 0 moves to "Choose versions…". Title "Choose the versions to compare". Text: "Compare the suggested versions of the SDK, or choose the ones you want to compare." and the existing paragraph on base and target, as in `states.png`. Placement `bottom`.
   - Step 3 moves from the legend to the side card's marker list ("Reading the comparison"), which is on Home. Text: "The SDK Explorer highlights changed items using these markers. The legend at the top of every tab repeats them." Placement `left`.
   - Steps 1 and 2 are unchanged.
-- **Smoke script.** Hidden selects fail Playwright's visibility check, so the script's three `page.selectOption` calls (lines 204, 392 and 394) change in this increment.
+- **Smoke script.** Hidden selects fail Playwright's visibility check, so the two page-object methods that call `page.selectOption` on the version selects, `startSelectingVersion()` and `selectVersions()`, change in this increment.
   - Choose versions the way a user does: click the chip (`#base-version-chip` or `#target-version-chip`), then the menu's `.dropdown-item` with the version's text.
   - Do not pass `force: true` to `selectOption`: the check should exercise the chips.
-  - Reading the current values and the options from the hidden selects (lines 783–798) stays.
+  - The page-object methods that read the current values and the options from the hidden selects stay.
   - Add checks:
     - the target menu has a Branches section and the base menu has none;
     - choosing an item reloads with the new pair;
     - on Home the comparison line is hidden, and "Compare x › y" shows Fields;
     - the dialog's Compare with two changed values starts exactly one reload. Count the calls to `versionChanged`, or the spinner's hidden-to-visible transitions.
-  - Record the new check count in Progress. From this increment on, it replaces 67 as the expected count.
+  - Record the new check count in Progress. From this increment on, it is the expected count.
 - Verification: the smoke script passes with the new count. Compare Home with `home.png`, the Fields comparison line and open menu with `fields.png`, and the dialog with `version-dialog.png`. Run the tour: step 0 on "Choose versions…", step 3 on the side card. Then choose versions with the keyboard alone: Tab to a chip, Enter, the arrow keys, Enter.
 
 ## Optional items (each needs the user's go-ahead; not part of the restyle)
@@ -354,7 +353,7 @@ These change behaviour or text, so they stay out of the increments above.
 
   This removes the per-shadow-root cost of Bootstrap entirely, and decouples the components from Bootstrap's class names for any later Bootstrap upgrade. The page keeps Bootstrap.
   - Size: M, after Increment 9.
-  - Verification: smoke 67/67, with no selector change, since the shadow-root ids stay. The visual checklist for Fields, Notice types and the comparison views is unchanged against the mockups. With 1.13.0 vs 1.12.0, the Codelists tab's main-thread time is measured before and after, and recorded in Progress.
+  - Verification: smoke passes with every check, with no selector change, since the shadow-root ids stay. The visual checklist for Fields, Notice types and the comparison views is unchanged against the mockups. With 1.13.0 vs 1.12.0, the Codelists tab's main-thread time is measured before and after, and recorded in Progress.
 
 ## Files
 
@@ -368,7 +367,7 @@ These change behaviour or text, so they stay out of the increments above.
 
 ## Verification
 
-- **Smoke test.** `npm run smoke` after every increment: 67 of 67, with no new console errors. A cloud session cannot reach every service the app uses; use the stand-ins described in the Progress section of `docs/plans/sdk2-support.md` where needed, and say so in Progress.
+- **Smoke test.** `npm run smoke` after every increment: every check, with no new console errors. A cloud session cannot reach every service the app uses; use the stand-ins described in the Progress section of `docs/plans/sdk2-support.md` where needed, and say so in Progress.
 - **Visual check after every increment.** Run the app (`npx http-server -p 8080 .`, then `http://localhost:8080/?version=1.13.0&base=1.12.0`) and the mockups (`npx http-server docs/plans/ted-design/mockups -p 8081`) side by side at 1440 px. Take a full-page screenshot of the screen the increment touches, in the state the mockup shows, and compare it with the PNG. Each point below is either right or wrong; note in Progress any that is wrong on purpose.
   - **Font:** Arial everywhere, monospace only for identifiers, values and code; text #333.
   - **Header:** EU banner (dark, "An official website of the European Union", "How do you know?"); EU logo row with a light-blue rule; "EU tenders"; the grey chip with the green stripe and "Ted ■ eForms SDK Explorer"; the description; no application controls; the 8 px green divider.
@@ -399,3 +398,4 @@ Questions about the design go to the design session, and questions about the pla
 ## Progress
 
 - 2026-11-02: the design session committed the plan, the design-system files (`src/assets/ted/`) and the mockups (`docs/plans/ted-design/mockups/`). The user approved the design with the comparison line, the version chips, the Home actions and the dialog (Decisions 3 and 10). Still to confirm: the header names (Decision 2) and Fields as the destination of "Compare x › y" (Decision 3).
+- 2026-11-02: the planning session reviewed the plan: smoke counts and selectors aligned with the Bootstrap upgrade (69 checks, no Bootstrap 4 fallbacks, methods named instead of line numbers), Increment 10 states when the picker starts and what happens to the hidden selects' popovers. The branch is based on `develop` before the Bootstrap upgrade; it is rebased onto `develop` once the upgrade is merged, before Increment 1 starts.
