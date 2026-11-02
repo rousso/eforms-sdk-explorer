@@ -292,11 +292,11 @@ Files: `index.html`, `ted-theme.css` (other tabs section), `README.md`, `CHANGEL
 
 ### Increment 10 — version chips, Home actions and the dialog (M/L)
 This is the one increment that changes behaviour (Decision 3): how the user chooses versions, not what a choice does.
-Files: `index.html` (comparison line, Home buttons, dialog, tour attributes), `ted-theme.css` (new picker section), new `src/js/version-picker.js`, `src/js/script.js` (start the picker, tour), `scripts/smoke.mjs`.
+Files: `index.html` (comparison line, Home buttons, dialog, tour attributes), `ted-page.css` (new picker section; the page-only rules moved there in Increment 9), new `src/js/version-picker.js`, `src/js/script.js` (start the picker, tour), `src/js/app.js` (`init()` split in two, bodies unchanged), `scripts/smoke.mjs`.
 - **The selects stay, hidden.** `#main-version-dropdown` and `#base-version-dropdown` remain the state holders: `app.js` fills them, reads them, and reloads on their `change` event (the two handlers in `init()`).
   - Hide them with the `hidden` attribute, so that neither the keyboard nor a screen reader reaches them, since the chips replace them. Remove their labels from the comparison line, and remove their hover popovers (`data-bs-*` attributes): a hidden element cannot be hovered, and the dialog's explanations carry the same text.
   - The picker never reloads anything itself. It sets a select's value and triggers `change`, so `app.js` and every tab controller stay unchanged.
-- **`src/js/version-picker.js`**, a small class started from `script.js` once `SdkExplorerApplication.init()` has resolved (`script.js` awaits it; today it does not). By then `populateDropdown()` has filled both selects, including an option appended for a version given in the query string, so the picker builds the menus once and never rebuilds them.
+- **`src/js/version-picker.js`**, a small class started from `script.js` as soon as the selects are filled and their change handlers bound, before the tabs are probed, so that a version can be chosen while the probes run, as with today's selects. For that, `SdkExplorerApplication.init()` is split into two static async methods with the same bodies: `initVersions()` (`populateDropdown()` and the two change handlers) and `initTabs()` (the `shown.bs.tab` listener and `#initTabVisibility()`). `script.js` awaits `initVersions()`, starts the picker, then awaits `initTabs()`. By then `populateDropdown()` has filled both selects, including an option appended for a version given in the query string, so the picker builds the menus once and never rebuilds them. (Corrected during Increment 10: starting the picker after `init()` resolved would have left the chips and the dialog inert during the probes.)
   - Sections:
     - Branches: the values in `appConfig.branches`. Target menu only; a branch cannot be a base.
     - Pre-releases: the values whose `SdkVersion.tryParse()` result has `isPreRelease` (`src/js/sdk-version.js`).
@@ -373,7 +373,7 @@ These change behaviour or text, so they stay out of the increments above.
 - **Modify:**
   - `index.html`, `src/assets/style.css`, `src/js/config.js`, `src/js/components/bootstrap-web-component.js`, `src/js/components/tree-detail-split-view.js` (one jsTree option), `src/js/components/index-card.js` (status label), `src/js/script.js` (banner toggle, `--ted-bar-height`, tour anchors, starting the version picker), `README.md`, `CHANGELOG.md`.
   - `scripts/smoke.mjs` where an increment changes a selector or a text it uses, and in Increment 10.
-- **Unchanged:** every tab controller, `app.js`, `state.js`, `diff.js` and `card-group.js`. The version picker only reads `appState` and sets the selects.
+- **Unchanged:** every tab controller, `state.js`, `diff.js` and `card-group.js`. `app.js` changes only by the split of `init()` into `initVersions()` and `initTabs()` (Increment 10), with the same bodies. The version picker only reads the selects and sets them (and `appState.baseVersion` in the dialog's two-value case).
 
 ## Verification
 

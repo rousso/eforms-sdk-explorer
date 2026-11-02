@@ -198,13 +198,79 @@ class ExplorerPage {
     }
 
     /**
-     * Selects a version in one of the dropdowns, as a user would, without waiting for the explorer to be idle.
+     * Selects a version, as a user would, without waiting for the explorer to be idle: through the version chip and
+     * its menu, or, on Home, where the chips are not shown, through the "Choose versions…" dialog.
      *
-     * @param {'main'|'base'} dropdown
+     * @param {'main'|'base'} dropdown The hidden version select that holds the version (`main` for the target).
      * @param {string} version
      */
     async startSelectingVersion(dropdown, version) {
-        await this.#page.selectOption(`#${dropdown}-version-dropdown`, version);
+        const role = dropdown === 'main' ? 'target' : 'base';
+        if (await this.#page.isVisible(`#${role}-version-chip`)) {
+            await this.#page.click(`#${role}-version-chip`);
+            await this.#page.click(`.ted-version-chip[data-version-role="${role}"] .dropdown-item:text-is("${version}")`);
+        } else {
+            await this.#page.click('#choose-versions');
+            await this.#page.waitForSelector('#version-dialog.show');
+            await this.#page.selectOption(`#version-dialog-${role}`, version);
+            await this.#page.click('#version-dialog-compare');
+            await this.#page.waitForSelector('#version-dialog', { state: 'hidden' });
+        }
+    }
+
+    /**
+     * Opens the "Choose versions…" dialog from Home, chooses both versions and presses Compare, as a user would,
+     * without waiting for the explorer to be idle.
+     *
+     * @param {string} mainVersion
+     * @param {string} baseVersion
+     */
+    async startComparingInDialog(mainVersion, baseVersion) {
+        await this.#page.click('#choose-versions');
+        await this.#page.waitForSelector('#version-dialog.show');
+        await this.#page.selectOption('#version-dialog-base', baseVersion);
+        await this.#page.selectOption('#version-dialog-target', mainVersion);
+        await this.#page.click('#version-dialog-compare');
+        await this.#page.waitForSelector('#version-dialog', { state: 'hidden' });
+    }
+
+    /**
+     * Starts counting the change events of the two hidden version selects: each one starts a reload. They are
+     * triggered through jQuery, which calls jQuery's handlers only, so the counter is one of them (namespaced, so that
+     * starting again replaces it).
+     */
+    async startCountingVersionChanges() {
+        await this.#page.evaluate(() => {
+            window.smokeTestVersionChanges = 0;
+            $('#main-version-dropdown, #base-version-dropdown').off('change.smokeTest').on('change.smokeTest', () => window.smokeTestVersionChanges++);
+        });
+    }
+
+    /**
+     * @returns {Promise<number>} The change events of the version selects since {@link startCountingVersionChanges}.
+     */
+    async countedVersionChanges() {
+        return this.#page.evaluate(() => window.smokeTestVersionChanges);
+    }
+
+    /**
+     * @param {'base'|'target'} role
+     * @returns {Promise<string[]>} The section headings of the menu of a version chip.
+     */
+    async versionMenuSections(role) {
+        return this.#page.$$eval(`.ted-version-chip[data-version-role="${role}"] .dropdown-header`, headers => headers.map(header => header.textContent));
+    }
+
+    /**
+     * Clicks Home's "Compare x › y" button and waits until the explorer is idle.
+     *
+     * @returns {Promise<string>} The button's text before the click.
+     */
+    async compareFromHome() {
+        const text = (await this.#page.textContent('#compare-versions')).trim();
+        await this.#page.click('#compare-versions');
+        await this.waitUntilIdle();
+        return text;
     }
 
     /**
@@ -392,9 +458,9 @@ class ExplorerPage {
      * @param {string} baseVersion
      */
     async selectVersions(mainVersion, baseVersion) {
-        await this.#page.selectOption('#main-version-dropdown', mainVersion);
+        await this.startSelectingVersion('main', mainVersion);
         await this.waitUntilIdle();
-        await this.#page.selectOption('#base-version-dropdown', baseVersion);
+        await this.startSelectingVersion('base', baseVersion);
         await this.waitUntilIdle();
     }
 
@@ -901,6 +967,7 @@ class SmokeTest {
         await this.#checkFilterAfterVersionChange();
         await this.#checkCodelistsAcrossRenames();
         await this.#checkFiltersWhileLoading();
+        await this.#checkVersionPicker();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
     }
@@ -1033,13 +1100,13 @@ class SmokeTest {
                     await this.#explorer.nextTourStep();
                     shown.push(await this.#explorer.popoverTitles());
                 }
-                assert.deepEqual(shown, [['Select versions to compare'], ['Switch between sections'], ['Loading indicator'], ['Identify changes'], []]);
+                assert.deepEqual(shown, [['Choose the versions to compare'], ['Switch between sections'], ['Loading indicator'], ['Identify changes'], []]);
                 await this.#explorer.startTour();
                 await this.#explorer.nextTourStep();
                 await this.#explorer.cancelTour();
                 assert.deepEqual(await this.#explorer.popoverTitles(), []);
                 await this.#explorer.startTour();
-                assert.deepEqual(await this.#explorer.popoverTitles(), ['Select versions to compare']);
+                assert.deepEqual(await this.#explorer.popoverTitles(), ['Choose the versions to compare']);
                 await this.#explorer.cancelTour();
             }],
         ]);
@@ -1250,6 +1317,41 @@ class SmokeTest {
      * A pair whose codelists take a while to check in the background: the filters must apply to the cards whose
      * status is still pending (upstream issues #56 and #57).
      */
+    /** The version chips, Home's comparison buttons and the version dialog. */
+    async #checkVersionPicker() {
+        await this.#scenario('?version=1.15.1&base=1.14.2', [
+            ['on Home the comparison line is hidden, and "Compare 1.14.2 › 1.15.1" shows the Fields tab of the pair', async () => {
+                assert.equal(await this.#explorer.isShown('.ted-comparison-line'), false);
+                assert.equal(await this.#explorer.compareFromHome(), 'Compare 1.14.2 \u203A 1.15.1');
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.isShown('.ted-comparison-line'), true);
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+            }],
+            ['the target version menu has a Branches section, the base version menu has none', async () => {
+                assert.deepEqual(await this.#explorer.versionMenuSections('target'), ['Branches', 'Pre-releases', 'Releases']);
+                assert.deepEqual(await this.#explorer.versionMenuSections('base'), ['Pre-releases', 'Releases']);
+            }],
+            ['choosing a version in a chip\'s menu reloads the comparison with the new pair', async () => {
+                await this.#explorer.startCountingVersionChanges();
+                await this.#explorer.startSelectingVersion('base', '1.14.1');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.countedVersionChanges(), 1);
+                assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.15.1', baseVersion: '1.14.1' });
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+            }],
+            ['the dialog\'s Compare with both versions changed applies them with one reload', async () => {
+                await this.#explorer.openTab('home-tab');
+                await this.#explorer.startCountingVersionChanges();
+                await this.#explorer.startComparingInDialog('1.14.2', '1.13.0');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.countedVersionChanges(), 1);
+                assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.14.2', baseVersion: '1.13.0' });
+                assert.equal(await this.#explorer.mainVersion(), '1.14.2');
+                assert.equal(await this.#explorer.baseVersion(), '1.13.0');
+            }],
+        ]);
+    }
+
     async #checkFiltersWhileLoading() {
         await this.#scenario('?version=1.16.0-rc.5&base=1.15.1', [
             ['the Codelists parent filter applies while the codelists are still being checked ("country": only its 5 codelists)', async () => {

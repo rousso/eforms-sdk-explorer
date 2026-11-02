@@ -224,12 +224,6 @@
     gap: 8px 12px;
 }
 
-.ted-comparison-line__label {
-    margin-right: -6px;
-    color: var(--gs-base-color-eu-gray-80);
-    font-size: var(--gs-base-font-size-s);
-}
-
 .ted-comparison-line__separator {
     font-size: 14px;
     color: var(--gs-base-color-gray-75);
@@ -237,35 +231,6 @@
 
 .ted-comparison-line__spacer {
     flex: 1 1 auto;
-}
-
-/* The two version selects in the look of the version chips. */
-.form-select.ted-version-select {
-    width: auto;
-    min-width: 0;
-    min-height: 0;
-    padding: 5px 28px 5px 10px;
-    font-family: var(--font-mono);
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1.35;
-    color: var(--gs-base-color-eu-blue-100);
-    background-color: var(--gs-base-color-eu-blue-10);
-    /* Bootstrap's chevron in --gs-base-color-eu-blue-100 (#0E47CB), 10px, 10px from the right. */
-    --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230E47CB' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
-    background-position: right 10px center;
-    background-size: 10px;
-    border: 1px solid var(--gs-base-color-eu-blue-20);
-    border-radius: var(--gs-base-radius-s);
-    transition: background-color 0.12s, border-color 0.12s;
-}
-
-.form-select.ted-version-select:hover {
-    background-color: var(--gs-base-color-eu-blue-20);
-}
-
-.form-select.ted-version-select:focus {
-    border-color: var(--gs-base-color-eu-blue-20);
 }
 
 /* The legend of the change markers. */
@@ -886,4 +851,169 @@
     color: var(--gs-base-color-gray-100);
     font-family: var(--font-mono);
     font-size: var(--gs-base-font-size-sp-15);
+}
+
+/* Version picker (Increment 10): the version chips and their menus, Home's comparison buttons, the version dialog. */
+
+/* The comparison line is not shown on Home, which has its own buttons. */
+main:has(#home-tab-content.active) .ted-comparison-line {
+    display: none;
+}
+
+/* A version chip: "base:" or "target:" and the version, with a caret. */
+.ted-version-chip .dropdown-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    color: var(--gs-base-color-eu-blue-100);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.35;
+    background: var(--gs-base-color-eu-blue-10);
+    border: 1px solid var(--gs-base-color-eu-blue-20);
+    border-radius: var(--gs-base-radius-s);
+    transition: background-color 0.12s, border-color 0.12s;
+}
+
+.ted-version-chip .dropdown-toggle:hover {
+    background: var(--gs-base-color-eu-blue-20);
+}
+
+.ted-version-chip .dropdown-toggle::after {
+    margin: 0;
+    content: "\e90c";
+    font-family: "gs-icon";
+    font-size: 9px;
+    font-weight: 400;
+    line-height: 1;
+    border: 0;
+}
+
+.ted-version-chip__role {
+    margin-right: -2px;
+    color: var(--gs-base-color-eu-gray-80);
+    font-family: var(--font-sans);
+    font-weight: 400;
+}
+
+/* Its menu: sections of versions, the current one highlighted; at most 60vh, scrolling inside when longer. */
+.ted-version-menu {
+    --bs-dropdown-min-width: 220px;
+    --bs-dropdown-padding-y: 4px;
+    --bs-dropdown-spacer: 6px;
+    --bs-dropdown-font-size: var(--gs-base-font-size-m);
+    --bs-dropdown-color: var(--gs-base-color-gray-100);
+    --bs-dropdown-border-color: var(--gs-base-color-gray-20);
+    --bs-dropdown-border-radius: var(--gs-base-radius-s);
+    --bs-dropdown-divider-bg: var(--gs-base-color-gray-10);
+    --bs-dropdown-divider-margin-y: 4px;
+    --bs-dropdown-link-color: var(--gs-base-color-eu-blue-100);
+    --bs-dropdown-link-hover-color: var(--gs-base-color-eu-blue-100);
+    --bs-dropdown-link-hover-bg: var(--gs-base-color-eu-blue-5);
+    --bs-dropdown-link-active-color: var(--gs-base-color-gray-100);
+    --bs-dropdown-link-active-bg: var(--gs-base-color-eu-blue-10);
+    --bs-dropdown-item-padding-x: 14px;
+    --bs-dropdown-item-padding-y: 8px;
+    --bs-dropdown-header-color: var(--gs-base-color-gray-75);
+    --bs-dropdown-header-padding-x: 14px;
+    --bs-dropdown-header-padding-y: 8px;
+    max-height: 60vh;
+    overflow-y: auto;
+    line-height: 1.62;
+    box-shadow: var(--gs-base-shadow-2);
+}
+
+.ted-version-menu .dropdown-header {
+    padding-bottom: 2px;
+    font-size: var(--gs-base-font-size-xs);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.ted-version-menu .dropdown-item.active {
+    font-weight: 700;
+}
+
+/* Home's comparison buttons, under the text, in one row 12px apart. */
+.ted-home__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+/* The version dialog: the TED Modal over the scrim. */
+.modal-backdrop {
+    --bs-backdrop-bg: var(--gs-base-scrim);
+    --bs-backdrop-opacity: 1;
+}
+
+.ted-version-dialog .modal-dialog {
+    max-width: 600px;
+}
+
+.ted-version-dialog .modal-content {
+    border: 0;
+    border-radius: var(--gs-base-radius-xs);
+    box-shadow: var(--gs-base-shadow-4);
+}
+
+.ted-version-dialog .modal-header {
+    align-items: flex-start;
+    padding: 24px 24px 16px;
+    background: var(--gs-base-color-gray-5);
+    border-bottom: 0;
+}
+
+.ted-version-dialog .modal-title {
+    flex: 1 1 0;
+    padding-right: 24px;
+    font-size: var(--gs-base-font-size-l);
+    line-height: 1.15;
+}
+
+.ted-version-dialog__close {
+    --bs-btn-color: var(--gs-base-color-gray-100);
+    --bs-btn-hover-color: var(--gs-base-color-gray-100);
+    padding: 4px;
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.ted-version-dialog .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+    line-height: 1.62;
+}
+
+.ted-version-dialog .modal-body p {
+    margin: 0;
+}
+
+.ted-version-dialog__fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.ted-version-dialog .form-text {
+    font-size: var(--gs-base-font-size-xs);
+    line-height: 1.5;
+}
+
+.ted-version-dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 4px;
+}
+
+@media (max-width: 575.98px) {
+    .ted-version-dialog__fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }

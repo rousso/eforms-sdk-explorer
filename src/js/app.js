@@ -78,16 +78,14 @@ export class SdkExplorerApplication {
         this.#addTab(new ReleaseNotesTab());
     }
 
-    static async init() {
+    /**
+     * Starts the version selection: fills the two version dropdowns and listens to their changes. Call
+     * {@link initTabs} after it.
+     */
+    static async initVersions() {
         await SdkExplorerApplication.instance.populateDropdown();
 
         // Listen to the user from now on, before the tabs are probed, so that a change made meanwhile is not lost.
-        $('ul.nav-tabs').on('shown.bs.tab', 'li.nav-item > button.nav-link', function (event) {
-            const activeTabId = $(event.target).attr('id');
-            console.log('Active tab changed:', activeTabId);
-            SdkExplorerApplication.instance.activeTabChanged(activeTabId);
-        });
-
         SdkExplorerApplication.instance.$mainVersionDropdown().change(function () {
             appState.mainVersion = $(this).val();
             $('#fieldDetailsContent').html('Select an item to see details.');
@@ -98,6 +96,18 @@ export class SdkExplorerApplication {
             appState.baseVersion = $(this).val();
             $('#fieldDetailsContent').html('Select an item to see details.');
             SdkExplorerApplication.instance.versionChanged(appState.mainVersion, appState.baseVersion);
+        });
+    }
+
+    /**
+     * Starts the tabs, after {@link initVersions}: listens to the tab changes, and shows the tabs that apply to the
+     * selected versions (which probes some of their files).
+     */
+    static async initTabs() {
+        $('ul.nav-tabs').on('shown.bs.tab', 'li.nav-item > button.nav-link', function (event) {
+            const activeTabId = $(event.target).attr('id');
+            console.log('Active tab changed:', activeTabId);
+            SdkExplorerApplication.instance.activeTabChanged(activeTabId);
         });
 
         await SdkExplorerApplication.instance.#initTabVisibility();

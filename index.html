@@ -146,22 +146,23 @@
     <main class="ted-main">
         <!-- Comparison line: the two versions, and the legend of the change markers -->
         <div class="ted-comparison-line" role="group" aria-label="Versions compared">
-            <span class="ted-comparison-line__versions" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-fallback-placements='["bottom"]' data-bs-html="true" data-step="0" title="Select versions to compare" data-bs-content="<p>Use these dropdowns to select the versions of the SDK that you want to compare.</p><p>Select the older version (that you are migrating from) and the newer version (that you are migrating to).</p><p>SDK Explorer calls these the <i>base</i> and <i>target</i> version respectively.</p> <div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
+            <span class="ted-comparison-line__versions">
                 <span>Comparing</span>
-                <label class="ted-comparison-line__label" for="base-version-dropdown">base:</label>
-                <select id="base-version-dropdown" class="form-select ted-version-select" aria-label="Base version" data-bs-toggle="popover" data-bs-trigger="hover"
-                    data-bs-placement="left" title="Older SDK version" data-bs-html="true"
-                    data-bs-content="This is the base version for the comparison. Items that exist only in this version are indicated as 'removed'.">
-                </select>
+                <div class="dropdown ted-version-chip" data-version-role="base">
+                    <button id="base-version-chip" type="button" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Base version"><span class="ted-version-chip__role">base:</span> <span class="ted-version-chip__version"></span></button>
+                    <ul class="dropdown-menu ted-version-menu" aria-label="Base version"></ul>
+                </div>
                 <i class="gs-icon gs-icon-chevron-right ted-comparison-line__separator" aria-hidden="true"></i>
-                <label class="ted-comparison-line__label" for="main-version-dropdown">target:</label>
-                <select id="main-version-dropdown" class="form-select ted-version-select" aria-label="Target version" data-bs-toggle="popover" data-bs-trigger="hover"
-                    data-bs-placement="left" title="Newer SDK version" data-bs-html="true"
-                    data-bs-content="This is the target version for the comparison. Items that exist only in this version are indicated as 'added'.">
-                </select>
+                <div class="dropdown ted-version-chip" data-version-role="target">
+                    <button id="target-version-chip" type="button" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Target version"><span class="ted-version-chip__role">target:</span> <span class="ted-version-chip__version"></span></button>
+                    <ul class="dropdown-menu ted-version-menu" aria-label="Target version"></ul>
+                </div>
+                <!-- The state holders: the application fills and reads them, and reloads on their change event -->
+                <select id="base-version-dropdown" class="form-select" aria-label="Base version" hidden></select>
+                <select id="main-version-dropdown" class="form-select" aria-label="Target version" hidden></select>
             </span>
             <span class="ted-comparison-line__spacer"></span>
-            <ul class="ted-legend" aria-label="Change markers" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-fallback-placements='["bottom"]' data-bs-html="true" data-step="3" title="Identify changes" data-bs-content="<p>The SDK Explorer highlights changed items using the markers you see in this legend.</p><div class='tour-button-container'><a href='#' class='btn btn-primary next-step'>Done</a></div>">
+            <ul class="ted-legend" aria-label="Change markers">
                 <li><span class="ted-marker ted-marker--added" aria-hidden="true"></span>Added</li>
                 <li><span class="ted-marker ted-marker--removed" aria-hidden="true"></span>Removed</li>
                 <li><span class="ted-marker ted-marker--modified" aria-hidden="true"></span>Modified</li>
@@ -184,6 +185,12 @@
                         source on <a href="https://github.com/OP-TED/eforms-sdk-explorer">GitHub</a>. We welcome your feedback,
                         suggestions for improvement as well as your contributions to the project.
                     </p>
+                    <div class="ted-home__actions">
+                        <button id="compare-versions" type="button" class="btn btn-primary">Compare <span class="ted-home__pair"></span></button>
+                        <span class="ted-home__choose" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="bottom" data-bs-fallback-placements='["bottom"]' data-bs-html="true" data-step="0" title="Choose the versions to compare" data-bs-content="<p>Compare the suggested versions of the SDK, or choose the ones you want to compare.</p><p>Select the older version, which you are migrating from, and the newer version, which you are migrating to. The SDK Explorer calls these the <i>base</i> and <i>target</i> versions.</p><div class='tour-button-container'><a href='#' class='btn btn-link cancel-tour'>Cancel</a><a href='#' class='btn btn-primary next-step'>Next</a></div>">
+                            <button id="choose-versions" type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#version-dialog">Choose versions&hellip;</button>
+                        </span>
+                    </div>
                 </div>
                 <aside class="ted-home__card" aria-labelledby="reading-title">
                     <div class="ted-home__tour">
@@ -193,7 +200,7 @@
                     </div>
                     <h2 class="ted-home__card-heading" id="reading-title">Reading the comparison</h2>
                     <p class="ted-home__card-text">Select the base version, the one you are migrating from, and the target version, the one you are migrating to. Every tab then shows what changed between the two.</p>
-                    <ul class="ted-home__markers">
+                    <ul class="ted-home__markers" data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="left" data-bs-fallback-placements='["left"]' data-bs-html="true" data-step="3" title="Identify changes" data-bs-content="<p>The SDK Explorer highlights changed items using these markers. The legend at the top of every tab repeats them.</p><div class='tour-button-container'><a href='#' class='btn btn-primary next-step'>Done</a></div>">
                         <li><span class="ted-marker ted-marker--added" aria-hidden="true"></span><span><b>Added</b>: exists only in the target version.</span></li>
                         <li><span class="ted-marker ted-marker--removed" aria-hidden="true"></span><span><b>Removed</b>: exists only in the base version.</span></li>
                         <li><span class="ted-marker ted-marker--modified" aria-hidden="true"></span><span><b>Modified</b>: exists in both versions, with differences.</span></li>
@@ -525,6 +532,37 @@
             </div>
         </div>
     </footer>
+
+    <!-- Version dialog, opened by Home's "Choose versions…" -->
+    <div class="modal fade ted-version-dialog" id="version-dialog" tabindex="-1" aria-labelledby="version-dialog-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="version-dialog-title">Choose the versions to compare</h2>
+                    <button type="button" class="btn btn-link ted-version-dialog__close" data-bs-dismiss="modal" aria-label="Close"><i class="gs-icon gs-icon-close" aria-hidden="true"></i></button>
+                </div>
+                <div class="modal-body">
+                    <p>Every tab shows what changed from the base version to the target version.</p>
+                    <div class="ted-version-dialog__fields">
+                        <div>
+                            <label class="form-label" for="version-dialog-base">Base version</label>
+                            <select id="version-dialog-base" class="form-select" aria-describedby="version-dialog-base-help"></select>
+                            <div id="version-dialog-base-help" class="form-text">The version you are migrating from. Items that exist only in it are shown as removed.</div>
+                        </div>
+                        <div>
+                            <label class="form-label" for="version-dialog-target">Target version</label>
+                            <select id="version-dialog-target" class="form-select" aria-describedby="version-dialog-target-help"></select>
+                            <div id="version-dialog-target-help" class="form-text">The version you are migrating to, or a branch under development. Items that exist only in it are shown as added.</div>
+                        </div>
+                    </div>
+                    <div class="ted-version-dialog__actions">
+                        <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal">Cancel</button>
+                        <button id="version-dialog-compare" type="button" class="btn btn-primary">Compare</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Error toast, fixed at the bottom right -->
     <div id="apiStatus" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false" >

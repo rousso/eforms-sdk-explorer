@@ -5,10 +5,17 @@
  */
 
 import { SdkExplorerApplication } from './app.js';
+import { VersionPicker } from './version-picker.js';
 
 
 $(document).ready(() => {
-    SdkExplorerApplication.init();
+    // Start the application. The version picker starts once the version dropdowns are filled, before the tabs are
+    // probed, so that the user can choose versions meanwhile.
+    SdkExplorerApplication.initVersions()
+        .then(() => {
+            new VersionPicker().start();
+            return SdkExplorerApplication.initTabs();
+        });
 
     // Enable Bootstrap popovers everywhere
     $('[data-bs-toggle="popover"]').popover({html:true});
