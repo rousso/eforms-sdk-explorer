@@ -215,7 +215,8 @@ class ExplorerPage {
 
     /**
      * Selects a version, as a user would, without waiting for the explorer to be idle: through the version chip and
-     * its menu, or, on Home, where the chips are not shown, through the "Choose versions…" dialog.
+     * its menu, or, on Home, where the chips are not shown, through the "Choose versions…" dialog (whose Compare then
+     * shows the Fields tab).
      *
      * @param {'main'|'base'} dropdown The hidden version select that holds the version (`main` for the target).
      * @param {string} version
@@ -235,8 +236,8 @@ class ExplorerPage {
     }
 
     /**
-     * Opens the "Choose versions…" dialog from Home, chooses both versions and presses Compare, as a user would,
-     * without waiting for the explorer to be idle.
+     * Opens the "Choose versions…" dialog from Home, chooses both versions and presses Compare, as a user would
+     * (which also shows the Fields tab), without waiting for the explorer to be idle.
      *
      * @param {string} mainVersion
      * @param {string} baseVersion
@@ -1097,9 +1098,16 @@ class SmokeTest {
                     assert.equal(card.compareEnabled, false, card.title);
                 });
             }],
-            ['selecting 1.15.1 and 1.14.2 while the Validation tab is active activates Home and shows the Schematrons tab again', async () => {
-                await this.#explorer.selectVersions('1.15.1', '1.14.2');
+            ['selecting 1.15.1 while the Validation tab is active activates Home and shows the Schematrons tab again; 1.14.2 is then selected from Home', async () => {
+                // 1.15.1 and 1.16.0-rc.5 have no EFX rules: the Validation tab goes, and Home is activated.
+                await this.#explorer.startSelectingVersion('main', '1.15.1');
+                await this.#explorer.waitUntilIdle();
                 assert.equal(await this.#explorer.activeTab(), 'home-tab');
+                await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
+                // From Home, through the dialog, whose Compare then shows the Fields tab.
+                await this.#explorer.startSelectingVersion('base', '1.14.2');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
                 await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
             }],
             ['the fwd/ source stays selected in the Fields tab after the version change, and is used', async () => {
@@ -1418,7 +1426,7 @@ class SmokeTest {
     /** The version chips, Home's comparison buttons and the version dialog. */
     async #checkVersionPicker() {
         await this.#scenario('?version=1.15.1&base=1.14.2', [
-            ['until start-up has filled the versions, Home\'s buttons are disabled; then the dialog\'s Compare without a change changes nothing', async () => {
+            ['until start-up has filled the versions, Home\'s buttons are disabled; then the dialog\'s Compare without a change changes nothing and shows the Fields tab', async () => {
                 await this.#explorer.forgetCachedVersions();
                 const versions = await this.#explorer.holdRequests('https://data.jsdelivr.com/**');
                 await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
@@ -1433,8 +1441,10 @@ class SmokeTest {
                 await this.#explorer.waitUntilIdle();
                 assert.equal(await this.#explorer.countedVersionChanges(), 0);
                 assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.15.1', baseVersion: '1.14.2' });
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
             }],
             ['on Home the comparison line is hidden, and "Compare 1.14.2 › 1.15.1" shows the Fields tab of the pair', async () => {
+                await this.#explorer.openTab('home-tab');
                 assert.equal(await this.#explorer.isShown('.ted-comparison-line'), false);
                 assert.equal(await this.#explorer.compareFromHome(), 'Compare 1.14.2 \u203A 1.15.1');
                 assert.equal(await this.#explorer.activeTab(), 'fields-tab');
@@ -1458,7 +1468,7 @@ class SmokeTest {
                 await this.#explorer.openTab('home-tab');
                 assert.equal(await this.#explorer.isInWindow('#compare-versions'), true);
             }],
-            ['the dialog\'s Compare with both versions changed applies them with one reload', async () => {
+            ['the dialog\'s Compare with both versions changed applies them with one reload and shows the Fields tab of the new pair', async () => {
                 await this.#explorer.openTab('home-tab');
                 await this.#explorer.startCountingVersionChanges();
                 await this.#explorer.startComparingInDialog('1.14.2', '1.13.0');
@@ -1467,6 +1477,8 @@ class SmokeTest {
                 assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.14.2', baseVersion: '1.13.0' });
                 assert.equal(await this.#explorer.mainVersion(), '1.14.2');
                 assert.equal(await this.#explorer.baseVersion(), '1.13.0');
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
             }],
         ]);
     }

@@ -43,7 +43,7 @@ export class VersionPicker {
         $(this.#baseSelect).add(this.#targetSelect).on('change', () => this.#showSelection());
 
         // Home's "Compare x › y" shows the comparison of the selected pair, from the Fields tab.
-        $('#compare-versions').on('click', () => bootstrap.Tab.getOrCreateInstance(document.querySelector('#fields-tab')).show());
+        $('#compare-versions').on('click', () => VersionPicker.#showComparison());
 
         // The dialog offers the options of the selects, with their current values, each time it opens.
         $('#version-dialog')
@@ -121,7 +121,15 @@ export class VersionPicker {
     }
 
     /**
-     * Applies the dialog's choices with one reload, and closes it.
+     * Shows the comparison of the selected pair, from the Fields tab.
+     */
+    static #showComparison() {
+        bootstrap.Tab.getOrCreateInstance(document.querySelector('#fields-tab')).show();
+    }
+
+    /**
+     * Applies the dialog's choices with one reload, closes it, and shows the comparison, as Home's "Compare" button
+     * does.
      * When both versions change, the base select takes its value (and appState its version) without an event, and
      * only the target select triggers change: its handler reloads once, with both values. Triggering both selects
      * would start two reloads.
@@ -144,6 +152,7 @@ export class VersionPicker {
         } else if (targetChanged) {
             VersionPicker.#choose(this.#targetSelect, target);
         }
+        VersionPicker.#showComparison();
     }
 
     /**
