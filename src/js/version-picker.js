@@ -51,6 +51,16 @@ export class VersionPicker {
             .on('shown.bs.modal', () => this.#dialogBaseSelect.focus());
         $('#version-dialog-compare').on('click', () => this.#applyDialog());
 
+        // Where the selects' open list is styled (appearance: base-select, see ted-theme.css), Escape in it would also
+        // reach the dialog and close it: the browser's own list kept the key. It closes the list only.
+        if (CSS.supports('appearance', 'base-select')) {
+            $(this.#dialogBaseSelect).add(this.#dialogTargetSelect).on('keydown', (event) => {
+                if (event.key === 'Escape' && event.currentTarget.matches(':open')) {
+                    event.stopPropagation();
+                }
+            });
+        }
+
         // The chips and Home's buttons start disabled in the page, until the picker can serve them.
         $('#base-version-chip, #target-version-chip, #compare-versions, #choose-versions').prop('disabled', false);
     }
