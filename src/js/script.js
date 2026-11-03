@@ -49,24 +49,41 @@ $(document).ready(() => {
 
     var currentStep = 0;
 
-    // Move to the next step when the "Next" button is clicked
-    $(document).on('click', '.next-step', function () {
+    // Show the popover of a step, after bringing its anchor into the window if it is not entirely inside it, below the
+    // pinned bar (an anchor in the bar is always in view)
+    const showTourStep = (step) => {
+        const anchor = document.querySelector('[data-step="' + step + '"]');
+        if (!anchor) {
+            return;
+        }
+        const box = anchor.getBoundingClientRect();
+        if (!bar.contains(anchor) && (box.top < bar.offsetHeight || box.bottom > window.innerHeight)) {
+            anchor.scrollIntoView({ block: 'center', behavior: 'instant' });
+        }
+        $(anchor).popover('show');
+    };
+
+    // Move to the next step when the "Next" button is clicked (a link: it must not take the page back to its top)
+    $(document).on('click', '.next-step', function (event) {
+        event.preventDefault();
         $('[data-step="' + currentStep + '"]').popover('hide');
         currentStep++;
-        $('[data-step="' + currentStep + '"]').popover('show');
+        showTourStep(currentStep);
     });
 
     // Cancel the tour when the "Cancel" button is clicked
-    $(document).on('click', '.cancel-tour', function () {
+    $(document).on('click', '.cancel-tour', function (event) {
+        event.preventDefault();
         $('[data-step="' + currentStep + '"]').popover('hide');
         currentStep = 0;
     });
 
     // Start the tour when the "Start Tour" button is clicked
-    $('#start-tour').click(function () {
+    $('#start-tour').click(function (event) {
+        event.preventDefault();
         $('[data-step="' + currentStep + '"]').popover('hide');
         currentStep = 0;
-        $('[data-step="' + currentStep + '"]').popover('show');
+        showTourStep(currentStep);
     });
 });
 

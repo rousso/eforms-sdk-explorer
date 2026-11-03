@@ -574,6 +574,30 @@ class ExplorerPage {
     }
 
     /**
+     * @returns {Promise<boolean>} Whether the shown popover (of the quick tour) is entirely within the window.
+     */
+    async isPopoverInWindow() {
+        return this.#page.$eval('.popover.show', popover => {
+            const box = popover.getBoundingClientRect();
+            return box.top >= 0 && box.left >= 0 && box.bottom <= window.innerHeight && box.right <= window.innerWidth;
+        });
+    }
+
+    /**
+     * @returns {{width: number, height: number}} The size of the window.
+     */
+    windowSize() {
+        return this.#page.viewportSize();
+    }
+
+    /**
+     * @param {{width: number, height: number}} size
+     */
+    async resizeWindow(size) {
+        await this.#page.setViewportSize(size);
+    }
+
+    /**
      * @returns {Promise<string[]>} The titles of the popovers on the page (Bootstrap removes a popover once hidden).
      */
     async popoverTitles() {
@@ -1167,6 +1191,21 @@ class SmokeTest {
                 await this.#explorer.startTour();
                 assert.deepEqual(await this.#explorer.popoverTitles(), ['Choose the versions to compare']);
                 await this.#explorer.cancelTour();
+            }],
+            ['in a 768x768 window, the quick tour brings each step into view: step 3 and its Done button are inside the window', async () => {
+                const size = this.#explorer.windowSize();
+                await this.#explorer.resizeWindow({ width: 768, height: 768 });
+                try {
+                    await this.#explorer.startTour();
+                    for (let step = 0; step < 3; step++) {
+                        await this.#explorer.nextTourStep();
+                    }
+                    assert.deepEqual(await this.#explorer.popoverTitles(), ['Identify changes']);
+                    assert.equal(await this.#explorer.isPopoverInWindow(), true);
+                    await this.#explorer.nextTourStep();
+                } finally {
+                    await this.#explorer.resizeWindow(size);
+                }
             }],
         ]);
     }
