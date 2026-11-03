@@ -666,8 +666,18 @@
             flex: 0 0 auto;
         }
 
+        /* The properties. The divider under the last row is clipped: the list ends 1px above the last row's bottom.
+           (Each row is a property card with its own shadow root, and compact view hides rows inside it, so no
+           selector here can tell which row is the last one shown.) */
         #property-list {
-            padding: 4px 0 8px;
+            margin-bottom: 8px;
+            padding: 4px 0 0;
+            overflow: hidden;
+        }
+
+        #property-list::after {
+            content: "";
+            margin-top: -1px;
         }
     </style>
     <div class="card">
@@ -750,6 +760,13 @@
             flex-direction: column;
             gap: 8px;
             min-width: 0;
+        }
+        /* A changed property's value boxes: 6px below the label line in a card, so that the label's marker does not
+           touch them; level with the label in the details, where it is beside them (--property-values-offset: 0). */
+        .added-property .property-values,
+        .removed-property .property-values,
+        .modified-property .property-values {
+            margin-top: var(--property-values-offset, 6px);
         }
 
         .property-value {
@@ -943,6 +960,7 @@
             --property-row-padding: 12px 16px;
             --property-label-size: var(--gs-base-font-size-s);
             --property-label-padding-top: 4px;
+            --property-values-offset: 0;
         }
 
         /* The tree: 28px rows, no icons. */
