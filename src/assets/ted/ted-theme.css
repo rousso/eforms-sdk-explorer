@@ -205,7 +205,7 @@ a:not(.btn):focus-visible {
     --bs-btn-hover-border-color: var(--gs-base-color-eu-blue-10);
 }
 
-/* Form controls: 44px high at both sizes, 16px text, gray-60 border, 4px radius, white fill. */
+/* Form controls: 44px high, 16px text, gray-60 border, 4px radius, white fill. The small size (below) is 36px. */
 .form-control,
 .form-control-sm,
 .form-select,
@@ -227,6 +227,19 @@ a:not(.btn):focus-visible {
     /* Bootstrap's chevron in --gs-base-color-gray-75 (#666666), 12px from the right. */
     --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23666666' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
     background-position: right 12px center;
+}
+
+/* The small size, for the toolbars only (Increment 12): 36px high, 14px text; the chevron 10px from the right. */
+.form-control-sm,
+.form-select-sm {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: var(--gs-base-font-size-s);
+}
+
+.form-select-sm {
+    padding-right: 32px;
+    background-position: right 10px center;
 }
 
 .form-control:focus,
