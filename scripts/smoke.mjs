@@ -1098,17 +1098,18 @@ class SmokeTest {
                     assert.equal(card.compareEnabled, false, card.title);
                 });
             }],
-            ['selecting 1.15.1 while the Validation tab is active activates Home and shows the Schematrons tab again; 1.14.2 is then selected from Home', async () => {
-                // 1.15.1 and 1.16.0-rc.5 have no EFX rules: the Validation tab goes, and Home is activated.
-                await this.#explorer.startSelectingVersion('main', '1.15.1');
-                await this.#explorer.waitUntilIdle();
-                assert.equal(await this.#explorer.activeTab(), 'home-tab');
-                await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
-                // From Home, through the dialog, whose Compare then shows the Fields tab.
+            ['selecting 1.14.2 and 1.15.1 while the Validation tab is active shows the Schematrons tab again, which replaces it', async () => {
+                // The base first: 2.0.0-alpha.4 still has EFX rules, so the Validation tab stays, and the Schematrons
+                // tab loads (its git trees) only for the final pair.
                 await this.#explorer.startSelectingVersion('base', '1.14.2');
                 await this.#explorer.waitUntilIdle();
-                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.activeTab(), 'validation-tab');
+                // 1.15.1 and 1.14.2 have no EFX rules: the Validation tab goes, and Schematrons is activated.
+                await this.#explorer.startSelectingVersion('main', '1.15.1');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'schematrons-tab');
                 await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
+                assert.ok((await this.#explorer.indexCards('schematrons-overview-card-group')).length > 0, 'the Schematrons tab has no cards');
             }],
             ['the fwd/ source stays selected in the Fields tab after the version change, and is used', async () => {
                 assert.deepEqual(await this.#explorer.selectedToggleButton('fields-source'), { checked: 'fwd', active: ['fwd'] });
@@ -1146,6 +1147,20 @@ class SmokeTest {
     async #checkPairWithoutRules() {
         await this.#scenario('?version=1.15.1&base=1.14.2', [
             ['the Schematrons tab is shown and the Validation tab is hidden', async () => {
+                await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
+            }],
+            ['selecting 2.0.0-alpha.4 while the Schematrons tab is active shows the Validation tab, which replaces it; selecting 1.15.1 again shows the Schematrons tab', async () => {
+                await this.#explorer.openTab('schematrons-tab');
+                // 2.0.0-alpha.4 has EFX rules: the Schematrons tab goes, and Validation is activated.
+                await this.#explorer.startSelectingVersion('main', '2.0.0-alpha.4');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'validation-tab');
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+                assert.ok((await this.#explorer.indexCards('validation-overview-card-group')).length > 0, 'the Validation tab has no cards');
+                // Back to the scenario's pair, for the checks below.
+                await this.#explorer.startSelectingVersion('main', '1.15.1');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'schematrons-tab');
                 await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
             }],
             ['the Fields tab shows fields.json by default, under ND-Root, without the alert', async () => {

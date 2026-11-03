@@ -92,6 +92,16 @@ export class ValidationTab extends TabController {
     }
 
     /**
+     * Overridden: the Schematrons tab, shown when this tab is hidden, replaces it, since the schematrons are then the
+     * only validation files of the selected versions.
+     *
+     * @returns {string}
+     */
+    replacementTabId() {
+        return 'schematrons-tab';
+    }
+
+    /**
      * Overridden to remove the cards and the diff.
      */
     clear() {

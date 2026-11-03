@@ -126,6 +126,18 @@ export class TabController {
     }
 
     /**
+     * Called by the SdkExplorerApplication when the tab is active and stops applying to the selected versions (see
+     * {@link isApplicable}), to choose the tab that is activated instead.
+     * Override this method if another tab then shows what this tab showed.
+     *
+     * @returns {string|null} The id of the tab that replaces this one, or null: Home is then activated (as it is
+     *          when the replacing tab does not apply either).
+     */
+    replacementTabId() {
+        return null;
+    }
+
+    /**
      * Make an AJAX request and keep track of it.
      * The response is handed over only if the load the request was made for has not been cancelled since: a
      * response that arrived just before a cancellation (jQuery hands it over in a later task) is rejected like an

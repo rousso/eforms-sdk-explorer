@@ -244,11 +244,11 @@ export class SdkExplorerApplication {
     }
 
     /**
-     * Shows the nav buttons of the tabs that apply and hides the others. If the active tab is hidden, the Home tab
-     * is activated instead.
+     * Shows the nav buttons of the tabs that apply and hides the others. If the active tab is hidden, the tab that
+     * replaces it (see {@link TabController#replacementTabId}) is activated instead, if it applies, or else Home.
      *
      * @param {Map<TabController, boolean>} applicable Whether each tab applies to the selected versions.
-     * @returns {boolean} true if the active tab is still shown, false if the Home tab is being activated instead.
+     * @returns {boolean} true if the active tab is still shown, false if another tab is being activated instead.
      */
     #showApplicableTabs(applicable) {
         applicable.forEach((isApplicable, tab) => {
@@ -259,8 +259,10 @@ export class SdkExplorerApplication {
 
         const activeTabIsShown = !this.#activeTab || applicable.get(this.#activeTab);
         if (!activeTabIsShown) {
-            // Showing the Home tab activates it (see activeTabChanged).
-            $('#home-tab').tab('show');
+            // Showing a tab activates it (see activeTabChanged).
+            const replacement = this.tabs.get(this.#activeTab.replacementTabId());
+            const tabToShow = replacement && applicable.get(replacement) ? replacement : this.tabs.get('home-tab');
+            $(this.#tabButton(tabToShow)).tab('show');
         }
         return activeTabIsShown;
     }
