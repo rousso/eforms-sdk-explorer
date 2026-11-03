@@ -843,14 +843,15 @@
             overflow: clip;
         }
 
+        /* The header: the title, then Search and Show, each with its label before it, vertically centred. */
         #structure-header {
             position: sticky;
             top: var(--ted-bar-height);
             z-index: 1;
             display: flex;
             flex-wrap: wrap;
-            align-items: flex-end;
-            gap: 12px;
+            align-items: center;
+            gap: 12px 20px;
             padding: 16px;
             background: var(--gs-base-color-white);
             border-bottom: 1px solid var(--gs-base-color-gray-20);
@@ -858,15 +859,14 @@
 
         #structure-header .panel-title {
             flex: 1 1 auto;
-            align-self: center;
         }
 
-        #tree-search-control {
-            width: 240px;
+        #tree-search {
+            width: 220px;
         }
 
-        #tree-filter-control {
-            width: 140px;
+        #tree-filter {
+            width: 120px;
         }
 
         /* Long labels scroll horizontally, inside the tree's own container (not around the sticky header). */
@@ -894,12 +894,9 @@
             border-bottom: 1px solid var(--gs-base-color-gray-20);
         }
 
+        /* (Compact view is a 36px row, so that this header is as tall as the Structure header.) */
         #details-header .panel-title {
             flex: 1 1 auto;
-        }
-
-        #details-header .form-check {
-            margin-bottom: 0;
         }
 
         #detail-heading {
@@ -1065,13 +1062,13 @@
         <section id="structure-panel" class="panel" aria-labelledby="structure-title">
             <header id="structure-header">
                 <h2 id="structure-title" class="panel-title">Structure</h2>
-                <div id="tree-search-control">
-                    <label class="form-label" for="tree-search">Search</label>
+                <div id="tree-search-control" class="ted-inline-field">
+                    <label class="ted-inline-field__label" for="tree-search">Search:</label>
                     <input type="text" id="tree-search" placeholder="Name, ID or property" class="form-control form-control-sm"
                         data-bs-toggle="popover" data-bs-trigger="manual" data-bs-placement="left" data-bs-html="true">
                 </div>
-                <div id="tree-filter-control">
-                    <label class="form-label" for="tree-filter">Show</label>
+                <div id="tree-filter-control" class="ted-inline-field">
+                    <label class="ted-inline-field__label" for="tree-filter">Show:</label>
                     <select id="tree-filter" class="form-select form-select-sm">
                         <option value="all">all</option>
                         <option value="added">added</option>
@@ -1089,7 +1086,7 @@
         <section id="details-panel" class="panel" aria-labelledby="details-title">
             <header id="details-header">
                 <h2 id="details-title" class="panel-title">Details</h2>
-                <div class="form-check">
+                <div class="form-check ted-inline-check">
                     <input class="form-check-input" type="checkbox" id="compactViewSwitch">
                     <label class="form-check-label" for="compactViewSwitch">Compact view</label>
                 </div>
