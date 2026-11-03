@@ -514,6 +514,22 @@
     margin: 0;
 }
 
+/* The heading slotted into a card group's heading row, without the h1's bottom margin, so that it is centred with
+   the controls. (The card-group template cannot set it: its ::slotted() rules lose to the page's own.) */
+card-group > [slot="heading"] {
+    margin: 0;
+}
+
+/* A source selector slotted into a card group's heading row (Validation's), before Show: a divider after it, 1px
+   gray-20 and 24px high, 20px from the toggle (the field's 8px gap and this margin) and from Show (the row's gap). */
+card-group > .ted-toolbar__source[slot="controls"]::after {
+    content: "";
+    width: 1px;
+    height: 24px;
+    margin-left: 12px;
+    background: var(--gs-base-color-gray-20);
+}
+
 /* A TED Notification: a 4px bar in the status colour on its surface tint. */
 .ted-notification {
     margin-bottom: 16px;

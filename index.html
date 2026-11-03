@@ -350,9 +350,9 @@
 
                 <!-- Validation overview -->
                 <div id="validation-overview" class="view-container">
-                    <div class="ted-toolbar">
-                        <h1>Validation</h1>
-                        <div class="ted-toolbar__source ted-inline-field">
+                    <card-group id="validation-overview-card-group" filter-prompt="Filter by folder">
+                        <h1 slot="heading">Validation</h1>
+                        <div class="ted-toolbar__source ted-inline-field" slot="controls">
                             <span id="validation-source-label" class="ted-inline-field__label">Source:</span>
                             <div id="validation-source" class="btn-group btn-group-sm" role="group" aria-labelledby="validation-source-label">
                                 <input type="radio" class="btn-check" name="validation-source" id="validation-source-efx-rules" value="efx-rules" autocomplete="off" checked>
@@ -361,8 +361,7 @@
                                 <label class="btn btn-outline-secondary" for="validation-source-schematron">Schematron</label>
                             </div>
                         </div>
-                    </div>
-                    <card-group id="validation-overview-card-group" filter-prompt="Filter by folder"></card-group>
+                    </card-group>
                 </div>
 
                 <!-- Validation diff view -->
@@ -1125,35 +1124,28 @@
             display: var(--filter-status-modified, var(--filter-status-all, none));
         }
 
-        /* The heading's row: the tab's heading (slotted from the page) at the left, Show and Compact view at the right. */
+        /* The heading's row: the tab's heading (slotted from the page) at the left; at the right, the tab's own
+           controls (slotted from the page, as Validation's source), Show and Compact view, vertically centred. On a
+           narrow screen the controls wrap under the heading as one group. */
         #head {
             display: flex;
             flex-wrap: wrap;
-            align-items: flex-end;
+            align-items: center;
             justify-content: space-between;
             gap: 12px 24px;
             margin-bottom: 16px;
         }
 
-        ::slotted(h1) {
-            margin: 0;
-        }
-
+        /* (The heading's margin is set by the page, in ted-page.css: a ::slotted() rule loses to the page's own.) */
         #head-controls {
             display: flex;
             flex-wrap: wrap;
-            align-items: flex-end;
-            gap: 16px 24px;
-            margin-left: auto;
+            align-items: center;
+            gap: 12px 20px;
         }
 
-        #status-filter-control {
-            width: 140px;
-        }
-
-        #compact-view-control {
-            margin-bottom: 0;
-            padding-bottom: 10px;
+        #status-filter {
+            width: 120px;
         }
 
         #body {
@@ -1224,8 +1216,9 @@
         <header id="head">
             <slot name="heading"></slot>
             <div id="head-controls">
-                <div id="status-filter-control">
-                    <label class="form-label" for="status-filter">Show</label>
+                <slot name="controls"></slot>
+                <div id="status-filter-control" class="ted-inline-field">
+                    <label class="ted-inline-field__label" for="status-filter">Show:</label>
                     <select id="status-filter" class="form-select form-select-sm">
                         <option value="all">all</option>
                         <option value="added">added</option>
@@ -1233,7 +1226,7 @@
                         <option value="modified">modified</option>
                     </select>
                 </div>
-                <div id="compact-view-control" class="form-check">
+                <div id="compact-view-control" class="form-check ted-inline-check">
                     <input class="form-check-input" type="checkbox" id="compactViewSwitch">
                     <label class="form-check-label" for="compactViewSwitch">Compact view</label>
                 </div>
