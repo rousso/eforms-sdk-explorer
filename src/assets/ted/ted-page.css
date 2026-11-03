@@ -198,9 +198,9 @@
     background: var(--gs-base-color-forest-110);
 }
 
-/* Work area: white, with the 24px gutter. */
+/* Work area: white, with the 24px gutter, and 64px before the footer on every tab (Increment 12). */
 .ted-main {
-    padding: 24px 24px 0;
+    padding: 24px 24px 64px;
     background: var(--gs-base-color-white);
 }
 
@@ -370,7 +370,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 32px 48px;
-    padding: 40px 0 64px;
+    padding: 40px 0 0;
 }
 
 .ted-home__text {
@@ -830,13 +830,17 @@ card-group > .ted-toolbar__source[slot="controls"]::after {
 
 /* Other tabs (Increment 9): Validation, Schemas, Schematrons, Translations, View templates, Release notes. */
 
-/* Release notes (the CHANGELOG.md of the target version, as HTML): the TED typography, at most 65rem wide. (Validation
-   uses the toolbar of the tree section; the other tabs, the cards and file diff sections.) */
+/* Release notes (the CHANGELOG.md of the target version, as HTML): the TED typography, at most 65rem wide. Its last
+   block has no bottom margin: the work area's 64px are the space before the footer. (Validation uses the card group's
+   heading row; the other tabs, the cards and file diff sections.) */
 #release-notes {
     max-width: 65rem;
-    padding-bottom: 40px;
     font-size: var(--gs-base-font-size-m);
     line-height: 1.62;
+}
+
+#release-notes > :last-child {
+    margin-bottom: 0;
 }
 
 #release-notes h1 {
