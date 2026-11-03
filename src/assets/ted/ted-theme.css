@@ -316,6 +316,42 @@ a:not(.btn):focus-visible {
     border-color: var(--gs-base-color-eu-blue-100);
 }
 
+/* In a toolbar (Increment 12), a control with its label before it: the label 14px regular gray-75, 8px from the
+   control. */
+.ted-inline-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ted-inline-field__label {
+    margin: 0;
+    font-size: var(--gs-base-font-size-s);
+    font-weight: 400;
+    color: var(--gs-base-color-gray-75);
+    white-space: nowrap;
+}
+
+/* In a toolbar, a checkbox: its 18px box and its label, 14px gray-100, 8px apart, centred on a 36px row like the
+   small controls. */
+.ted-inline-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    margin: 0;
+    padding-left: 0;
+}
+
+.ted-inline-check .form-check-input {
+    float: none;
+    margin: 0;
+}
+
+.ted-inline-check .form-check-label {
+    font-size: var(--gs-base-font-size-s);
+}
+
 /* Change markers (Increment 3): used by the page and by the index cards. */
 
 /* A change marker: a 16px square in the marker colour with a white 10px glyph (plus, minus) or a 6px dot. */

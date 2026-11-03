@@ -499,8 +499,8 @@
 
 /* Tree and detail (Increment 6): the Fields toolbar, the Structure and Details panels, the tree, the details. */
 
-/* A tab's toolbar: its heading at the left, its source selector at the right. (The tree/detail-split-view template
-   styles the panels, the tree and the details.) */
+/* A tab's toolbar: its heading at the left, its source selector (a .ted-inline-field, from ted-theme.css) at the right.
+   (The tree/detail-split-view template styles the panels, the tree and the details.) */
 .ted-toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -512,13 +512,6 @@
 
 .ted-toolbar h1 {
     margin: 0;
-}
-
-.ted-toolbar__source {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
 }
 
 /* A TED Notification: a 4px bar in the status colour on its surface tint. */
