@@ -369,6 +369,36 @@ An external review (Codex) of `feature/ted-design` at `8570135` found five defec
   - Fix: the three tour handlers (next, cancel, start) call `event.preventDefault()`. Before a step's popover is shown, its anchor is scrolled into view with `scrollIntoView({ block: 'center', behavior: 'instant' })` when it is not entirely inside the window below the pinned bar. Anchors in the bar itself (steps 1 and 2) are always in view and are left as they are. This applies to every step, since step 0's anchor can be below the fold at small heights too.
   - Verify: a smoke check in the tour scenario sets the window to 768×768 (and restores it after), runs the tour to step 3, and asserts that the popover, Done included, lies within the window; the existing tour check at the default size stays.
 
+### Increment 12 — toolbar and spacing follow-ups (user review) (M)
+The user reviewed the live site and approved these follow-ups on the design canvas: the board "Tab toolbar (proposal)" (https://claude.ai/artifact/1jEXEYzTFqSUx7xJEX8gJo, file `project/Toolbar.dc.html`), with five frames: Validation now, Validation proposed (the Show list drawn open), Notice types proposed, 768 px, and Fields now and proposed. The design session handed them over on 2026-11-03, and the user confirmed them in the implementation session. Questions on the design go to the design session. One commit per item, `npm run smoke` before the push, a Progress line per item.
+- **A. A small control size, 36 px, for the toolbars only.** Today `.form-control-sm` and `.form-select-sm` are 44 px, like the default size; their only users are `#status-filter`, `#tree-search` and `#tree-filter`.
+  - `min-height: 36px`, 14 px text, line-height 1.4, padding 7px 10px; the select's padding is 7px 32px 7px 10px, with its chevron 10px from the right.
+  - Border, radius, focus and colours stay as they are. The version dialog's selects stay at 44 px.
+- **B. Inline labels in the toolbars.** Each label sits before its control, 14 px regular gray-75, 8 px from the control, with a colon: "Source:", "Metadata source:", "Show:", "Search:". "Compact view" is 14 px gray-100 beside its 18 px box.
+  - The user decided to keep the "Source:" label.
+  - Within a toolbar, the controls are 20 px apart horizontally and 12 px vertically when they wrap, all vertically centred.
+- **C. The card tabs** (Notice types, Codelists, Schemas, Schematrons, Validation, Translations, View templates; `#card-group-template`).
+  - `#head` and `#head-controls`: `align-items: center` instead of `flex-end`. `#status-filter-control` and `#compact-view-control` become inline (the label before the select, no label above, no padding-bottom hack). The select is 120 px wide.
+  - Validation: its Source toggle moves into the card group's heading row. A `controls` slot opens `#head-controls`. In `index.html`, `<h1 slot="heading">Validation</h1>` and the `.ted-toolbar__source` block (with `slot="controls"`) go inside `<card-group id="validation-overview-card-group">`, and Validation's page-level `.ted-toolbar` is removed. The ids (`#validation-source` and its radios) stay in the light DOM, so the handlers and the smoke selectors are unchanged.
+  - Between the slotted source and "Show:", a divider: 1 px wide, 24 px high, gray-20, 20 px from each. A `::after` on the slotted block, from the page's CSS, which styles light-DOM content.
+  - Result: one row on Validation (the heading at the left; Source, the divider, Show and Compact view at the right). At 768 px the controls wrap under the heading as one group and stay on one line.
+- **D. Fields.**
+  - The toolbar's "Metadata source:" gets B's label style.
+  - The Structure header: `align-items: center`; "Search:" inline before `#tree-search` (`form-control-sm`, 220 px) and "Show:" inline before `#tree-filter` (120 px). The sticky header goes from 99 px to about 69 px.
+  - The Details header: "Compact view" at 14 px, and a min-height of 36 px for its row, so that the Details header is as tall as the Structure header and the two line up.
+- **E. A styled open list for every `.form-select`, as progressive enhancement.** Today the open list is the operating system's popup (on the user's Ubuntu, with an orange highlight).
+  - Inside `@supports (appearance: base-select)`: `.form-select, .form-select::picker(select) { appearance: base-select }`.
+  - The picker: white, a 1 px gray-20 border, radius-s (4 px), `--gs-base-shadow-2`, padding 4px 0, 4 px below the control, at least as wide as the control, `max-height: min(60vh, 400px)` with `overflow-y: auto` (the dialog's version lists are long).
+  - Options: padding 8px 14px, 14 px text for the small selects and 16 px for the 44 px ones, line-height 1.5, eu-blue-100. Hover and `:focus-visible`: an eu-blue-10 fill, no outline. Checked: an eu-blue-10 fill, gray-100 text, bold. `option::checkmark { display: none }`.
+  - The closed control looks exactly as it does now: one chevron, at the same place (base-select adds a `::picker-icon`; hide it and keep the background chevron, or the reverse).
+  - Firefox and Safari keep the native list, as expected.
+  - Verify that the smoke's `selectOption` on `#status-filter`, `#tree-filter` and the dialog's selects still works (they are still `<select>`s), and that choosing with the keyboard works.
+- **F. Space before the footer.** Every tab but Home ends flush on the footer, because `.ted-main` has `padding: 24px 24px 0`. It becomes `24px 24px 64px`, and Home's own padding (`ted-page.css`, `40px 0 64px`) becomes `40px 0 0`, so that Home keeps its 64 px and does not get 128.
+- **G. The property rows in the cards** (`#property-card-template`).
+  - The 16 px marker before a changed property's label ends only 1.5 px above its value box (Base or Target), so it looks glued to it. Add 6 px between the label line and its value box(es), in the card layout only; the Details panel, which uses the same template with the label beside the value, must not move. For example, `.property-values { margin-top: var(--property-values-offset, 6px) }`, with the tree/detail template setting `--property-values-offset: 0`.
+  - Remove the gray-10 divider under the last property row of each card: today it draws a line just above the card's bottom edge.
+- **Verify:** smoke passes all its checks (80). At 1440 px and 768 px, compare Validation, Notice types and Fields with the board's proposed frames. In Chromium the open Show list looks like the drawn one; in Firefox it is native. Every tab leaves 64 px before the footer.
+
 ## Optional items (each needs the user's go-ahead; not part of the restyle)
 
 These change behaviour or text, so they stay out of the increments above.
