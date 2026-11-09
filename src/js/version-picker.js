@@ -131,18 +131,24 @@ export class VersionPicker {
     }
 
     /**
-     * Shows the comparison of the selected pair, from the Fields tab.
+     * Shows the comparison of the selected pair, from the Fields tab, and gives the focus to the Fields tab's button:
+     * the button that asked for the comparison (Home's or the dialog's Compare) is on Home, which is hidden now.
      */
     static #showComparison() {
-        bootstrap.Tab.getOrCreateInstance(document.querySelector('#fields-tab')).show();
+        const fieldsTab = document.querySelector('#fields-tab');
+        bootstrap.Tab.getOrCreateInstance(fieldsTab).show();
+        fieldsTab.focus();
     }
 
     /**
-     * Applies the dialog's choices with one reload, closes it, and shows the comparison, as Home's "Compare" button
-     * does.
+     * Applies the dialog's choices with one reload, closes it, and then shows the comparison, as Home's "Compare"
+     * button does.
      * When both versions change, the base select takes its value (and appState its version) without an event, and
      * only the target select triggers change: its handler reloads once, with both values. Triggering both selects
      * would start two reloads.
+     * The comparison is shown once the dialog has closed, so that the focus ends on the Fields tab's button, not on
+     * "Choose versions…" (to which Bootstrap returns it as the dialog closes) or on nothing. Showing Fields before or
+     * after the version change's tab probe ends loads it once either way (see SdkExplorerApplication).
      */
     #applyDialog() {
         const base = this.#dialogBaseSelect.value;
@@ -151,7 +157,9 @@ export class VersionPicker {
         const baseChanged = base !== '' && base !== this.#baseSelect.value;
         const targetChanged = target !== '' && target !== this.#targetSelect.value;
 
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('version-dialog')).hide();
+        const dialog = document.getElementById('version-dialog');
+        $(dialog).one('hidden.bs.modal', () => VersionPicker.#showComparison());
+        bootstrap.Modal.getOrCreateInstance(dialog).hide();
 
         if (baseChanged && targetChanged) {
             this.#baseSelect.value = base;
@@ -162,7 +170,6 @@ export class VersionPicker {
         } else if (targetChanged) {
             VersionPicker.#choose(this.#targetSelect, target);
         }
-        VersionPicker.#showComparison();
     }
 
     /**

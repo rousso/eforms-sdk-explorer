@@ -296,6 +296,35 @@ class ExplorerPage {
     }
 
     /**
+     * Focuses Home's "Compare x › y" button and presses Enter, as a keyboard user would, and waits until the explorer
+     * is idle.
+     */
+    async compareFromHomeWithEnter() {
+        await this.#page.focus('#compare-versions');
+        await this.#page.keyboard.press('Enter');
+        await this.waitUntilIdle();
+    }
+
+    /**
+     * Opens the "Choose versions…" dialog from Home, waits until it has given the focus to its base version, then
+     * focuses its Compare button and presses Enter without changing anything, as a keyboard user would.
+     */
+    async compareInDialogWithEnter() {
+        await this.#page.click('#choose-versions');
+        await this.#page.waitForFunction(() => document.activeElement?.id === 'version-dialog-base');
+        await this.#page.focus('#version-dialog-compare');
+        await this.#page.keyboard.press('Enter');
+        await this.#page.waitForSelector('#version-dialog', { state: 'hidden' });
+    }
+
+    /**
+     * @returns {Promise<string>} The id of the element that has the focus, or its tag name if it has no id.
+     */
+    async focusedElement() {
+        return this.#page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
+    }
+
+    /**
      * Opens the "Choose versions…" dialog from Home and presses Compare without changing anything, as a user would.
      */
     async compareInDialogUnchanged() {
@@ -1513,6 +1542,19 @@ class SmokeTest {
                 assert.equal(await this.#explorer.baseVersion(), '1.13.0');
                 assert.equal(await this.#explorer.activeTab(), 'fields-tab');
                 assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+            }],
+            ['Enter on Home\'s "Compare 1.13.0 \u203A 1.14.2" leaves the focus on the Fields tab\'s button (Home, with the button, is hidden)', async () => {
+                await this.#explorer.openTab('home-tab');
+                await this.#explorer.compareFromHomeWithEnter();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.focusedElement(), 'fields-tab');
+            }],
+            ['Enter on the dialog\'s Compare leaves the focus on the Fields tab\'s button', async () => {
+                await this.#explorer.openTab('home-tab');
+                await this.#explorer.compareInDialogWithEnter();
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.focusedElement(), 'fields-tab');
             }],
         ]);
     }
