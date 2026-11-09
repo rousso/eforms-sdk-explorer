@@ -770,8 +770,11 @@ card-group > .ted-toolbar__source[slot="controls"]::after {
 }
 
 /* Popovers (the quick tour, the hover popovers of the version selects, the search help): white, a gray-20 border,
-   a 4px radius, the shadow-2 elevation; the title 18px bold without a band, the body 14px. */
+   a 4px radius, the shadow-2 elevation; the title 18px bold without a band, the body 14px. When the tour scrolls a
+   step's popover into view (script.js), it ends 8px clear of the pinned bar or of the window's edge. */
 .popover {
+    scroll-margin-top: calc(var(--ted-bar-height) + 8px);
+    scroll-margin-bottom: 8px;
     --bs-popover-max-width: 420px;
     --bs-popover-border-color: var(--gs-base-color-gray-20);
     --bs-popover-border-radius: var(--gs-base-radius-s);

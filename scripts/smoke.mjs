@@ -615,12 +615,17 @@ class ExplorerPage {
     }
 
     /**
-     * @returns {Promise<boolean>} Whether the shown popover (of the quick tour) is entirely within the window.
+     * @returns {Promise<boolean>} Whether the shown popover (of the quick tour) is entirely within the window and,
+     *          unless its anchor is in the pinned bar, below the bar (the popover of an anchor in the bar starts over
+     *          the bar, by design).
      */
     async isPopoverInWindow() {
         return this.#page.$eval('.popover.show', popover => {
             const box = popover.getBoundingClientRect();
-            return box.top >= 0 && box.left >= 0 && box.bottom <= window.innerHeight && box.right <= window.innerWidth;
+            const bar = document.querySelector('.ted-bar');
+            const anchor = document.querySelector(`[aria-describedby="${popover.id}"]`);
+            const top = anchor && bar.contains(anchor) ? 0 : bar.getBoundingClientRect().bottom;
+            return box.top >= top && box.left >= 0 && box.bottom <= window.innerHeight && box.right <= window.innerWidth;
         });
     }
 
@@ -1255,22 +1260,36 @@ class SmokeTest {
                 assert.deepEqual(await this.#explorer.popoverTitles(), ['Choose the versions to compare']);
                 await this.#explorer.cancelTour();
             }],
-            ['in a 768x768 window, the quick tour brings each step into view: step 3 and its Done button are inside the window', async () => {
-                const size = this.#explorer.windowSize();
-                await this.#explorer.resizeWindow({ width: 768, height: 768 });
-                try {
-                    await this.#explorer.startTour();
-                    for (let step = 0; step < 3; step++) {
-                        await this.#explorer.nextTourStep();
-                    }
-                    assert.deepEqual(await this.#explorer.popoverTitles(), ['Identify changes']);
-                    assert.equal(await this.#explorer.isPopoverInWindow(), true);
-                    await this.#explorer.nextTourStep();
-                } finally {
-                    await this.#explorer.resizeWindow(size);
-                }
+            ['in a 768x768 window, the quick tour brings each step into view: every popover, its Next or Done included, is inside the window and below the bar', async () => {
+                await this.#assertTourStepsInView({ width: 768, height: 768 });
+            }],
+            ['in a 1440x768 window, the quick tour brings each step into view: every popover, its Next or Done included, is inside the window and below the bar', async () => {
+                await this.#assertTourStepsInView({ width: 1440, height: 768 });
             }],
         ]);
+    }
+
+    /**
+     * Runs the quick tour in a window of the given size and asserts, before each Next, that the shown step's popover
+     * is in view (see {@link ExplorerPage#isPopoverInWindow}). The window's size is restored after.
+     *
+     * @param {{width: number, height: number}} windowSize
+     */
+    async #assertTourStepsInView(windowSize) {
+        const size = this.#explorer.windowSize();
+        await this.#explorer.resizeWindow(windowSize);
+        try {
+            await this.#explorer.startTour();
+            const steps = [];
+            for (let step = 0; step < 4; step++) {
+                steps.push([(await this.#explorer.popoverTitles())[0], await this.#explorer.isPopoverInWindow()]);
+                await this.#explorer.nextTourStep();
+            }
+            assert.deepEqual(steps, [['Choose the versions to compare', true], ['Switch between sections', true], ['Loading indicator', true], ['Identify changes', true]]);
+            assert.deepEqual(await this.#explorer.popoverTitles(), []);
+        } finally {
+            await this.#explorer.resizeWindow(size);
+        }
     }
 
     /** Two versions with the same EFX rules. */

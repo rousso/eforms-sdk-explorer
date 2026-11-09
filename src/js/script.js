@@ -49,16 +49,32 @@ $(document).ready(() => {
 
     var currentStep = 0;
 
-    // Show the popover of a step, after bringing its anchor into the window if it is not entirely inside it, below the
-    // pinned bar (an anchor in the bar is always in view)
+    // Whether an element is entirely inside the window, below the pinned bar
+    const isInViewBelowBar = (element) => {
+        const box = element.getBoundingClientRect();
+        return box.top >= bar.offsetHeight && box.bottom <= window.innerHeight;
+    };
+
+    // Show the popover of a step, after bringing its anchor into the window below the pinned bar if it is not entirely
+    // there. Once shown, if the popover itself does not fit there (it opens below its anchor), scroll just enough to
+    // bring it in: its scroll margins (ted-page.css) keep it clear of the bar and of the window's edge, and Popper
+    // keeps it on its anchor. An anchor in the bar, and its popover, are always in view.
     const showTourStep = (step) => {
         const anchor = document.querySelector('[data-step="' + step + '"]');
         if (!anchor) {
             return;
         }
-        const box = anchor.getBoundingClientRect();
-        if (!bar.contains(anchor) && (box.top < bar.offsetHeight || box.bottom > window.innerHeight)) {
-            anchor.scrollIntoView({ block: 'center', behavior: 'instant' });
+        if (!bar.contains(anchor)) {
+            if (!isInViewBelowBar(anchor)) {
+                anchor.scrollIntoView({ block: 'center', behavior: 'instant' });
+            }
+            $(anchor).one('shown.bs.popover', () => {
+                // Bootstrap names the popover in its anchor's aria-describedby while it is shown
+                const popover = document.getElementById(anchor.getAttribute('aria-describedby'));
+                if (popover && !isInViewBelowBar(popover)) {
+                    popover.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+                }
+            });
         }
         $(anchor).popover('show');
     };
