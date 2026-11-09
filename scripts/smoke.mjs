@@ -103,6 +103,9 @@ class ExplorerPage {
     /** @type {string[]} The URLs of the GitHub API requests made since the page was created. */
     #githubApiRequests = [];
 
+    /** @type {string[]} The URLs of all the requests made since the page was created. */
+    #requestedUrls = [];
+
     /** @type {Set<string>} The URLs of the requests that the test made fail on purpose (see {@link failRequestsDuring}). */
     #deliberatelyFailedUrls = new Set();
 
@@ -130,6 +133,7 @@ class ExplorerPage {
         });
         this.#page.on('pageerror', error => this.#consoleErrors.push(error.message));
         this.#page.on('request', request => {
+            this.#requestedUrls.push(request.url());
             if (request.url().startsWith(ExplorerPage.#GITHUB_API)) {
                 this.#githubApiRequests.push(request.url());
             }
@@ -158,6 +162,13 @@ class ExplorerPage {
      */
     get githubApiRequests() {
         return [...this.#githubApiRequests];
+    }
+
+    /**
+     * @returns {string[]} The URLs of all the requests made since the page was created, across page loads.
+     */
+    get requestedUrls() {
+        return [...this.#requestedUrls];
     }
 
     /**
@@ -1483,11 +1494,19 @@ class SmokeTest {
                 await this.#explorer.openTab('home-tab');
                 assert.equal(await this.#explorer.isInWindow('#compare-versions'), true);
             }],
-            ['the dialog\'s Compare with both versions changed applies them with one reload and shows the Fields tab of the new pair', async () => {
+            ['the dialog\'s Compare with both versions changed applies them with one reload and shows the Fields tab of the new pair, loaded once although the tabs were still being probed', async () => {
                 await this.#explorer.openTab('home-tab');
                 await this.#explorer.startCountingVersionChanges();
+                // 1.13.0's probe is held, so that Fields is shown while the tabs are still probed (this page has not
+                // probed 1.13.0 yet: the explorer keeps each version's answer, as it has 1.14.2's).
+                const probe = await this.#explorer.holdRequests('**/1.13.0/validation/rules.efx');
+                const firstRequest = this.#explorer.requestedUrls.length;
                 await this.#explorer.startComparingInDialog('1.14.2', '1.13.0');
+                await probe.requested;
+                await probe.release();
                 await this.#explorer.waitUntilIdle();
+                const fieldsJsonVersions = this.#explorer.requestedUrls.slice(firstRequest).filter(url => url.endsWith('/fields/fields.json')).map(url => url.split('/').at(-3));
+                assert.deepEqual(fieldsJsonVersions.sort(), ['1.13.0', '1.14.2']);
                 assert.equal(await this.#explorer.countedVersionChanges(), 1);
                 assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.14.2', baseVersion: '1.13.0' });
                 assert.equal(await this.#explorer.mainVersion(), '1.14.2');

@@ -42,6 +42,14 @@ export class SdkExplorerApplication {
      */
     #selection = 0;
 
+    /**
+     * The selection (see {@link #selection}) whose tabs are being probed, or null when no probe is in flight. While
+     * a probe is in flight, the tab activated is not rendered: the probe's end renders the active tab.
+     *
+     * @type {number|null}
+     */
+    #probedSelection = null;
+
     /** @type {number} */
     #spinnerCounter = 0;
 
@@ -172,7 +180,11 @@ export class SdkExplorerApplication {
         try {
             await this.#activeTab?.deactivated();
             this.#activeTab = this.tabs.get(activeTabId);
-            await this.#activeTab.activated();
+            // While the tabs are probed for a selection, the probe's end renders the active tab (through its
+            // versionChanged(), see #updateForSelection()): rendering it here too would load it twice.
+            if (this.#probedSelection === null) {
+                await this.#activeTab.activated();
+            }
         } catch (error) {
             SdkExplorerApplication.updateApiStatus(error.message, error.detail);
         }
@@ -214,11 +226,19 @@ export class SdkExplorerApplication {
      * Shows the tabs that apply to the selected versions and renders the active tab for them, unless a newer
      * selection is made while the tabs are probed: that newer selection then does all of it, and the results and
      * errors of this one are dropped.
+     * A tab activated while the tabs are probed is rendered here, once the probe has ended (see activeTabChanged()).
+     * If the probe fails, it stays empty, with the error in the toast, as the active tab does.
      */
     async #updateForSelection() {
         const selection = ++this.#selection;
+        this.#probedSelection = selection;
         try {
-            const applicable = await this.#probeApplicableTabs();
+            const applicable = await this.#probeApplicableTabs().finally(() => {
+                // A newer selection's probe may be in flight by now: it is that one's to end.
+                if (this.#probedSelection === selection) {
+                    this.#probedSelection = null;
+                }
+            });
             if (selection !== this.#selection) {
                 return;
             }
