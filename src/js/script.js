@@ -10,9 +10,13 @@ import { VersionPicker } from './version-picker.js';
 
 $(document).ready(() => {
     // Start the application. The version picker starts once the version dropdowns are filled, before the tabs are
-    // probed, so that the user can choose versions meanwhile.
+    // probed, so that the user can choose versions meanwhile. Without versions (their list could not be downloaded),
+    // neither starts: the error toast says why.
     SdkExplorerApplication.initVersions()
-        .then(() => {
+        .then(versionsSelected => {
+            if (!versionsSelected) {
+                return;
+            }
             new VersionPicker().start();
             return SdkExplorerApplication.initTabs();
         });

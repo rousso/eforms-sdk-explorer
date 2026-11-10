@@ -105,10 +105,16 @@ export class SdkExplorerApplication {
 
     /**
      * Starts the version selection: fills the two version dropdowns and listens to their changes. Call
-     * {@link initTabs} after it.
+     * {@link initTabs} after it, only if it succeeded.
+     *
+     * @returns {Promise<boolean>} Whether a pair of versions is selected. If not (their list could not be
+     *          downloaded), start-up stops: every tab but Home is disabled, and the error toast says why.
      */
     static async initVersions() {
-        await SdkExplorerApplication.instance.populateDropdown();
+        if (!(await SdkExplorerApplication.instance.populateDropdown())) {
+            SdkExplorerApplication.instance.#disableTabsButHome();
+            return false;
+        }
 
         // Listen to the user from now on, before the tabs are probed, so that a change made meanwhile is not lost.
         SdkExplorerApplication.instance.$mainVersionDropdown().change(function () {
@@ -121,6 +127,19 @@ export class SdkExplorerApplication {
             appState.baseVersion = $(this).val();
             $('#fieldDetailsContent').html('Select an item to see details.');
             SdkExplorerApplication.instance.versionChanged(appState.mainVersion, appState.baseVersion);
+        });
+        return true;
+    }
+
+    /**
+     * Disables the button of every tab but Home, when start-up stops without versions: no tab can be opened empty.
+     * (The version chips and Home's buttons stay disabled, as the page starts them: the version picker never starts.)
+     */
+    #disableTabsButHome() {
+        this.tabs.forEach(tab => {
+            if (tab.getId() !== 'home-tab') {
+                this.#tabButton(tab).disabled = true;
+            }
         });
     }
 
@@ -477,6 +496,13 @@ export class SdkExplorerApplication {
         return $.ajax(options);
     }
 
+    /**
+     * Fills the two version dropdowns with the versions of the SDK, and selects the pair of the query string or the
+     * default one.
+     *
+     * @returns {Promise<boolean>} Whether a pair is selected: false if the versions could not be listed (the error
+     *          is then shown).
+     */
     async populateDropdown() {
         this.startSpinner();
         this.clearApiStatus();
@@ -551,9 +577,11 @@ export class SdkExplorerApplication {
             this.$baseVersionDropdown().val(baseVersion);
             appState.mainVersion = mainVersion;
             appState.baseVersion = baseVersion;
+            return true;
         } catch (error) {
             SdkExplorerApplication.updateApiStatus(error.message, error.detail);
             console.error('Error populating dropdowns:', error);
+            return false;
         } finally {
             this.stopSpinner();
         }
