@@ -439,6 +439,22 @@ Items a and b share one rule, in `SdkExplorerApplication`: **a tab is rendered o
   - Fix: every wait on an in-page promise or a held request gets an explicit timeout that fails the check with a message, and every check that holds requests releases them in `finally`: every existing user of `holdRequests()` and of the new waits, not only 13a's check.
   - Verify: with `#showComparison()`'s tab activation commented out locally, the 13a check fails within its timeout, with its name, and the rest of the run continues.
 
+### Increment 15 — follow-ups from the fourth external review (S)
+An external review (Codex) of `ddf1201..f62e5fd`, run with Increment 14's line stated up front, reported three findings; the planning session checked them against the code, and all three are inside the line. One commit per item, `npm run smoke` before the push, a Progress line per item, deviations recorded.
+- **a. An error shown right after the toast is cleared ends up hidden** (`src/js/app.js`, `index.html`, `scripts/smoke.mjs`).
+  - Symptom: from Home on 1.15.1 / 1.14.2, the dialog to target 2.0.0-alpha.4 with its `rules.efx` probes answering 500 at once: activating Fields clears the toast (Bootstrap starts its fade-out), the retry fails within that fade and shows its error, and the pending hide then completes and hides the new toast: Fields empty, no visible error.
+  - Cause, general rather than specific to the retry: `clearApiStatus()` hides with a transition, and any error reported within the fade is lost. The 14a smoke check passed in that state because `apiStatus()` reads the toast's text whether it is shown or not.
+  - Fix: `#apiStatus` gets `data-bs-animation="false"`, so that Bootstrap shows and hides it at once and no pending hide can outlive a later show; the toast loses only its fade. Smoke: `apiStatus()` returns the toast's text only while the toast is visible (an empty string when hidden), so that every toast assertion checks what the user sees; Progress records which checks this tightens and whether any needed adjusting.
+  - Verify: reproduce the sequence first, then a smoke check for it: after the app is idle, the visible toast names `rules.efx`.
+- **b. A tab opened before start-up is not known to the application** (`src/js/app.js`).
+  - Symptom: on a cold load with the jsDelivr version list delayed, click Fields. The `shown.bs.tab` listener is installed only in `initTabs()`, so `#activeTab` stays null: Fields is never rendered by the start-up probe, and choosing fwd/ afterwards calls `#renderActiveTab()`, which throws "Cannot read properties of null (reading 'activated')" into the toast. The null dereference is new with 14b; the unrendered tab predates it.
+  - Fix: in `initTabs()`, before the listener is installed, `#activeTab` is set to the controller of the tab whose button is active in the page, so that the start-up probe's end renders it.
+  - Verify: a smoke check on a cold load (the cached version list forgotten) with the version list held: click Fields, release, wait until idle: the Fields tree of the pair is shown; then choose fwd/: the expected alert (1.15.1 and 1.14.2 have no forward-compatible metadata), no error in the toast, no console error.
+- **c. A polling helper can still hang the run** (`scripts/smoke.mjs`).
+  - Symptom: `treeNodes()` polls until the tree is non-empty and stable, with no deadline. In the superseded-response check, if the newer pair's `fields.json` fails, it never returns, the held request is never released, and the run never reports. 14c covered held requests and event waits, not polling loops.
+  - Fix: `treeNodes()` gets a deadline that throws, naming the split view. Every polling loop and wait in the page object is audited, and each one without a deadline gets an explicit one, with a message naming what it waited for; Progress lists them.
+  - Verify: with the newer pair's `fields.json` failing, the superseded-response check fails by name within its deadline, and the run continues.
+
 ## Optional items (each needs the user's go-ahead; not part of the restyle)
 
 These change behaviour or text, so they stay out of the increments above.
