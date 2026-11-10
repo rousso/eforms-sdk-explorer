@@ -455,6 +455,19 @@ An external review (Codex) of `ddf1201..f62e5fd`, run with Increment 14's line s
   - Fix: `treeNodes()` gets a deadline that throws, naming the split view. Every polling loop and wait in the page object is audited, and each one without a deadline gets an explicit one, with a message naming what it waited for; Progress lists them.
   - Verify: with the newer pair's `fields.json` failing, the superseded-response check fails by name within its deadline, and the run continues.
 
+### Increment 16 — follow-ups from the fifth external review (S)
+An external review (Codex) of `f62e5fd..1ff6838` reported two findings; the planning session checked them against the code, and both are inside the line: a false error shown to the user (a), and an error lost (b). One commit per item, `npm run smoke` before the push, a Progress line per item.
+- **a. A source change before the tabs have started** (`src/js/app.js`).
+  - Symptom: a cold load of 1.15.1 / 1.14.2 with the version list held; open Fields, choose fwd/, then fields.json, and release the list. After start-up the tree is shown, but the toast says "Cannot read properties of null (reading 'activated')".
+  - Cause: the source handlers are bound when the tabs are constructed, so `activeTabOptionsChanged()` can run before `initTabs()`. The first change finds no known selection and runs `#updateForSelection()` before the versions are set (a probe for an empty version); the second finds that selection known and calls `activated()` on the null `#activeTab`.
+  - Fix: a private flag set at the start of `initTabs()`, before `#activeTab` is assigned; `activeTabOptionsChanged()` does nothing while it is unset, with a comment: the start-up probe's end renders the active tab, and the checked radio holds the choice.
+  - Verify: a smoke check on a cold load with the version list held: open Fields, choose fwd/, then fields.json, release; once idle: the tree of the pair, `reportedErrors()` empty, and no `rules.efx` request made before the list was released. It must fail without the fix.
+- **b. A stale hide timer hides a newer error** (`src/js/app.js`).
+  - Symptom: on 1.15.1 / 1.14.2, Notice types with a batch of notice-definition downloads failing; about 13 s later, Fields opened with `fields.json` failing: Fields' error disappears after about 2 s instead of 15.
+  - Cause, in the original toast code: `updateApiStatus()` clears the previous timer, then defers the show and the scheduling of the new hide timer to a `setTimeout(0)`. Several errors in one tick each schedule a timer in their deferred callback, and `fadeTimeOut` keeps only the last, so `clearApiStatus()` cannot stop the others, which later hide whatever error is shown. The deferral also lets a `clearApiStatus()` between an error and its callback show an emptied toast.
+  - Fix: `updateApiStatus()` shows the toast and replaces the hide timer synchronously (clears the previous one, sets the new one), with no deferral; since 15a the toast has no fade, so nothing needs to wait. `fadeTimeOut` becomes a private field, as nothing outside the class reads it.
+  - Verify: a smoke check that reports several errors in one tick, clears the toast, reports one more, and asserts that it is still visible past the moment the earlier timers would have fired. Playwright's clock control (`page.clock`) avoids a real 15 s wait if it works with this page; otherwise the check waits; Progress records which. It must fail without the fix.
+
 ## Optional items (each needs the user's go-ahead; not part of the restyle)
 
 These change behaviour or text, so they stay out of the increments above.
