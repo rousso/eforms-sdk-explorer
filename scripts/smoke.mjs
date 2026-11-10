@@ -806,10 +806,15 @@ class ExplorerPage {
                 status: (node.li_attr?.class ?? '').replace(/-node$/, '')
             })) : null;
         };
-        // jsTree loads large trees in the background: wait until the tree has nodes and stops growing.
+        // jsTree loads large trees in the background: wait until the tree has nodes and stops growing, for at most
+        // the load timeout (a tree that never comes, for example after a failed load, fails the check).
+        const deadline = Date.now() + ExplorerPage.#LOAD_TIMEOUT;
         let nodes = null;
         let previousLength = -1;
         do {
+            if (Date.now() > deadline) {
+                throw new Error(`the tree of ${splitViewId} was not loaded within ${ExplorerPage.#LOAD_TIMEOUT / 1000} s`);
+            }
             await this.#page.waitForTimeout(ExplorerPage.#IDLE_PERIOD);
             previousLength = nodes?.length ?? -1;
             nodes = await this.#page.evaluate(readTree, splitViewId);
@@ -1042,12 +1047,21 @@ class ExplorerPage {
     }
 
     /**
-     * Waits until the loading indicator of the explorer stays hidden for a while.
+     * Waits until the loading indicator of the explorer stays hidden for a while, for at most the idle timeout in
+     * all (the indicator may show again after each wait).
      */
     async waitUntilIdle() {
         const loadingIndicatorHidden = () => getComputedStyle(document.querySelector('#centralLoadingSpinner')).visibility === 'hidden';
+        const deadline = Date.now() + ExplorerPage.#IDLE_TIMEOUT;
+        const notIdle = () => new Error(`the explorer was not idle within ${ExplorerPage.#IDLE_TIMEOUT / 1000} s`);
         do {
-            await this.#page.waitForFunction(loadingIndicatorHidden, null, { timeout: ExplorerPage.#IDLE_TIMEOUT });
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) {
+                throw notIdle();
+            }
+            await this.#page.waitForFunction(loadingIndicatorHidden, null, { timeout: remaining }).catch(error => {
+                throw error.name === 'TimeoutError' ? notIdle() : error;
+            });
             await this.#page.waitForTimeout(ExplorerPage.#IDLE_PERIOD);
         } while (!(await this.#page.evaluate(loadingIndicatorHidden)));
     }
