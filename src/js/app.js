@@ -59,6 +59,14 @@ export class SdkExplorerApplication {
      */
     #knownSelection = null;
 
+    /**
+     * Whether the tabs have been started (see {@link initTabs}): until then, the versions may not be set yet, and the
+     * active tab is not known to the application.
+     *
+     * @type {boolean}
+     */
+    #tabsStarted = false;
+
     /** @type {number} */
     #spinnerCounter = 0;
 
@@ -124,6 +132,7 @@ export class SdkExplorerApplication {
         // The tab whose button is active in the page is the active tab, also when the user opened it before this
         // listener was installed (while the versions were loading): the start-up probe's end renders it.
         const application = SdkExplorerApplication.instance;
+        application.#tabsStarted = true;
         application.#activeTab = application.tabs.get($('ul.nav-tabs button.nav-link.active').attr('id')) ?? null;
 
         $('ul.nav-tabs').on('shown.bs.tab', 'li.nav-item > button.nav-link', function (event) {
@@ -229,6 +238,11 @@ export class SdkExplorerApplication {
      * or at the end of the tab probe in flight, uses it.
      */
     async activeTabOptionsChanged() {
+        // Before the tabs have started (the versions still loading), nothing: the start-up probe's end renders the
+        // active tab, and the tab's control still holds the option then.
+        if (!this.#tabsStarted) {
+            return;
+        }
         this.startSpinner();
         this.clearApiStatus();
         try {

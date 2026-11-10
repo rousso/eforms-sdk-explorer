@@ -1707,6 +1707,27 @@ class SmokeTest {
                 assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.15.1 and 1.14.2 have no forward-compatible metadata (fields/fwd/).');
                 assert.equal(await this.#explorer.reportedErrors(), '');
             }],
+            ['source changes in a tab opened while start-up is still loading the versions wait for them: no probe before, the tree and no error after (fwd/, then fields.json)', async () => {
+                await this.#explorer.forgetCachedVersions();
+                const firstRequest = this.#explorer.requestedUrls.length;
+                const probesBeforeVersions = await this.#explorer.holdRequestsDuring('https://data.jsdelivr.com/**', async versions => {
+                    await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                    await versions.requested();
+                    await this.#explorer.startOpeningTab('fields-tab');
+                    await this.#explorer.startSelectingFieldsSource('fwd');
+                    await this.#explorer.startSelectingFieldsSource('fields-json');
+                    const probes = this.#explorer.requestedUrls.slice(firstRequest).filter(url => url.endsWith('/validation/rules.efx'));
+                    await versions.release();
+                    return probes;
+                });
+                assert.deepEqual(probesBeforeVersions, []);
+                await this.#explorer.waitForVersions();
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.deepEqual(await this.#explorer.selectedToggleButton('fields-source'), { checked: 'fields-json', active: ['fields-json'] });
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+                assert.equal(await this.#explorer.reportedErrors(), '');
+            }],
         ]);
     }
 
