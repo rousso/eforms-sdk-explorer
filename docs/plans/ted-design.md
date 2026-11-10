@@ -479,6 +479,18 @@ An external review (Codex) of `1ff6838..5265df5` reported one finding: after a f
 - **c. A smoke check** (`scripts/smoke.mjs`).
   - On a cold load (the cached version list forgotten) with the version list answering 503: the visible toast names the version-list error and the reload sentence; it is still visible after the 15 s at which other errors hide (`page.clock` if it can be used here without disturbing the existing clock check, otherwise a real wait; Progress records which); the two chips, `#compare-versions`, `#choose-versions` and every tab button except Home's are disabled; no request was made for an empty version (no URL containing `/eForms-SDK//`), and no `rules.efx` or `fields.json` request at all. Then the version list is restored for the scenarios that follow. The check must fail without a and b.
 
+### Increment 18 — follow-ups from the seventh external review (S)
+An external review (Codex) of `5265df5..5530548` reported two findings; the planning session checked them against the code and accepted both in the narrow form below. One commit per item, `npm run smoke` before the push, a Progress line per item.
+- **a. A tab opened before the failure stays open, empty and disabled** (`src/js/app.js`).
+  - Symptom: a cold load with the version list held, Fields opened, then the list answered 503: Fields stays selected with no tree, every tab but Home is disabled, and Home's button has `tabindex="-1"`, so the keyboard cannot reach it; closing the toast leaves the empty Fields pane. This breaks 17a's own promise that no tab is left open empty.
+  - Fix: `#disableTabsButHome()` first shows the Home tab through Bootstrap (no tab listener is installed yet, so nothing renders), then disables the others.
+  - Verify: 17c's check is extended: Fields is opened before the 503 is released; afterwards Home is the active tab, its button is enabled and focusable (no `tabindex="-1"`), and the other tab buttons are disabled.
+- **b. "Reload the page to try again" must retry** (`src/js/sdk-repository.js`, `src/js/app.js`).
+  - Symptom: a cold load with jsDelivr answering 200 `{"versions":[]}`: the empty list is stored for ten minutes, `populateDropdown()` then fails on the missing release with "Cannot read properties of undefined (reading 'toString'). Reload the page to try again.", and a reload uses the stored list and fails again, without a request. The storage predates the branch, but the reload sentence is 17b's, and it is false here.
+  - Fix, in two parts: (1) `SdkRepository.listVersions()` rejects a list without any version, as it already rejects a response without a list (a `CustomError` with `ERROR_FETCHING_VERSIONS` and a short reason), before storing it; (2) whenever `populateDropdown()` fails, the repository forgets the stored list (a small public method of `SdkRepository`, `forgetVersions()`), so that the reload always fetches it again, whatever made the selection fail.
+  - Verify: a smoke check: a cold load with the list answering 200 `{"versions":[]}`: the visible toast shows the versions error and the reload sentence, with no "Cannot read properties"; then the normal list is restored and the page reloaded: a request to jsDelivr is made, the versions are listed, and the chips are enabled.
+- **c. Progress** records that these were the narrow fixes chosen: the storage itself is otherwise unchanged.
+
 ## Optional items (each needs the user's go-ahead; not part of the restyle)
 
 These change behaviour or text, so they stay out of the increments above.
