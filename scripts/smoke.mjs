@@ -1114,6 +1114,15 @@ class ExplorerPage {
     }
 
     /**
+     * @param {string} selector
+     * @returns {Promise<boolean>} Whether the element can be reached with the Tab key: enabled, and not taken out of
+     *          the tab order (tabindex="-1", which Bootstrap gives the buttons of the tabs that are not active).
+     */
+    async isKeyboardFocusable(selector) {
+        return this.#page.$eval(selector, element => !element.disabled && element.tabIndex >= 0);
+    }
+
+    /**
      * @returns {Promise<string[]>} The ids of the tab buttons that are enabled, in the tab bar's order.
      */
     async enabledTabButtons() {
@@ -1786,13 +1795,15 @@ class SmokeTest {
      */
     async #checkVersionListFailure() {
         await this.#scenario('?version=1.15.1&base=1.14.2', [
-            ['when the version list cannot be downloaded, start-up stops: the error and "Reload the page to try again." stay shown, only Home can be opened, and nothing is requested from the SDK', async () => {
+            ['when the version list cannot be downloaded, start-up stops: the error and "Reload the page to try again." stay shown, Home is shown (also over a tab opened meanwhile) and is the only tab to open, and nothing is requested from the SDK', async () => {
                 await this.#explorer.forgetCachedVersions();
                 const firstRequest = this.#explorer.requestedUrls.length;
                 try {
                     await this.#explorer.holdRequestsDuring('https://data.jsdelivr.com/**', async versions => {
                         await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
                         await versions.requested();
+                        // A tab opened while the versions are loading: it must not stay open, empty.
+                        await this.#explorer.startOpeningTab('fields-tab');
                         await versions.release(503);
                     });
                     await this.#explorer.waitForVersions();
@@ -1803,6 +1814,8 @@ class SmokeTest {
                     const controls = ['#base-version-chip', '#target-version-chip', '#compare-versions', '#choose-versions'];
                     assert.deepEqual(await Promise.all(controls.map(control => this.#explorer.isEnabled(control))), [false, false, false, false]);
                     assert.deepEqual(await this.#explorer.enabledTabButtons(), ['home-tab']);
+                    assert.equal(await this.#explorer.activeTab(), 'home-tab');
+                    assert.equal(await this.#explorer.isKeyboardFocusable('#home-tab'), true);
                     const sdkRequests = this.#explorer.requestedUrls.slice(firstRequest)
                         .filter(url => url.includes('/eForms-SDK//') || url.endsWith('/rules.efx') || url.endsWith('/fields.json'));
                     assert.deepEqual(sdkRequests, []);

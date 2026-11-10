@@ -133,10 +133,13 @@ export class SdkExplorerApplication {
     }
 
     /**
-     * Disables the button of every tab but Home, when start-up stops without versions: no tab can be opened empty.
-     * (The version chips and Home's buttons stay disabled, as the page starts them: the version picker never starts.)
+     * Shows the Home tab and disables the button of every other tab, when start-up stops without versions: no tab
+     * stays or can be opened empty, not even one the user opened while the versions were loading. (No tab listener is
+     * installed then, so showing Home renders nothing. The version chips and Home's buttons stay disabled, as the
+     * page starts them: the version picker never starts.)
      */
     #disableTabsButHome() {
+        $('#home-tab').tab('show');
         this.tabs.forEach(tab => {
             if (tab.getId() !== 'home-tab') {
                 this.#tabButton(tab).disabled = true;
