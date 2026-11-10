@@ -1676,6 +1676,23 @@ class SmokeTest {
                 assert.equal(await this.#explorer.activeTab(), 'fields-tab');
                 assert.equal(await this.#explorer.focusedElement(), 'fields-tab');
             }],
+            ['a tab opened while start-up is still loading the versions is rendered once they are known, and its options work (fwd/: the alert, no error)', async () => {
+                // A cold load: the tab is opened before the application listens to the tab bar.
+                await this.#explorer.forgetCachedVersions();
+                await this.#explorer.holdRequestsDuring('https://data.jsdelivr.com/**', async versions => {
+                    await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                    await versions.requested();
+                    await this.#explorer.startOpeningTab('fields-tab');
+                    await versions.release();
+                });
+                await this.#explorer.waitForVersions();
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+                await this.#explorer.selectFieldsSource('fwd');
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.15.1 and 1.14.2 have no forward-compatible metadata (fields/fwd/).');
+                assert.equal(await this.#explorer.reportedErrors(), '');
+            }],
         ]);
     }
 

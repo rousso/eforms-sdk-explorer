@@ -121,6 +121,11 @@ export class SdkExplorerApplication {
      * selected versions (which probes some of their files).
      */
     static async initTabs() {
+        // The tab whose button is active in the page is the active tab, also when the user opened it before this
+        // listener was installed (while the versions were loading): the start-up probe's end renders it.
+        const application = SdkExplorerApplication.instance;
+        application.#activeTab = application.tabs.get($('ul.nav-tabs button.nav-link.active').attr('id')) ?? null;
+
         $('ul.nav-tabs').on('shown.bs.tab', 'li.nav-item > button.nav-link', function (event) {
             const activeTabId = $(event.target).attr('id');
             console.log('Active tab changed:', activeTabId);
