@@ -1141,6 +1141,14 @@ class ExplorerPage {
     }
 
     /**
+     * @param {string} selector
+     * @returns {Promise<string>} The computed text colour of the element, for example `rgb(194, 194, 194)`.
+     */
+    async textColor(selector) {
+        return this.#page.$eval(selector, element => getComputedStyle(element).color);
+    }
+
+    /**
      * @returns {Promise<string[]>} The ids of the tab buttons that are enabled, in the tab bar's order.
      */
     async enabledTabButtons() {
@@ -1834,6 +1842,9 @@ class SmokeTest {
                     assert.deepEqual(await this.#explorer.enabledTabButtons(), ['home-tab']);
                     assert.equal(await this.#explorer.activeTab(), 'home-tab');
                     assert.equal(await this.#explorer.isKeyboardFocusable('#home-tab'), true);
+                    // The disabled tabs look disabled: gray-30 (#c2c2c2), which Home is not.
+                    assert.equal(await this.#explorer.textColor('#fields-tab'), 'rgb(194, 194, 194)');
+                    assert.notEqual(await this.#explorer.textColor('#home-tab'), 'rgb(194, 194, 194)');
                     const sdkRequests = this.#explorer.requestedUrls.slice(firstRequest)
                         .filter(url => url.includes('/eForms-SDK//') || url.endsWith('/rules.efx') || url.endsWith('/fields.json'));
                     assert.deepEqual(sdkRequests, []);

@@ -170,6 +170,13 @@
     border-bottom-color: var(--gs-base-color-forest-110);
 }
 
+/* A disabled tab (only when start-up stops without versions: a tab that does not apply is hidden as well): the design
+   system's disabled text colour, unchanged on hover (Bootstrap takes a disabled tab's pointer events away). */
+.ted-bar .nav-tabs .nav-link:disabled {
+    color: var(--gs-base-color-gray-30);
+    cursor: default;
+}
+
 .ted-loading {
     width: 20px;
     height: 20px;
