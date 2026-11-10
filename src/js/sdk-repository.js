@@ -57,7 +57,8 @@ export class SdkRepository {
     async listVersions() {
         const storageKey = SdkRepository.#VERSIONS_KEY;
         const stored = SdkRepository.#retrieve(storageKey, appConfig.repositoryCacheMinutes);
-        if (stored !== null) {
+        // A stored empty list (an earlier build kept one) is no list either: it is downloaded again.
+        if (Array.isArray(stored) && stored.length > 0) {
             return stored;
         }
 

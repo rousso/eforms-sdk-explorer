@@ -266,6 +266,17 @@ class ExplorerPage {
     }
 
     /**
+     * Keeps a list of versions in the browser the way the explorer stores it (format 1, stored now), as an earlier
+     * build of the explorer could have left it.
+     *
+     * @param {string[]} versions
+     */
+    async storeVersions(versions) {
+        await this.#page.evaluate(list => localStorage.setItem('sdk-explorer/versions',
+            JSON.stringify({ format: 1, storedAt: Date.now(), value: list })), versions);
+    }
+
+    /**
      * Forgets the list of versions that the explorer keeps in the browser, so that the next load requests it again.
      */
     async forgetCachedVersions() {
@@ -1874,6 +1885,14 @@ class SmokeTest {
                 assert.ok(this.#explorer.requestedUrls.slice(firstReloadRequest).some(url => url.startsWith('https://data.jsdelivr.com/')), 'the reload did not download the list of versions');
                 assert.equal(await this.#explorer.mainVersion(), '1.15.1');
                 assert.deepEqual([await this.#explorer.isEnabled('#base-version-chip'), await this.#explorer.isEnabled('#target-version-chip')], [true, true]);
+            }],
+            ['an empty list of versions kept by an earlier build is not used: the list is downloaded, and the requested pair is selected without an error', async () => {
+                await this.#explorer.storeVersions([]);
+                const firstRequest = this.#explorer.requestedUrls.length;
+                // open() fails the check if the explorer reports an error.
+                await this.#explorer.open('?version=1.14.1&base=1.12.0');
+                assert.ok(this.#explorer.requestedUrls.slice(firstRequest).some(url => url.startsWith('https://data.jsdelivr.com/')), 'the list of versions was not downloaded');
+                assert.deepEqual([await this.#explorer.mainVersion(), await this.#explorer.baseVersion()], ['1.14.1', '1.12.0']);
             }],
         ]);
     }
