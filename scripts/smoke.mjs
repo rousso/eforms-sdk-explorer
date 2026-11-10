@@ -190,9 +190,9 @@ class ExplorerPage {
         this.#consoleErrors = [];
         await this.openWithoutWaiting(queryString);
         await this.waitUntilIdle();
-        const apiStatus = await this.apiStatus();
-        if (apiStatus !== '') {
-            throw new Error(`the explorer reported: ${apiStatus}`);
+        const errors = await this.reportedErrors();
+        if (errors !== '') {
+            throw new Error(`the explorer reported: ${errors}`);
         }
     }
 
@@ -1063,10 +1063,14 @@ class ExplorerPage {
 
     /**
      * @returns {Promise<Array<{message: string, detail: string|null, elements: string[], detailStyle: {color: string, display: string}|null}>>}
-     *          The items of the error toast: the text of the message, the text of the detail line, the elements in the
-     *          item other than the detail line, and the detail line's colour and display.
+     *          The items of the error toast as the user sees it (none while it is hidden): the text of the message,
+     *          the text of the detail line, the elements in the item other than the detail line, and the detail line's
+     *          colour and display.
      */
     async toastItems() {
+        if (!(await this.#page.isVisible('#apiStatus'))) {
+            return [];
+        }
         return this.#page.$$eval('#apiStatus .toast-body li', items => items.map(item => {
             const detail = item.querySelector(':scope > .detail');
             const style = detail ? getComputedStyle(detail) : null;
@@ -1088,9 +1092,19 @@ class ExplorerPage {
     }
 
     /**
-     * @returns {Promise<string>} The text of the error toast, empty if there is none.
+     * @returns {Promise<string>} The text of the error toast as the user sees it: empty if there is none or while
+     *          the toast is hidden (it hides itself 15 s after an error). For the checks that an error is shown.
      */
     async apiStatus() {
+        return (await this.#page.isVisible('#apiStatus')) ? (await this.#page.textContent('#apiStatus .toast-body')).trim() : '';
+    }
+
+    /**
+     * @returns {Promise<string>} The errors reported since the toast was last cleared (by a tab switch or a version
+     *          change), whether the toast still shows them or has hidden them: empty if there is none. For the checks
+     *          that no error was reported, which a hidden toast must not pass.
+     */
+    async reportedErrors() {
         return (await this.#page.textContent('#apiStatus .toast-body')).trim();
     }
 
@@ -1683,6 +1697,8 @@ class SmokeTest {
                     // The probe failed before Fields was activated: activating it probed again (and failed again).
                     assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.4')).length, 2);
                     assert.equal(await this.#explorer.hasTree('fields-explorer'), false);
+                    // Shown, not only written into the toast: the activation cleared the toast just before the second
+                    // probe failed, and that clearing must not hide the new error.
                     assert.match(await this.#explorer.apiStatus(), /rules\.efx for SDK 2\.0\.0-alpha\.4/);
                     assert.deepEqual(requestsSince(firstRequest, '/fields/fields.json'), []);
                 });
@@ -1690,7 +1706,7 @@ class SmokeTest {
                 assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.4')).length, 3);
                 await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
                 assert.ok((await this.#explorer.indexCards('notice-types-overview-card-group')).length > 0, 'Notice types has no cards');
-                assert.equal(await this.#explorer.apiStatus(), '');
+                assert.equal(await this.#explorer.reportedErrors(), '');
             }],
             ['when the dialog\'s tab probe fails after Fields has been activated, Fields shows no tree, the toast names rules.efx, and the next tab probes again and renders', async () => {
                 await this.#explorer.openTab('home-tab');
@@ -1712,7 +1728,7 @@ class SmokeTest {
                 assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.3')).length, 2);
                 await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
                 assert.ok((await this.#explorer.indexCards('notice-types-overview-card-group')).length > 0, 'Notice types has no cards');
-                assert.equal(await this.#explorer.apiStatus(), '');
+                assert.equal(await this.#explorer.reportedErrors(), '');
             }],
             ['fwd/ chosen in Fields while the tab probe of a new base is held loads nothing until the probe ends, then fwd/ once for each version of the new pair', async () => {
                 await this.#explorer.openTab('fields-tab');
@@ -1770,7 +1786,7 @@ class SmokeTest {
         await this.#scenario('?version=2.0.0-alpha.4&base=1.9.0', [
             ['the Codelists tab compares each version\'s own file (exclusion-ground: criterion_exclusion-ground.gc in 1.9.0), without errors', async () => {
                 await this.#explorer.openTab('codelists-tab');
-                assert.equal(await this.#explorer.apiStatus(), '');
+                assert.equal(await this.#explorer.reportedErrors(), '');
                 const cards = await this.#explorer.indexCards('code-lists-overview-card-group');
                 assert.deepEqual(cards.filter(card => !card.status).map(card => card.title), []);
                 const renamed = cards.find(card => card.title === 'exclusion-ground');
@@ -1786,7 +1802,7 @@ class SmokeTest {
             ['the Fields tab in fwd/ mode names the files 2.0.0-alpha.2 lacks, shows its business entities as added and compares its data types', async () => {
                 await this.#explorer.openTab('fields-tab');
                 await this.#explorer.selectFieldsSource('fwd');
-                assert.equal(await this.#explorer.apiStatus(), '');
+                assert.equal(await this.#explorer.reportedErrors(), '');
                 assert.equal(await this.#explorer.shownText('#fields-source-alert'),
                     'SDK 2.0.0-alpha.2 has no fields/fwd/business-entity-hierarchy.json, business-entity-properties.json.');
                 const nodes = await this.#explorer.treeNodes('fields-explorer');

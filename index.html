@@ -563,8 +563,9 @@
         </div>
     </div>
 
-    <!-- Error toast, fixed at the bottom right -->
-    <div id="apiStatus" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false" >
+    <!-- Error toast, fixed at the bottom right. Shown and hidden without a fade (data-bs-animation="false"), so that a
+         hide still fading out cannot hide an error shown just after it. -->
+    <div id="apiStatus" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false" data-bs-animation="false">
         <div class="toast-header">
             <strong class="me-auto">Error</strong>
             <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close"></button>
