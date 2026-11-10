@@ -921,6 +921,18 @@ main:has(#home-tab-content.active) .ted-comparison-line {
     font-weight: 400;
 }
 
+/* A disabled chip (during start-up, until the version picker starts): the design system's disabled look, its label
+   too and its caret, which takes the chip's colour; after the hover rule, so that hovering changes nothing. */
+.ted-version-chip .dropdown-toggle:disabled {
+    color: var(--gs-base-color-gray-30);
+    background: var(--gs-base-color-gray-5);
+    border-color: var(--gs-base-color-gray-20);
+}
+
+.ted-version-chip .dropdown-toggle:disabled .ted-version-chip__role {
+    color: var(--gs-base-color-gray-30);
+}
+
 /* Its menu: sections of versions, the current one highlighted; at most 60vh, scrolling inside when longer. */
 .ted-version-menu {
     --bs-dropdown-min-width: 220px;
