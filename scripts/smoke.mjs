@@ -189,6 +189,32 @@ class ExplorerPage {
     async open(queryString) {
         this.#consoleErrors = [];
         await this.openWithoutWaiting(queryString);
+        await this.#waitForStartUp();
+    }
+
+    /**
+     * Reloads the page, as the user does with the browser's reload button (its address, as the explorer left it),
+     * and waits as {@link open} does.
+     */
+    async reload() {
+        this.#consoleErrors = [];
+        await this.#page.reload();
+        await this.waitForVersions();
+        await this.#waitForStartUp();
+    }
+
+    /**
+     * @returns {string} The address of the page, as the explorer left it (it removes the query string once it has
+     *          selected the versions).
+     */
+    address() {
+        return this.#page.url();
+    }
+
+    /**
+     * Waits until the explorer is idle after start-up, and fails if it reported an error.
+     */
+    async #waitForStartUp() {
         await this.waitUntilIdle();
         const errors = await this.reportedErrors();
         if (errors !== '') {
@@ -1865,7 +1891,8 @@ class SmokeTest {
                     await this.#explorer.open('?version=1.15.1&base=1.14.2');
                 }
             }],
-            ['when the version list is empty, start-up stops with the versions error and "Reload the page to try again.", and that reload downloads the list again and starts', async () => {
+            ['when the version list is empty, start-up stops with the versions error and "Reload the page to try again.", and that reload downloads the list again and starts with the pair asked for', async () => {
+                // 1.15.1 / 1.14.2 is not the default pair: after the reload, it shows that the address kept it.
                 await this.#explorer.forgetCachedVersions();
                 let firstReloadRequest;
                 try {
@@ -1876,15 +1903,42 @@ class SmokeTest {
                     const toast = await this.#explorer.apiStatus();
                     assert.match(toast, /^Error fetching the list of SDK versions: the list of versions is empty\. Reload the page to try again\./);
                     assert.doesNotMatch(toast, /Cannot read properties/);
-                } finally {
-                    // The reload the toast asks for, with the list back (and the page restored for the checks that
-                    // follow, failed or not).
+                    assert.match(this.#explorer.address(), /\?version=1\.15\.1&base=1\.14\.2$/);
+                    // The reload the toast asks for, with the list back: the browser's, of the address as it is.
                     firstReloadRequest = this.#explorer.requestedUrls.length;
-                    await this.#explorer.open('?version=1.15.1&base=1.14.2');
+                    await this.#explorer.reload();
+                } finally {
+                    // The page restored for the checks that follow, if the check failed before the reload.
+                    if (firstReloadRequest === undefined) {
+                        await this.#explorer.open('?version=1.15.1&base=1.14.2');
+                    }
                 }
                 assert.ok(this.#explorer.requestedUrls.slice(firstReloadRequest).some(url => url.startsWith('https://data.jsdelivr.com/')), 'the reload did not download the list of versions');
-                assert.equal(await this.#explorer.mainVersion(), '1.15.1');
+                assert.deepEqual([await this.#explorer.mainVersion(), await this.#explorer.baseVersion()], ['1.15.1', '1.14.2']);
                 assert.deepEqual([await this.#explorer.isEnabled('#base-version-chip'), await this.#explorer.isEnabled('#target-version-chip')], [true, true]);
+            }],
+            ['when the version list holds no usable version, start-up stops after reading the pair asked for: the address keeps it, and the reload starts with it', async () => {
+                // A list that is not empty but holds no version fails once the pair has been read from the address
+                // (an empty one fails before): the address must still hold it for the reload.
+                await this.#explorer.forgetCachedVersions();
+                let firstReloadRequest;
+                try {
+                    await this.#explorer.answerJsonDuring('https://data.jsdelivr.com/**', { versions: ['not-a-version'] }, async () => {
+                        await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                        await this.#explorer.waitForVersions();
+                    });
+                    assert.match(await this.#explorer.apiStatus(), /Reload the page to try again\./);
+                    assert.match(this.#explorer.address(), /\?version=1\.15\.1&base=1\.14\.2$/);
+                    firstReloadRequest = this.#explorer.requestedUrls.length;
+                    await this.#explorer.reload();
+                } finally {
+                    // The page restored for the checks that follow, if the check failed before the reload.
+                    if (firstReloadRequest === undefined) {
+                        await this.#explorer.open('?version=1.15.1&base=1.14.2');
+                    }
+                }
+                assert.ok(this.#explorer.requestedUrls.slice(firstReloadRequest).some(url => url.startsWith('https://data.jsdelivr.com/')), 'the reload did not download the list of versions');
+                assert.deepEqual([await this.#explorer.mainVersion(), await this.#explorer.baseVersion()], ['1.15.1', '1.14.2']);
             }],
             ['an empty list of versions kept by an earlier build is not used: the list is downloaded, and the requested pair is selected without an error', async () => {
                 await this.#explorer.storeVersions([]);

@@ -477,15 +477,10 @@ export class SdkExplorerApplication {
      * @returns 
      */
     #getVersionsFromQueryString() {
-        // Parse the query string
+        // Parse the query string (populateDropdown() removes it once a pair is selected)
         let params = new URLSearchParams(window.location.search);
         let versionParam = params.get('version');
         let baseParam = params.get('base');
-
-        if (window.location.search) {
-            // Remove the query string from the URL
-            history.replaceState(null, null, window.location.pathname);
-        }
 
         return [versionParam, baseParam];
     }
@@ -583,6 +578,12 @@ export class SdkExplorerApplication {
             this.$baseVersionDropdown().val(baseVersion);
             appState.mainVersion = mainVersion;
             appState.baseVersion = baseVersion;
+
+            // The pair is selected: the address loses its query string now, not when it is read, so that a start-up
+            // that fails before this point keeps it for the reload that the error asks for.
+            if (window.location.search) {
+                history.replaceState(null, null, window.location.pathname);
+            }
             return true;
         } catch (error) {
             // Start-up stops here, so the error stays shown, with what to do about it: a reload, which must then
