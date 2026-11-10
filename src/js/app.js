@@ -73,8 +73,8 @@ export class SdkExplorerApplication {
     /** @type {boolean} Whether the messages in the error toast have expired (it hid itself), so that the next message replaces them. */
     #apiStatusExpired = false;
 
-    /** @type {number} The timeout that hides the error toast. */
-    fadeTimeOut = null;
+    /** @type {number|null} The timeout that hides the error toast, 15 s after its last message. */
+    #hideTimeout = null;
 
     /** @returns {string} */
     get newVersion() {
@@ -382,7 +382,7 @@ export class SdkExplorerApplication {
     clearApiStatus() {
         // Forget the messages shown so far, and stop the timeout that would hide the toast later
         SdkExplorerApplication.instance.#apiStatusExpired = false;
-        clearTimeout(SdkExplorerApplication.instance.fadeTimeOut);
+        clearTimeout(SdkExplorerApplication.instance.#hideTimeout);
 
         // Clear the message inside the toast body
         SdkExplorerApplication.instance.#toastBody().textContent = '';
@@ -415,16 +415,15 @@ export class SdkExplorerApplication {
         }
         application.#toastBody().append(item);
 
-        clearTimeout(SdkExplorerApplication.instance.fadeTimeOut);
-
-        setTimeout(() => {
-            // Display the toast
-            SdkExplorerApplication.instance.$apiStatus().toast('show');
-            SdkExplorerApplication.instance.fadeTimeOut = setTimeout(() => {
-                SdkExplorerApplication.instance.$apiStatus().toast('hide');
-                SdkExplorerApplication.instance.#apiStatusExpired = true;
-            }, 15000);
-        }, 0);
+        // Show the toast and hide it 15 s after this message, replacing the timeout of the previous one: at once,
+        // so that there is only ever one timeout, which clearApiStatus() stops, and a clearing just after a message
+        // cannot be followed by an empty toast shown late. (The toast has no fade to wait for.)
+        application.$apiStatus().toast('show');
+        clearTimeout(application.#hideTimeout);
+        application.#hideTimeout = setTimeout(() => {
+            application.$apiStatus().toast('hide');
+            application.#apiStatusExpired = true;
+        }, 15000);
     }
 
     /**

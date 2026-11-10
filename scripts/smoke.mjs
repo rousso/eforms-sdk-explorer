@@ -1114,6 +1114,46 @@ class ExplorerPage {
     }
 
     /**
+     * Reports errors to the explorer's toast, all in the same task, as several failed loads can.
+     *
+     * @param {string[]} messages
+     */
+    async reportErrors(messages) {
+        await this.#page.evaluate(async texts => {
+            const { SdkExplorerApplication } = await import('/src/js/app.js');
+            texts.forEach(text => SdkExplorerApplication.updateApiStatus(text));
+        }, messages);
+    }
+
+    /**
+     * Clears the explorer's toast, as a tab switch or a version change does.
+     */
+    async clearErrors() {
+        await this.#page.evaluate(async () => {
+            const { SdkExplorerApplication } = await import('/src/js/app.js');
+            SdkExplorerApplication.instance.clearApiStatus();
+        });
+    }
+
+    /**
+     * Replaces the page's timers with Playwright's clock, so that {@link runClock} can make time pass at once. It
+     * stays installed for the rest of the run (every scenario uses this page), so the check that installs it comes
+     * last.
+     */
+    async installClock() {
+        await this.#page.clock.install();
+    }
+
+    /**
+     * Makes the given time pass on Playwright's clock (see {@link installClock}), firing the timers due meanwhile.
+     *
+     * @param {number} milliseconds
+     */
+    async runClock(milliseconds) {
+        await this.#page.clock.runFor(milliseconds);
+    }
+
+    /**
      * @returns {Promise<string>} The errors reported since the toast was last cleared (by a tab switch or a version
      *          change), whether the toast still shows them or has hidden them: empty if there is none. For the checks
      *          that no error was reported, which a hidden toast must not pass.
@@ -1197,6 +1237,7 @@ class SmokeTest {
         await this.#checkCodelistsAcrossRenames();
         await this.#checkFiltersWhileLoading();
         await this.#checkVersionPicker();
+        // Last: its last check installs Playwright's clock in the page, for the rest of the run.
         await this.#checkFailedProbe();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
@@ -1799,6 +1840,21 @@ class SmokeTest {
                 assert.deepEqual(fwdVersions.sort(), ['1.13.0', '2.0.0-alpha.3']);
                 assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.13.0 has no forward-compatible metadata (fields/fwd/).');
                 assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+            }],
+            ['after several errors at once, the toast cleared, and a newer error 5 s later, the newer one stays shown for its own 15 s', async () => {
+                // Playwright's clock makes the 15 s pass at once; it stays installed: this check comes last in the run.
+                await this.#explorer.installClock();
+                await this.#explorer.reportErrors(['The first error', 'The second error', 'The third error']);
+                await this.#explorer.runClock(100);
+                await this.#explorer.clearErrors();
+                await this.#explorer.runClock(5000);
+                await this.#explorer.reportErrors(['The newer error']);
+                // Past the earlier errors' 15 s, before the newer one's.
+                await this.#explorer.runClock(10500);
+                assert.equal(await this.#explorer.apiStatus(), 'The newer error');
+                // Past the newer one's 15 s.
+                await this.#explorer.runClock(5000);
+                assert.equal(await this.#explorer.apiStatus(), '');
             }],
         ]);
     }
