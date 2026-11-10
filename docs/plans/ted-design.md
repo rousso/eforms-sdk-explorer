@@ -491,6 +491,17 @@ An external review (Codex) of `5265df5..5530548` reported two findings; the plan
   - Verify: a smoke check: a cold load with the list answering 200 `{"versions":[]}`: the visible toast shows the versions error and the reload sentence, with no "Cannot read properties"; then the normal list is restored and the page reloaded: a request to jsDelivr is made, the versions are listed, and the chips are enabled.
 - **c. Progress** records that these were the narrow fixes chosen: the storage itself is otherwise unchanged.
 
+### Increment 19 — disabled tabs and chips look disabled (design review) (XS)
+The design session looked at the stopped state of Increments 17 and 18 on the live site (jsDelivr blocked, 1440 px): the behaviour and the toast stay. It found that disabled tabs and version chips look enabled; the planning session accepted both, the first inside the line (in the stopped state this branch built, eight tabs look clickable and do nothing), the second the same defect on the chips. CSS only, no behaviour or text change. One commit per item, `npm run smoke` before the push, a Progress line per item.
+- **a. Disabled tabs** (`ted-page.css`).
+  - Symptom: in the stopped state every tab but Home is disabled, but they render in gray-100 (rgb 51, 51, 51) like working tabs: `.ted-bar .nav-tabs .nav-link { color: gray-100 }` (0,3,0) beats Bootstrap's `.nav-link:disabled` colour.
+  - Fix: `.ted-bar .nav-tabs .nav-link:disabled { color: var(--gs-base-color-gray-30); cursor: default; }`, placed so that it also wins over the tabs' hover and focus rules: a disabled tab does not change on hover. Gray-30 (#c2c2c2) is the design system's disabled text colour, already used for the disabled buttons (Home's Compare and Choose versions… in that same screen) and the disabled checkbox label; the DS Tabs component has no disabled state of its own. The tabs that do not apply to the pair are hidden as well as disabled, so the rule shows only in the stopped state; confirm that no visible tab is disabled in normal operation.
+  - Verify: in 17c's stopped-state check, a disabled tab button's computed colour is rgb(194, 194, 194) and Home's is not; by eye at 1440 px with jsDelivr blocked.
+- **b. Disabled version chips** (`ted-page.css`).
+  - Symptom: disabled chips look enabled (eu-blue-10 fill, eu-blue-100 text, opacity 1). They are disabled during every start-up until the picker starts, showing "base:" with no version; seen only when a tab other than Home is open during start-up. Low priority.
+  - Fix: `.ted-version-chip .dropdown-toggle:disabled { color: var(--gs-base-color-gray-30); background: var(--gs-base-color-gray-5); border-color: var(--gs-base-color-gray-20); }`, with `.ted-version-chip__role` and the caret in gray-30 too, and no hover change while disabled.
+  - Verify by eye: Fields opened during a held start-up, the chips looked at before the list is released; no smoke check.
+
 ## Optional items (each needs the user's go-ahead; not part of the restyle)
 
 These change behaviour or text, so they stay out of the increments above.
