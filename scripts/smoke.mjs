@@ -1116,6 +1116,7 @@ class SmokeTest {
         await this.#checkCodelistsAcrossRenames();
         await this.#checkFiltersWhileLoading();
         await this.#checkVersionPicker();
+        await this.#checkFailedProbe();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
     }
@@ -1597,6 +1598,57 @@ class SmokeTest {
                 await this.#explorer.waitUntilIdle();
                 assert.equal(await this.#explorer.activeTab(), 'fields-tab');
                 assert.equal(await this.#explorer.focusedElement(), 'fields-tab');
+            }],
+        ]);
+    }
+
+    /**
+     * A version change whose tab probe fails (a 500 for the target's rules.efx, a version this page has not probed):
+     * no tab is rendered for a pair whose tabs are not known, and the next request to render one probes again.
+     */
+    async #checkFailedProbe() {
+        const requestsSince = (first, suffix) => this.#explorer.requestedUrls.slice(first).filter(url => url.endsWith(suffix));
+        const rulesOf = version => `/${version}/validation/rules.efx`;
+        await this.#scenario('?version=1.15.1&base=1.14.2', [
+            ['when the dialog\'s tab probe fails before the dialog has closed, Fields shows no tree, the toast names rules.efx, and the next tab probes again and renders', async () => {
+                await this.#explorer.openTab('home-tab');
+                const firstRequest = this.#explorer.requestedUrls.length;
+                await this.#explorer.failRequestsDuring(`**${rulesOf('2.0.0-alpha.4')}`, async () => {
+                    await this.#explorer.startComparingInDialog('2.0.0-alpha.4', '1.14.2');
+                    await this.#explorer.waitUntilIdle();
+                    assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                    // The probe failed before Fields was activated: activating it probed again (and failed again).
+                    assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.4')).length, 2);
+                    assert.equal(await this.#explorer.hasTree('fields-explorer'), false);
+                    assert.match(await this.#explorer.apiStatus(), /rules\.efx for SDK 2\.0\.0-alpha\.4/);
+                    assert.deepEqual(requestsSince(firstRequest, '/fields/fields.json'), []);
+                });
+                await this.#explorer.openTab('notice-types-tab');
+                assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.4')).length, 3);
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+                assert.ok((await this.#explorer.indexCards('notice-types-overview-card-group')).length > 0, 'Notice types has no cards');
+                assert.equal(await this.#explorer.apiStatus(), '');
+            }],
+            ['when the dialog\'s tab probe fails after Fields has been activated, Fields shows no tree, the toast names rules.efx, and the next tab probes again and renders', async () => {
+                await this.#explorer.openTab('home-tab');
+                const firstRequest = this.#explorer.requestedUrls.length;
+                const probe = await this.#explorer.holdRequests(`**${rulesOf('2.0.0-alpha.3')}`);
+                await this.#explorer.startWaitingForTabShown('fields-tab');
+                await this.#explorer.startComparingInDialog('2.0.0-alpha.3', '1.14.2');
+                await probe.requested;
+                await this.#explorer.tabShown();
+                await probe.release(500);
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.3')).length, 1);
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), false);
+                assert.match(await this.#explorer.apiStatus(), /rules\.efx for SDK 2\.0\.0-alpha\.3/);
+                assert.deepEqual(requestsSince(firstRequest, '/fields/fields.json'), []);
+                await this.#explorer.openTab('notice-types-tab');
+                assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.3')).length, 2);
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+                assert.ok((await this.#explorer.indexCards('notice-types-overview-card-group')).length > 0, 'Notice types has no cards');
+                assert.equal(await this.#explorer.apiStatus(), '');
             }],
         ]);
     }

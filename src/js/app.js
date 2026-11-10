@@ -35,8 +35,9 @@ export class SdkExplorerApplication {
     #repository = new SdkRepository(this);
 
     /**
-     * Counts the selections of versions (the one at start-up and every version change), so that the work for a
-     * selection that a newer one has superseded is dropped after each wait instead of being applied late.
+     * Counts the selections of versions (the one at start-up, every version change, and every new attempt after a
+     * failed tab probe), so that the work for a selection that a newer one has superseded is dropped after each wait
+     * instead of being applied late.
      *
      * @type {number}
      */
@@ -49,6 +50,14 @@ export class SdkExplorerApplication {
      * @type {number|null}
      */
     #probedSelection = null;
+
+    /**
+     * The last selection whose tab probe succeeded, so that the tabs shown are those that apply to it. A tab is
+     * rendered only for that selection (see {@link #renderActiveTab}).
+     *
+     * @type {number|null}
+     */
+    #knownSelection = null;
 
     /** @type {number} */
     #spinnerCounter = 0;
@@ -180,17 +189,32 @@ export class SdkExplorerApplication {
         try {
             await this.#activeTab?.deactivated();
             this.#activeTab = this.tabs.get(activeTabId);
-            // While the tabs are probed for a selection, the probe's end renders the active tab (through its
-            // versionChanged(), see #updateForSelection()): rendering it here too would load it twice.
-            if (this.#probedSelection === null) {
-                await this.#activeTab.activated();
-            }
+            await this.#renderActiveTab();
         } catch (error) {
             SdkExplorerApplication.updateApiStatus(error.message, error.detail);
         }
         finally {
             this.stopSpinner();
         }
+    }
+
+    /**
+     * Renders the active tab for the selected versions, but only once the tabs that apply to them are known:
+     * - while their tabs are probed, nothing: the probe's end renders the active tab (see #updateForSelection()), and
+     *   rendering it here too would load it twice;
+     * - if their probe failed, the selection is updated again: the tabs are probed again (a failed probe is not
+     *   kept) and the active tab is rendered if that succeeds, or the error is shown again if it fails;
+     * - otherwise, the active tab is rendered.
+     */
+    async #renderActiveTab() {
+        if (this.#probedSelection !== null) {
+            return;
+        }
+        if (this.#knownSelection !== this.#selection) {
+            await this.#updateForSelection();
+            return;
+        }
+        await this.#activeTab.activated();
     }
 
     async versionChanged() {
@@ -226,8 +250,9 @@ export class SdkExplorerApplication {
      * Shows the tabs that apply to the selected versions and renders the active tab for them, unless a newer
      * selection is made while the tabs are probed: that newer selection then does all of it, and the results and
      * errors of this one are dropped.
-     * A tab activated while the tabs are probed is rendered here, once the probe has ended (see activeTabChanged()).
-     * If the probe fails, it stays empty, with the error in the toast, as the active tab does.
+     * A tab activated while the tabs are probed is rendered here, once the probe has ended (see #renderActiveTab()).
+     * If the probe fails, it stays empty, with the error in the toast, as the active tab does, until the next
+     * request to render a tab tries again.
      */
     async #updateForSelection() {
         const selection = ++this.#selection;
@@ -242,6 +267,7 @@ export class SdkExplorerApplication {
             if (selection !== this.#selection) {
                 return;
             }
+            this.#knownSelection = selection;
             if (this.#showApplicableTabs(applicable)) {
                 await this.#activeTab?.versionChanged();
             }
