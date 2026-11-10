@@ -296,6 +296,25 @@ class ExplorerPage {
     }
 
     /**
+     * Starts waiting for the next shown.bs.tab event of a tab's button: Bootstrap fires it once the tab's pane has
+     * faded in, and the explorer activates the tab on it (see {@link tabShown}).
+     *
+     * @param {string} tabId The id of the button of the tab.
+     */
+    async startWaitingForTabShown(tabId) {
+        await this.#page.evaluate(id => {
+            window.smokeTestTabShown = new Promise(resolve => document.getElementById(id).addEventListener('shown.bs.tab', () => resolve(), { once: true }));
+        }, tabId);
+    }
+
+    /**
+     * Waits for the shown.bs.tab event awaited since {@link startWaitingForTabShown}.
+     */
+    async tabShown() {
+        await this.#page.evaluate(() => window.smokeTestTabShown);
+    }
+
+    /**
      * Focuses Home's "Compare x › y" button and presses Enter, as a keyboard user would, and waits until the explorer
      * is idle.
      */
@@ -1545,12 +1564,16 @@ class SmokeTest {
             ['the dialog\'s Compare with both versions changed applies them with one reload and shows the Fields tab of the new pair, loaded once although the tabs were still being probed', async () => {
                 await this.#explorer.openTab('home-tab');
                 await this.#explorer.startCountingVersionChanges();
-                // 1.13.0's probe is held, so that Fields is shown while the tabs are still probed (this page has not
-                // probed 1.13.0 yet: the explorer keeps each version's answer, as it has 1.14.2's).
+                // 1.13.0's probe is held (this page has not probed 1.13.0 yet: the explorer keeps each version's
+                // answer, as it has 1.14.2's) until Fields has been activated, on its shown.bs.tab, which comes after
+                // the dialog has closed and the pane has faded in: so Fields is always activated while the tabs are
+                // still probed.
                 const probe = await this.#explorer.holdRequests('**/1.13.0/validation/rules.efx');
+                await this.#explorer.startWaitingForTabShown('fields-tab');
                 const firstRequest = this.#explorer.requestedUrls.length;
                 await this.#explorer.startComparingInDialog('1.14.2', '1.13.0');
                 await probe.requested;
+                await this.#explorer.tabShown();
                 await probe.release();
                 await this.#explorer.waitUntilIdle();
                 const fieldsJsonVersions = this.#explorer.requestedUrls.slice(firstRequest).filter(url => url.endsWith('/fields/fields.json')).map(url => url.split('/').at(-3));
