@@ -1,13 +1,13 @@
-/* TED design-system theme of the eForms SDK Explorer (docs/plans/ted-design.md): the rules for the page alone.
+/* TED design-system theme of the eForms SDK Explorer: the rules for the page alone.
  *
  * Loaded by the page only (index.html, after ted-theme.css), never into the web components' shadow roots: the rules
  * the components use are in ted-theme.css. Same conventions: tokens of tokens.css, the design system's literals
  * only (and the europa.eu banner's own colours), plain ASCII.
  *
- * One section per increment of the plan.
+ * One section per part of the explorer.
  */
 
-/* Chrome (Increment 3): the TED header, the pinned bar with the tabs and the loading indicator, the comparison line,
+/* Chrome: the TED header, the pinned bar with the tabs and the loading indicator, the comparison line,
    the footer. */
 
 /* The height of the pinned bar, set by script.js; the sticky elements of the work area sit under it. */
@@ -205,7 +205,7 @@
     background: var(--gs-base-color-forest-110);
 }
 
-/* Work area: white, with the 24px gutter, and 64px before the footer on every tab (Increment 12). */
+/* Work area: white, with the 24px gutter, and 64px before the footer on every tab. */
 .ted-main {
     padding: 24px 24px 64px;
     background: var(--gs-base-color-white);
@@ -369,7 +369,7 @@
     line-height: 1.35;
 }
 
-/* Home (Increment 4): the text column and the side card. */
+/* Home: the text column and the side card. */
 
 .ted-home {
     display: flex;
@@ -484,7 +484,7 @@
     outline-color: var(--gs-base-color-gray-75);
 }
 
-/* Cards (Increment 5): headings and breadcrumbs, the card group's header and filter list, index cards,
+/* Cards: headings and breadcrumbs, the card group's header and filter list, index cards,
    property rows. */
 
 /* The breadcrumb of the comparison views: 14px, chevron separators in gray-75, the current item #333. (The card group,
@@ -504,7 +504,7 @@
     font-size: 12px;
 }
 
-/* Tree and detail (Increment 6): the Fields toolbar, the Structure and Details panels, the tree, the details. */
+/* Tree and detail: the Fields toolbar, the Structure and Details panels, the tree, the details. */
 
 /* A tab's toolbar: its heading at the left, its source selector (a .ted-inline-field, from ted-theme.css) at the right.
    (The tree/detail-split-view template styles the panels, the tree and the details.) */
@@ -552,7 +552,7 @@ card-group > .ted-toolbar__source[slot="controls"]::after {
     border-left-color: var(--gs-base-color-warning);
 }
 
-/* File diff (Increment 7): the Base and Target headings and the diff panel. */
+/* File diff: the Base and Target headings and the diff panel. */
 
 /* diff2html renders in the document, after this sheet: the rules are scoped to the diff containers (.view-diff) to
    take precedence over diff2html's own. The diff panel: the card look. */
@@ -717,7 +717,7 @@ card-group > .ted-toolbar__source[slot="controls"]::after {
     border-color: var(--gs-base-color-gray-10);
 }
 
-/* States (Increment 8): the error toast, the tour popovers and the hover popovers. */
+/* States: the error toast, the tour popovers and the hover popovers. */
 
 /* The error toast: a TED error Notification, fixed at the bottom right. */
 #apiStatus {
@@ -838,7 +838,7 @@ card-group > .ted-toolbar__source[slot="controls"]::after {
     --bs-btn-padding-x: 12px;
 }
 
-/* Other tabs (Increment 9): Validation, Schemas, Schematrons, Translations, View templates, Release notes. */
+/* Other tabs: Validation, Schemas, Schematrons, Translations, View templates, Release notes. */
 
 /* Release notes (the CHANGELOG.md of the target version, as HTML): the TED typography, at most 65rem wide. Its last
    block has no bottom margin: the work area's 64px are the space before the footer. (Validation uses the card group's
@@ -876,7 +876,7 @@ card-group > .ted-toolbar__source[slot="controls"]::after {
     font-size: var(--gs-base-font-size-sp-15);
 }
 
-/* Version picker (Increment 10): the version chips and their menus, Home's comparison buttons, the version dialog. */
+/* Version picker: the version chips and their menus, Home's comparison buttons, the version dialog. */
 
 /* The comparison line is not shown on Home, which has its own buttons. */
 main:has(#home-tab-content.active) .ted-comparison-line {

@@ -8,7 +8,8 @@
  * Smoke test of the eForms SDK Explorer.
  *
  * Serves the repository with http-server on a free port, opens the explorer in Chromium through Playwright, collects
- * console errors and checks the behaviour listed under "Verification" in docs/plans/sdk2-support.md.
+ * console errors, and checks how the explorer selects versions, shows its tabs and comparisons, and handles slow and
+ * failed loads.
  *
  * The explorer reads the SDK from GitHub and jsDelivr, so the test needs network access. It spends 2 requests of the
  * unauthenticated GitHub API budget (60 requests per hour) per run: one git trees request per version, the first time

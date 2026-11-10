@@ -1,4 +1,4 @@
-/* TED design-system theme of the eForms SDK Explorer (docs/plans/ted-design.md): the rules the web components use.
+/* TED design-system theme of the eForms SDK Explorer: the rules the web components use.
  *
  * A style layer over Bootstrap 5, built on the tokens of tokens.css (var(--gs-base-...)) and the glyphs of icons.css.
  * Literals only where the design system itself declares them: the 3px button radius, the card shadow
@@ -15,7 +15,7 @@
  * - Keep it small, because every shadow root loads it.
  */
 
-/* Foundation (Increment 2): Bootstrap custom properties, links, headings, focus rings, buttons, form controls. */
+/* Foundation: Bootstrap custom properties, links, headings, focus rings, buttons, form controls. */
 
 /* Bootstrap's own variables, set from the tokens in the document; they reach the shadow roots by inheritance. */
 :root {
@@ -229,7 +229,7 @@ a:not(.btn):focus-visible {
     background-position: right 12px center;
 }
 
-/* The small size, for the toolbars only (Increment 12): 36px high, 14px text; the chevron 10px from the right. */
+/* The small size, for the toolbars only: 36px high, 14px text; the chevron 10px from the right. */
 .form-control-sm,
 .form-select-sm {
     min-height: 36px;
@@ -242,7 +242,7 @@ a:not(.btn):focus-visible {
     background-position: right 10px center;
 }
 
-/* The open list of a select (Increment 12), where the browser lets CSS style it (appearance: base-select): white, a
+/* The open list of a select, where the browser lets CSS style it (appearance: base-select): white, a
    gray-20 border, a 4px radius and shadow 2, 4px below the control and at least as wide as it; the options in
    eu-blue-100, the hovered or focused one on eu-blue-10, the chosen one bold in gray-100 on eu-blue-10. Other browsers
    keep their own list. The closed control keeps its look: its chevron stays the background image above, and
@@ -381,7 +381,7 @@ a:not(.btn):focus-visible {
     border-color: var(--gs-base-color-eu-blue-100);
 }
 
-/* In a toolbar (Increment 12), a control with its label before it: the label 14px regular gray-75, 8px from the
+/* In a toolbar, a control with its label before it: the label 14px regular gray-75, 8px from the
    control. */
 .ted-inline-field {
     display: flex;
@@ -417,7 +417,7 @@ a:not(.btn):focus-visible {
     font-size: var(--gs-base-font-size-s);
 }
 
-/* Change markers (Increment 3): used by the page and by the index cards. */
+/* Change markers: used by the page and by the index cards. */
 
 /* A change marker: a 16px square in the marker colour with a white 10px glyph (plus, minus) or a 6px dot. */
 .ted-marker {
