@@ -1050,13 +1050,13 @@ class SmokeTest {
 
     /**
      * Runs of consecutive versions that the version dropdowns list in this order, latest first.
-     * They name real tags of the SDK and hold as long as these tags are listed: the 1.16.0 pre-releases are listed
-     * until a release later than 1.16.0 exists.
+     * They name real tags of the SDK and hold as long as these tags are listed: the 1.16.0 pre-releases (its betas;
+     * its release candidates were deleted when 1.16.0 was released) are listed until a release later than 1.16.0
+     * exists.
      */
     static #EXPECTED_VERSION_RUNS = Object.freeze([
-        ['2.0.0-alpha.4', '2.0.0-alpha.3', '2.0.0-alpha.2', '2.0.0-alpha.1'],
-        ['1.16.0-rc.5', '1.16.0-rc.4', '1.16.0-rc.3', '1.16.0-rc.2', '1.16.0-rc.1',
-            '1.16.0-beta.3', '1.16.0-beta.2', '1.16.0-beta.1', '1.15.1'],
+        ['2.0.0-alpha.5', '2.0.0-alpha.4', '2.0.0-alpha.3', '2.0.0-alpha.2', '2.0.0-alpha.1'],
+        ['1.16.0', '1.16.0-beta.3', '1.16.0-beta.2', '1.16.0-beta.1', '1.15.1'],
     ]);
 
     /** The roots of the tree of the Fields tab in fwd/ mode. */
@@ -1103,15 +1103,15 @@ class SmokeTest {
 
     /** A target with EFX rules and a base without. */
     async #checkPairFromQueryString() {
-        await this.#scenario('?version=2.0.0-alpha.4&base=1.16.0-rc.5', [
+        await this.#scenario('?version=2.0.0-alpha.4&base=1.16.0', [
             ['both versions are taken from the query string', async () => {
                 assert.equal(await this.#explorer.mainVersion(), '2.0.0-alpha.4');
-                assert.equal(await this.#explorer.baseVersion(), '1.16.0-rc.5');
+                assert.equal(await this.#explorer.baseVersion(), '1.16.0');
             }],
             ['the target dropdown offers the branches develop and efx-2 at the top', async () => {
                 assert.deepEqual((await this.#explorer.mainVersionOptions()).slice(0, 2), ['develop', 'efx-2']);
             }],
-            ['both dropdowns list the versions in version order (2.0.0-alpha.4 … 2.0.0-alpha.1 … 1.16.0-rc.5 … 1.16.0-beta.1, 1.15.1)', async () => {
+            ['both dropdowns list the versions in version order (2.0.0-alpha.5 … 2.0.0-alpha.1 … 1.16.0, 1.16.0-beta.3 … 1.16.0-beta.1, 1.15.1)', async () => {
                 SmokeTest.#assertVersionOrder(await this.#explorer.mainVersionOptions());
                 SmokeTest.#assertVersionOrder(await this.#explorer.baseVersionOptions());
             }],
@@ -1122,11 +1122,11 @@ class SmokeTest {
             ['the Validation tab is shown and the Schematrons tab is hidden', async () => {
                 await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
             }],
-            ['the Fields tab in fwd/ mode names 1.16.0-rc.5 as having no forward-compatible metadata and shows every item as added', async () => {
+            ['the Fields tab in fwd/ mode names 1.16.0 as having no forward-compatible metadata and shows every item as added', async () => {
                 await this.#explorer.openTab('fields-tab');
                 await this.#explorer.selectFieldsSource('fwd');
                 assert.deepEqual(await this.#explorer.selectedToggleButton('fields-source'), { checked: 'fwd', active: ['fwd'] });
-                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.16.0-rc.5 has no forward-compatible metadata (fields/fwd/).');
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.16.0 has no forward-compatible metadata (fields/fwd/).');
                 const nodes = await this.#explorer.treeNodes('fields-explorer');
                 assert.deepEqual(nodes.filter(node => node.parent === '#').map(node => node.text), SmokeTest.#FORWARD_COMPATIBLE_ROOTS);
                 assert.deepEqual(nodes.filter(node => node.parent !== '#' && node.status !== 'added'), []);
@@ -1579,7 +1579,7 @@ class SmokeTest {
     }
 
     async #checkFiltersWhileLoading() {
-        await this.#scenario('?version=1.16.0-rc.5&base=1.15.1', [
+        await this.#scenario('?version=1.16.0&base=1.15.1', [
             ['the Codelists parent filter applies while the codelists are still being checked ("country": only its 5 codelists)', async () => {
                 await this.#explorer.startOpeningTab('codelists-tab');
                 await this.#explorer.waitForFilterValue('code-lists-overview-card-group', 'country');
