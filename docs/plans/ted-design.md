@@ -502,6 +502,17 @@ The design session looked at the stopped state of Increments 17 and 18 on the li
   - Fix: `.ted-version-chip .dropdown-toggle:disabled { color: var(--gs-base-color-gray-30); background: var(--gs-base-color-gray-5); border-color: var(--gs-base-color-gray-20); }`, with `.ted-version-chip__role` and the caret in gray-30 too, and no hover change while disabled.
   - Verify by eye: Fields opened during a held start-up, the chips looked at before the list is released; no smoke check.
 
+### Increment 20 — follow-ups from the eighth external review (XS)
+An external review (Codex) of `5530548..ab200aa` reported one finding, which the planning session accepted narrowly, in two parts; to do right after Increment 19. One commit per item, `npm run smoke` before the push, a Progress line per item.
+- **a. A stored empty list bypasses 18b** (`src/js/sdk-repository.js`).
+  - Symptom: `listVersions()` returns a stored list before reaching the new empty-list check, so an empty list stored by an earlier build (within ten minutes) is still used: with `?version=develop&base=1.14.2` both chips show develop and no error appears; with a tag pair, start-up fails on the missing release.
+  - Fix: `listVersions()` treats a stored empty list as nothing stored, and downloads the list.
+  - Verify: a smoke check that stores an empty list in the format the repository uses (`format`, `storedAt` now, `value` `[]`) before a cold load of `?version=1.14.1&base=1.12.0`: a request to jsDelivr is made, the selected pair is 1.14.1 / 1.12.0, no error.
+- **b. A failed start-up must keep the requested pair** (`src/js/app.js`).
+  - Symptom: `#getVersionsFromQueryString()` removes the query string from the address before the pair is selected, so when start-up fails after it, "Reload the page to try again" opens the default pair.
+  - Fix: `#getVersionsFromQueryString()` only reads; `populateDropdown()` removes the query string once a pair is selected (just before it returns true), with a comment saying why.
+  - Verify: 18b's recovery becomes a real browser reload (`page.reload()`, not the address with the query string opened again); after recovery, the pair requested in the original address is the selected one; while start-up is stopped, the address still holds the query string.
+
 ## Optional items (each needs the user's go-ahead; not part of the restyle)
 
 These change behaviour or text, so they stay out of the increments above.
