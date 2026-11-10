@@ -36,6 +36,9 @@ export class SdkRepository {
     /** The prefix of the keys of the stored entries. */
     static #STORAGE_PREFIX = 'sdk-explorer/';
 
+    /** The key under which the list of versions is kept in the browser. */
+    static #VERSIONS_KEY = 'versions';
+
     /** @type {RequestOwner} */
     #owner;
 
@@ -52,9 +55,10 @@ export class SdkRepository {
      * @returns {Promise<string[]>}
      */
     async listVersions() {
-        const storageKey = 'versions';
+        const storageKey = SdkRepository.#VERSIONS_KEY;
         const stored = SdkRepository.#retrieve(storageKey, appConfig.repositoryCacheMinutes);
-        if (stored !== null) {
+        // A stored empty list (an earlier build kept one) is no list either: it is downloaded again.
+        if (Array.isArray(stored) && stored.length > 0) {
             return stored;
         }
 
@@ -67,9 +71,25 @@ export class SdkRepository {
         if (!Array.isArray(response?.versions)) {
             throw new CustomError(`${ERROR_FETCHING_VERSIONS}: the response has no list of versions`);
         }
+        // An empty list is no list: it is not kept, so that the next attempt downloads it again.
+        if (response.versions.length === 0) {
+            throw new CustomError(`${ERROR_FETCHING_VERSIONS}: the list of versions is empty`);
+        }
 
         SdkRepository.#store(storageKey, response.versions);
         return response.versions;
+    }
+
+    /**
+     * Forgets the list of versions kept in the browser, so that the next {@link listVersions} downloads it again:
+     * for when no versions could be selected from it, and start-up stops (a reload must then try again).
+     */
+    forgetVersions() {
+        try {
+            localStorage.removeItem(SdkRepository.#STORAGE_PREFIX + SdkRepository.#VERSIONS_KEY);
+        } catch (error) {
+            console.warn('Local storage not usable, the list of versions not forgotten:', error);
+        }
     }
 
     /**

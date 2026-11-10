@@ -8,7 +8,8 @@
  * Smoke test of the eForms SDK Explorer.
  *
  * Serves the repository with http-server on a free port, opens the explorer in Chromium through Playwright, collects
- * console errors and checks the behaviour listed under "Verification" in docs/plans/sdk2-support.md.
+ * console errors, and checks how the explorer selects versions, shows its tabs and comparisons, and handles slow and
+ * failed loads.
  *
  * The explorer reads the SDK from GitHub and jsDelivr, so the test needs network access. It spends 2 requests of the
  * unauthenticated GitHub API budget (60 requests per hour) per run: one git trees request per version, the first time
@@ -84,6 +85,9 @@ class ExplorerPage {
     /** How long a popover takes to show or to hide (Bootstrap fades it), in milliseconds. */
     static #POPOVER_PERIOD = 500;
 
+    /** How long a wait for an event of the page (a held request being made, a tab being shown) may last before it fails the check, in milliseconds. */
+    static #EVENT_TIMEOUT = 60000;
+
     /**
      * Files that the explorer requests to find out whether a version has them: for these, the browser's "404" console
      * error is expected and is not collected.
@@ -102,6 +106,9 @@ class ExplorerPage {
 
     /** @type {string[]} The URLs of the GitHub API requests made since the page was created. */
     #githubApiRequests = [];
+
+    /** @type {string[]} The URLs of all the requests made since the page was created. */
+    #requestedUrls = [];
 
     /** @type {Set<string>} The URLs of the requests that the test made fail on purpose (see {@link failRequestsDuring}). */
     #deliberatelyFailedUrls = new Set();
@@ -130,6 +137,7 @@ class ExplorerPage {
         });
         this.#page.on('pageerror', error => this.#consoleErrors.push(error.message));
         this.#page.on('request', request => {
+            this.#requestedUrls.push(request.url());
             if (request.url().startsWith(ExplorerPage.#GITHUB_API)) {
                 this.#githubApiRequests.push(request.url());
             }
@@ -161,6 +169,13 @@ class ExplorerPage {
     }
 
     /**
+     * @returns {string[]} The URLs of all the requests made since the page was created, across page loads.
+     */
+    get requestedUrls() {
+        return [...this.#requestedUrls];
+    }
+
+    /**
      * @returns {string[]} The console errors logged since the explorer was last opened.
      */
     get consoleErrors() {
@@ -175,10 +190,36 @@ class ExplorerPage {
     async open(queryString) {
         this.#consoleErrors = [];
         await this.openWithoutWaiting(queryString);
+        await this.#waitForStartUp();
+    }
+
+    /**
+     * Reloads the page, as the user does with the browser's reload button (its address, as the explorer left it),
+     * and waits as {@link open} does.
+     */
+    async reload() {
+        this.#consoleErrors = [];
+        await this.#page.reload();
+        await this.waitForVersions();
+        await this.#waitForStartUp();
+    }
+
+    /**
+     * @returns {string} The address of the page, as the explorer left it (it removes the query string once it has
+     *          selected the versions).
+     */
+    address() {
+        return this.#page.url();
+    }
+
+    /**
+     * Waits until the explorer is idle after start-up, and fails if it reported an error.
+     */
+    async #waitForStartUp() {
         await this.waitUntilIdle();
-        const apiStatus = await this.apiStatus();
-        if (apiStatus !== '') {
-            throw new Error(`the explorer reported: ${apiStatus}`);
+        const errors = await this.reportedErrors();
+        if (errors !== '') {
+            throw new Error(`the explorer reported: ${errors}`);
         }
     }
 
@@ -189,7 +230,23 @@ class ExplorerPage {
      * @param {string} queryString
      */
     async openWithoutWaiting(queryString) {
+        await this.startOpening(queryString);
+        await this.waitForVersions();
+    }
+
+    /**
+     * Loads the explorer without waiting for anything it requests. The console errors collected so far are kept.
+     *
+     * @param {string} queryString
+     */
+    async startOpening(queryString) {
         await this.#page.goto(`${this.#baseUrl}/${queryString}`);
+    }
+
+    /**
+     * Waits until the explorer has filled the version dropdowns (or reported why it could not).
+     */
+    async waitForVersions() {
         await this.#page.waitForFunction(
             () => document.querySelector('#main-version-dropdown').value !== ''
                 || document.querySelector('#apiStatus .toast-body').textContent.trim() !== '',
@@ -198,13 +255,188 @@ class ExplorerPage {
     }
 
     /**
-     * Selects a version in one of the dropdowns, as a user would, without waiting for the explorer to be idle.
+     * Selects a version, as a user would, without waiting for the explorer to be idle: through the version chip and
+     * its menu, or, on Home, where the chips are not shown, through the "Choose versions…" dialog (whose Compare then
+     * shows the Fields tab).
      *
-     * @param {'main'|'base'} dropdown
+     * @param {'main'|'base'} dropdown The hidden version select that holds the version (`main` for the target).
      * @param {string} version
      */
     async startSelectingVersion(dropdown, version) {
-        await this.#page.selectOption(`#${dropdown}-version-dropdown`, version);
+        const role = dropdown === 'main' ? 'target' : 'base';
+        if (await this.#page.isVisible(`#${role}-version-chip`)) {
+            await this.#page.click(`#${role}-version-chip`);
+            await this.#page.click(`.ted-version-chip[data-version-role="${role}"] .dropdown-item:text-is("${version}")`);
+        } else {
+            await this.#page.click('#choose-versions');
+            await this.#page.waitForSelector('#version-dialog.show');
+            await this.#page.selectOption(`#version-dialog-${role}`, version);
+            await this.#page.click('#version-dialog-compare');
+            await this.#page.waitForSelector('#version-dialog', { state: 'hidden' });
+        }
+    }
+
+    /**
+     * Opens the "Choose versions…" dialog from Home, chooses both versions and presses Compare, as a user would
+     * (which also shows the Fields tab), without waiting for the explorer to be idle.
+     *
+     * @param {string} mainVersion
+     * @param {string} baseVersion
+     */
+    async startComparingInDialog(mainVersion, baseVersion) {
+        await this.#page.click('#choose-versions');
+        await this.#page.waitForSelector('#version-dialog.show');
+        await this.#page.selectOption('#version-dialog-base', baseVersion);
+        await this.#page.selectOption('#version-dialog-target', mainVersion);
+        await this.#page.click('#version-dialog-compare');
+        await this.#page.waitForSelector('#version-dialog', { state: 'hidden' });
+    }
+
+    /**
+     * Keeps a list of versions in the browser the way the explorer stores it (format 1, stored now), as an earlier
+     * build of the explorer could have left it.
+     *
+     * @param {string[]} versions
+     */
+    async storeVersions(versions) {
+        await this.#page.evaluate(list => localStorage.setItem('sdk-explorer/versions',
+            JSON.stringify({ format: 1, storedAt: Date.now(), value: list })), versions);
+    }
+
+    /**
+     * Forgets the list of versions that the explorer keeps in the browser, so that the next load requests it again.
+     */
+    async forgetCachedVersions() {
+        await this.#page.evaluate(() => localStorage.removeItem('sdk-explorer/versions'));
+    }
+
+    /**
+     * @param {string} selector
+     * @returns {Promise<boolean>} Whether the element is enabled.
+     */
+    async isEnabled(selector) {
+        return this.#page.isEnabled(selector);
+    }
+
+    /**
+     * Scrolls the page to its bottom, as a user would.
+     */
+    async scrollToBottom() {
+        await this.#page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+    }
+
+    /**
+     * @param {string} selector
+     * @returns {Promise<boolean>} Whether the element is entirely within the window.
+     */
+    async isInWindow(selector) {
+        return this.#page.$eval(selector, element => {
+            const box = element.getBoundingClientRect();
+            return box.top >= 0 && box.bottom <= window.innerHeight;
+        });
+    }
+
+    /**
+     * Starts waiting for the next shown.bs.tab event of a tab's button: Bootstrap fires it once the tab's pane has
+     * faded in, and the explorer activates the tab on it (see {@link tabShown}).
+     *
+     * @param {string} tabId The id of the button of the tab.
+     */
+    async startWaitingForTabShown(tabId) {
+        await this.#page.evaluate(id => {
+            window.smokeTestTabShown = { tabId: id, shown: new Promise(resolve => document.getElementById(id).addEventListener('shown.bs.tab', () => resolve(), { once: true })) };
+        }, tabId);
+    }
+
+    /**
+     * Waits for the shown.bs.tab event awaited since {@link startWaitingForTabShown}, for at most the given time.
+     *
+     * @param {number} [timeout] In milliseconds.
+     * @throws {Error} If the tab is not shown in time, naming the tab.
+     */
+    async tabShown(timeout = ExplorerPage.#EVENT_TIMEOUT) {
+        await this.#page.evaluate(ms => Promise.race([
+            window.smokeTestTabShown.shown,
+            new Promise((resolve, reject) => setTimeout(() => reject(new Error(`the ${window.smokeTestTabShown.tabId} tab was not shown within ${ms / 1000} s`)), ms))
+        ]), timeout);
+    }
+
+    /**
+     * Focuses Home's "Compare x › y" button and presses Enter, as a keyboard user would, and waits until the explorer
+     * is idle.
+     */
+    async compareFromHomeWithEnter() {
+        await this.#page.focus('#compare-versions');
+        await this.#page.keyboard.press('Enter');
+        await this.waitUntilIdle();
+    }
+
+    /**
+     * Opens the "Choose versions…" dialog from Home, waits until it has given the focus to its base version, then
+     * focuses its Compare button and presses Enter without changing anything, as a keyboard user would.
+     */
+    async compareInDialogWithEnter() {
+        await this.#page.click('#choose-versions');
+        await this.#page.waitForFunction(() => document.activeElement?.id === 'version-dialog-base');
+        await this.#page.focus('#version-dialog-compare');
+        await this.#page.keyboard.press('Enter');
+        await this.#page.waitForSelector('#version-dialog', { state: 'hidden' });
+    }
+
+    /**
+     * @returns {Promise<string>} The id of the element that has the focus, or its tag name if it has no id.
+     */
+    async focusedElement() {
+        return this.#page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
+    }
+
+    /**
+     * Opens the "Choose versions…" dialog from Home and presses Compare without changing anything, as a user would.
+     */
+    async compareInDialogUnchanged() {
+        await this.#page.click('#choose-versions');
+        await this.#page.waitForSelector('#version-dialog.show');
+        await this.#page.click('#version-dialog-compare');
+        await this.#page.waitForSelector('#version-dialog', { state: 'hidden' });
+    }
+
+    /**
+     * Starts counting the change events of the two hidden version selects: each one starts a reload. They are
+     * triggered through jQuery, which calls jQuery's handlers only, so the counter is one of them (namespaced, so that
+     * starting again replaces it).
+     */
+    async startCountingVersionChanges() {
+        await this.#page.evaluate(() => {
+            window.smokeTestVersionChanges = 0;
+            $('#main-version-dropdown, #base-version-dropdown').off('change.smokeTest').on('change.smokeTest', () => window.smokeTestVersionChanges++);
+        });
+    }
+
+    /**
+     * @returns {Promise<number>} The change events of the version selects since {@link startCountingVersionChanges}.
+     */
+    async countedVersionChanges() {
+        return this.#page.evaluate(() => window.smokeTestVersionChanges);
+    }
+
+    /**
+     * @param {'base'|'target'} role
+     * @returns {Promise<string[]>} The section headings of the menu of a version chip.
+     */
+    async versionMenuSections(role) {
+        return this.#page.$$eval(`.ted-version-chip[data-version-role="${role}"] .dropdown-header`, headers => headers.map(header => header.textContent));
+    }
+
+    /**
+     * Clicks Home's "Compare x › y" button and waits until the explorer is idle.
+     *
+     * @returns {Promise<string>} The button's text before the click.
+     */
+    async compareFromHome() {
+        const text = (await this.#page.textContent('#compare-versions')).trim();
+        await this.#page.click('#compare-versions');
+        await this.waitUntilIdle();
+        return text;
     }
 
     /**
@@ -229,16 +461,36 @@ class ExplorerPage {
     }
 
     /**
-     * Holds the responses to the requests matching a URL pattern until they are released, so that they arrive late.
+     * Holds the responses to the requests matching a URL pattern while an action runs, so that they arrive late:
+     * until the action releases them, and at the latest when it ends, failed or not, so that a check never leaves
+     * them held.
      *
+     * @template T
      * @param {string} urlPattern A Playwright URL glob, as for page.route().
-     * @returns {Promise<{requested: Promise<void>, release: (failStatus?: number) => Promise<void>}>} `requested`
-     *          resolves when a matching request is being held; `release` lets the held requests go on (or fail with
-     *          the given HTTP status, whose console errors are then not collected) and stops holding new ones.
+     * @param {(held: {requested: (timeout?: number) => Promise<void>, release: (failStatus?: number) => Promise<void>}) => Promise<T>} action
+     *          Given `requested`, which resolves when a matching request is being held (and fails the check if none is
+     *          made in time), and `release`, which lets the held requests go on (or fail with the given HTTP status,
+     *          whose console errors are then not collected) and stops holding new ones.
+     * @returns {Promise<T>} What the action returns.
      */
-    async holdRequests(urlPattern) {
+    async holdRequestsDuring(urlPattern, action) {
+        const held = await this.#holdRequests(urlPattern);
+        try {
+            return await action(held);
+        } finally {
+            await held.release();
+        }
+    }
+
+    /**
+     * @param {string} urlPattern
+     * @returns {Promise<{requested: (timeout?: number) => Promise<void>, release: (failStatus?: number) => Promise<void>}>}
+     *          See {@link holdRequestsDuring}; `release` does something only the first time.
+     */
+    async #holdRequests(urlPattern) {
         let release;
         const released = new Promise(resolve => { release = resolve; });
+        let isReleased = false;
         let requested;
         const firstRequest = new Promise(resolve => { requested = resolve; });
         const heldRequests = [];
@@ -258,8 +510,22 @@ class ExplorerPage {
         };
         await this.#page.route(urlPattern, hold);
         return {
-            requested: firstRequest,
+            requested: async (timeout = ExplorerPage.#EVENT_TIMEOUT) => {
+                let timer;
+                const expired = new Promise((resolve, reject) => {
+                    timer = setTimeout(() => reject(new Error(`no request matching ${urlPattern} was made within ${timeout / 1000} s`)), timeout);
+                });
+                try {
+                    await Promise.race([firstRequest, expired]);
+                } finally {
+                    clearTimeout(timer);
+                }
+            },
             release: async failStatus => {
+                if (isReleased) {
+                    return;
+                }
+                isReleased = true;
                 release(failStatus);
                 await Promise.all(heldRequests);
                 await this.#page.unroute(urlPattern, hold);
@@ -392,9 +658,9 @@ class ExplorerPage {
      * @param {string} baseVersion
      */
     async selectVersions(mainVersion, baseVersion) {
-        await this.#page.selectOption('#main-version-dropdown', mainVersion);
+        await this.startSelectingVersion('main', mainVersion);
         await this.waitUntilIdle();
-        await this.#page.selectOption('#base-version-dropdown', baseVersion);
+        await this.startSelectingVersion('base', baseVersion);
         await this.waitUntilIdle();
     }
 
@@ -449,6 +715,35 @@ class ExplorerPage {
     }
 
     /**
+     * @returns {Promise<boolean>} Whether the shown popover (of the quick tour) is entirely within the window and,
+     *          unless its anchor is in the pinned bar, below the bar (the popover of an anchor in the bar starts over
+     *          the bar, by design).
+     */
+    async isPopoverInWindow() {
+        return this.#page.$eval('.popover.show', popover => {
+            const box = popover.getBoundingClientRect();
+            const bar = document.querySelector('.ted-bar');
+            const anchor = document.querySelector(`[aria-describedby="${popover.id}"]`);
+            const top = anchor && bar.contains(anchor) ? 0 : bar.getBoundingClientRect().bottom;
+            return box.top >= top && box.left >= 0 && box.bottom <= window.innerHeight && box.right <= window.innerWidth;
+        });
+    }
+
+    /**
+     * @returns {{width: number, height: number}} The size of the window.
+     */
+    windowSize() {
+        return this.#page.viewportSize();
+    }
+
+    /**
+     * @param {{width: number, height: number}} size
+     */
+    async resizeWindow(size) {
+        await this.#page.setViewportSize(size);
+    }
+
+    /**
      * @returns {Promise<string[]>} The titles of the popovers on the page (Bootstrap removes a popover once hidden).
      */
     async popoverTitles() {
@@ -497,6 +792,16 @@ class ExplorerPage {
     }
 
     /**
+     * Selects a source in the metadata source selector of the Fields tab, as a user would, without waiting for the
+     * explorer to be idle (it is not, while a tab probe is held).
+     *
+     * @param {string} source The value of the option, for example `fwd`.
+     */
+    async startSelectingFieldsSource(source) {
+        await this.#page.click(`#fields-source input[value="${source}"] + label`);
+    }
+
+    /**
      * @param {string} groupId The id of a toggle button group of radio inputs.
      * @returns {Promise<{checked: string, active: string[]}>} The value of the checked radio input, and the values of
      *          the radio inputs whose button shows the selected state: the checked ones (Bootstrap's `.btn-check:checked`
@@ -539,10 +844,15 @@ class ExplorerPage {
                 status: (node.li_attr?.class ?? '').replace(/-node$/, '')
             })) : null;
         };
-        // jsTree loads large trees in the background: wait until the tree has nodes and stops growing.
+        // jsTree loads large trees in the background: wait until the tree has nodes and stops growing, for at most
+        // the load timeout (a tree that never comes, for example after a failed load, fails the check).
+        const deadline = Date.now() + ExplorerPage.#LOAD_TIMEOUT;
         let nodes = null;
         let previousLength = -1;
         do {
+            if (Date.now() > deadline) {
+                throw new Error(`the tree of ${splitViewId} was not loaded within ${ExplorerPage.#LOAD_TIMEOUT / 1000} s`);
+            }
             await this.#page.waitForTimeout(ExplorerPage.#IDLE_PERIOD);
             previousLength = nodes?.length ?? -1;
             nodes = await this.#page.evaluate(readTree, splitViewId);
@@ -568,6 +878,24 @@ class ExplorerPage {
             await action();
         } finally {
             await this.#page.unroute(urlPattern, fail);
+        }
+    }
+
+    /**
+     * Runs an action while the requests matching a URL pattern are answered with the given JSON, without reaching
+     * the network, to see how the explorer handles a response that a service could give.
+     *
+     * @param {string} urlPattern A Playwright URL glob, as for page.route().
+     * @param {Object} json
+     * @param {() => Promise<void>} action
+     */
+    async answerJsonDuring(urlPattern, json, action) {
+        const answer = route => route.fulfill({ json });
+        await this.#page.route(urlPattern, answer);
+        try {
+            await action();
+        } finally {
+            await this.#page.unroute(urlPattern, answer);
         }
     }
 
@@ -775,12 +1103,21 @@ class ExplorerPage {
     }
 
     /**
-     * Waits until the loading indicator of the explorer stays hidden for a while.
+     * Waits until the loading indicator of the explorer stays hidden for a while, for at most the idle timeout in
+     * all (the indicator may show again after each wait).
      */
     async waitUntilIdle() {
         const loadingIndicatorHidden = () => getComputedStyle(document.querySelector('#centralLoadingSpinner')).visibility === 'hidden';
+        const deadline = Date.now() + ExplorerPage.#IDLE_TIMEOUT;
+        const notIdle = () => new Error(`the explorer was not idle within ${ExplorerPage.#IDLE_TIMEOUT / 1000} s`);
         do {
-            await this.#page.waitForFunction(loadingIndicatorHidden, null, { timeout: ExplorerPage.#IDLE_TIMEOUT });
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) {
+                throw notIdle();
+            }
+            await this.#page.waitForFunction(loadingIndicatorHidden, null, { timeout: remaining }).catch(error => {
+                throw error.name === 'TimeoutError' ? notIdle() : error;
+            });
             await this.#page.waitForTimeout(ExplorerPage.#IDLE_PERIOD);
         } while (!(await this.#page.evaluate(loadingIndicatorHidden)));
     }
@@ -796,10 +1133,14 @@ class ExplorerPage {
 
     /**
      * @returns {Promise<Array<{message: string, detail: string|null, elements: string[], detailStyle: {color: string, display: string}|null}>>}
-     *          The items of the error toast: the text of the message, the text of the detail line, the elements in the
-     *          item other than the detail line, and the detail line's colour and display.
+     *          The items of the error toast as the user sees it (none while it is hidden): the text of the message,
+     *          the text of the detail line, the elements in the item other than the detail line, and the detail line's
+     *          colour and display.
      */
     async toastItems() {
+        if (!(await this.#page.isVisible('#apiStatus'))) {
+            return [];
+        }
         return this.#page.$$eval('#apiStatus .toast-body li', items => items.map(item => {
             const detail = item.querySelector(':scope > .detail');
             const style = detail ? getComputedStyle(detail) : null;
@@ -821,9 +1162,83 @@ class ExplorerPage {
     }
 
     /**
-     * @returns {Promise<string>} The text of the error toast, empty if there is none.
+     * @returns {Promise<string>} The text of the error toast as the user sees it: empty if there is none or while
+     *          the toast is hidden (it hides itself 15 s after an error). For the checks that an error is shown.
      */
     async apiStatus() {
+        return (await this.#page.isVisible('#apiStatus')) ? (await this.#page.textContent('#apiStatus .toast-body')).trim() : '';
+    }
+
+    /**
+     * @param {string} selector
+     * @returns {Promise<boolean>} Whether the element can be reached with the Tab key: enabled, and not taken out of
+     *          the tab order (tabindex="-1", which Bootstrap gives the buttons of the tabs that are not active).
+     */
+    async isKeyboardFocusable(selector) {
+        return this.#page.$eval(selector, element => !element.disabled && element.tabIndex >= 0);
+    }
+
+    /**
+     * @param {string} selector
+     * @returns {Promise<string>} The computed text colour of the element, for example `rgb(194, 194, 194)`.
+     */
+    async textColor(selector) {
+        return this.#page.$eval(selector, element => getComputedStyle(element).color);
+    }
+
+    /**
+     * @returns {Promise<string[]>} The ids of the tab buttons that are enabled, in the tab bar's order.
+     */
+    async enabledTabButtons() {
+        return this.#page.$$eval('ul.nav-tabs button.nav-link', buttons => buttons.filter(button => !button.disabled).map(button => button.id));
+    }
+
+    /**
+     * Reports errors to the explorer's toast, all in the same task, as several failed loads can.
+     *
+     * @param {string[]} messages
+     */
+    async reportErrors(messages) {
+        await this.#page.evaluate(async texts => {
+            const { SdkExplorerApplication } = await import('/src/js/app.js');
+            texts.forEach(text => SdkExplorerApplication.updateApiStatus(text));
+        }, messages);
+    }
+
+    /**
+     * Clears the explorer's toast, as a tab switch or a version change does.
+     */
+    async clearErrors() {
+        await this.#page.evaluate(async () => {
+            const { SdkExplorerApplication } = await import('/src/js/app.js');
+            SdkExplorerApplication.instance.clearApiStatus();
+        });
+    }
+
+    /**
+     * Replaces the page's timers with Playwright's clock, so that {@link runClock} can make time pass at once. It
+     * stays installed for the rest of the run (every scenario uses this page), so the check that installs it comes
+     * last.
+     */
+    async installClock() {
+        await this.#page.clock.install();
+    }
+
+    /**
+     * Makes the given time pass on Playwright's clock (see {@link installClock}), firing the timers due meanwhile.
+     *
+     * @param {number} milliseconds
+     */
+    async runClock(milliseconds) {
+        await this.#page.clock.runFor(milliseconds);
+    }
+
+    /**
+     * @returns {Promise<string>} The errors reported since the toast was last cleared (by a tab switch or a version
+     *          change), whether the toast still shows them or has hidden them: empty if there is none. For the checks
+     *          that no error was reported, which a hidden toast must not pass.
+     */
+    async reportedErrors() {
         return (await this.#page.textContent('#apiStatus .toast-body')).trim();
     }
 
@@ -855,13 +1270,13 @@ class SmokeTest {
 
     /**
      * Runs of consecutive versions that the version dropdowns list in this order, latest first.
-     * They name real tags of the SDK and hold as long as these tags are listed: the 1.16.0 pre-releases are listed
-     * until a release later than 1.16.0 exists.
+     * They name real tags of the SDK and hold as long as these tags are listed: the 1.16.0 pre-releases (its betas;
+     * its release candidates were deleted when 1.16.0 was released) are listed until a release later than 1.16.0
+     * exists.
      */
     static #EXPECTED_VERSION_RUNS = Object.freeze([
-        ['2.0.0-alpha.4', '2.0.0-alpha.3', '2.0.0-alpha.2', '2.0.0-alpha.1'],
-        ['1.16.0-rc.5', '1.16.0-rc.4', '1.16.0-rc.3', '1.16.0-rc.2', '1.16.0-rc.1',
-            '1.16.0-beta.3', '1.16.0-beta.2', '1.16.0-beta.1', '1.15.1'],
+        ['2.0.0-alpha.5', '2.0.0-alpha.4', '2.0.0-alpha.3', '2.0.0-alpha.2', '2.0.0-alpha.1'],
+        ['1.16.0', '1.16.0-beta.3', '1.16.0-beta.2', '1.16.0-beta.1', '1.15.1'],
     ]);
 
     /** The roots of the tree of the Fields tab in fwd/ mode. */
@@ -901,21 +1316,25 @@ class SmokeTest {
         await this.#checkFilterAfterVersionChange();
         await this.#checkCodelistsAcrossRenames();
         await this.#checkFiltersWhileLoading();
+        await this.#checkVersionPicker();
+        await this.#checkVersionListFailure();
+        // Last: its last check installs Playwright's clock in the page, for the rest of the run.
+        await this.#checkFailedProbe();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
     }
 
     /** A target with EFX rules and a base without. */
     async #checkPairFromQueryString() {
-        await this.#scenario('?version=2.0.0-alpha.4&base=1.16.0-rc.5', [
+        await this.#scenario('?version=2.0.0-alpha.4&base=1.16.0', [
             ['both versions are taken from the query string', async () => {
                 assert.equal(await this.#explorer.mainVersion(), '2.0.0-alpha.4');
-                assert.equal(await this.#explorer.baseVersion(), '1.16.0-rc.5');
+                assert.equal(await this.#explorer.baseVersion(), '1.16.0');
             }],
             ['the target dropdown offers the branches develop and efx-2 at the top', async () => {
                 assert.deepEqual((await this.#explorer.mainVersionOptions()).slice(0, 2), ['develop', 'efx-2']);
             }],
-            ['both dropdowns list the versions in version order (2.0.0-alpha.4 … 2.0.0-alpha.1 … 1.16.0-rc.5 … 1.16.0-beta.1, 1.15.1)', async () => {
+            ['both dropdowns list the versions in version order (2.0.0-alpha.5 … 2.0.0-alpha.1 … 1.16.0, 1.16.0-beta.3 … 1.16.0-beta.1, 1.15.1)', async () => {
                 SmokeTest.#assertVersionOrder(await this.#explorer.mainVersionOptions());
                 SmokeTest.#assertVersionOrder(await this.#explorer.baseVersionOptions());
             }],
@@ -926,11 +1345,11 @@ class SmokeTest {
             ['the Validation tab is shown and the Schematrons tab is hidden', async () => {
                 await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
             }],
-            ['the Fields tab in fwd/ mode names 1.16.0-rc.5 as having no forward-compatible metadata and shows every item as added', async () => {
+            ['the Fields tab in fwd/ mode names 1.16.0 as having no forward-compatible metadata and shows every item as added', async () => {
                 await this.#explorer.openTab('fields-tab');
                 await this.#explorer.selectFieldsSource('fwd');
                 assert.deepEqual(await this.#explorer.selectedToggleButton('fields-source'), { checked: 'fwd', active: ['fwd'] });
-                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.16.0-rc.5 has no forward-compatible metadata (fields/fwd/).');
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.16.0 has no forward-compatible metadata (fields/fwd/).');
                 const nodes = await this.#explorer.treeNodes('fields-explorer');
                 assert.deepEqual(nodes.filter(node => node.parent === '#').map(node => node.text), SmokeTest.#FORWARD_COMPATIBLE_ROOTS);
                 assert.deepEqual(nodes.filter(node => node.parent !== '#' && node.status !== 'added'), []);
@@ -947,10 +1366,18 @@ class SmokeTest {
                     assert.equal(card.compareEnabled, false, card.title);
                 });
             }],
-            ['selecting 1.15.1 and 1.14.2 while the Validation tab is active activates Home and shows the Schematrons tab again', async () => {
-                await this.#explorer.selectVersions('1.15.1', '1.14.2');
-                assert.equal(await this.#explorer.activeTab(), 'home-tab');
+            ['selecting 1.14.2 and 1.15.1 while the Validation tab is active shows the Schematrons tab again, which replaces it', async () => {
+                // The base first: 2.0.0-alpha.4 still has EFX rules, so the Validation tab stays, and the Schematrons
+                // tab loads (its git trees) only for the final pair.
+                await this.#explorer.startSelectingVersion('base', '1.14.2');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'validation-tab');
+                // 1.15.1 and 1.14.2 have no EFX rules: the Validation tab goes, and Schematrons is activated.
+                await this.#explorer.startSelectingVersion('main', '1.15.1');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'schematrons-tab');
                 await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
+                assert.ok((await this.#explorer.indexCards('schematrons-overview-card-group')).length > 0, 'the Schematrons tab has no cards');
             }],
             ['the fwd/ source stays selected in the Fields tab after the version change, and is used', async () => {
                 assert.deepEqual(await this.#explorer.selectedToggleButton('fields-source'), { checked: 'fwd', active: ['fwd'] });
@@ -990,6 +1417,20 @@ class SmokeTest {
             ['the Schematrons tab is shown and the Validation tab is hidden', async () => {
                 await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
             }],
+            ['selecting 2.0.0-alpha.4 while the Schematrons tab is active shows the Validation tab, which replaces it; selecting 1.15.1 again shows the Schematrons tab', async () => {
+                await this.#explorer.openTab('schematrons-tab');
+                // 2.0.0-alpha.4 has EFX rules: the Schematrons tab goes, and Validation is activated.
+                await this.#explorer.startSelectingVersion('main', '2.0.0-alpha.4');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'validation-tab');
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+                assert.ok((await this.#explorer.indexCards('validation-overview-card-group')).length > 0, 'the Validation tab has no cards');
+                // Back to the scenario's pair, for the checks below.
+                await this.#explorer.startSelectingVersion('main', '1.15.1');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'schematrons-tab');
+                await this.#assertTabsShown({ 'validation-tab': false, 'schematrons-tab': true });
+            }],
             ['the Fields tab shows fields.json by default, under ND-Root, without the alert', async () => {
                 await this.#explorer.openTab('fields-tab');
                 await this.#assertFieldsJsonTree();
@@ -1003,22 +1444,25 @@ class SmokeTest {
                 assert.match(await this.#explorer.apiStatus(), /rules\.efx for SDK 1\.14\.1/);
             }],
             ['a probe for an older selection that answers late does not change the tab bar of a newer selection', async () => {
-                const olderProbe = await this.#explorer.holdRequests('**/1.14.0/validation/rules.efx');
-                await this.#explorer.startSelectingVersion('main', '1.14.0');
-                await olderProbe.requested;
-                await this.#explorer.startSelectingVersion('main', '2.0.0-alpha.2');
-                assert.ok(await this.#explorer.waitForTabShown('validation-tab', 60000), 'the newer selection did not show the Validation tab');
-                await olderProbe.release();
+                await this.#explorer.holdRequestsDuring('**/1.14.0/validation/rules.efx', async olderProbe => {
+                    await this.#explorer.startSelectingVersion('main', '1.14.0');
+                    await olderProbe.requested();
+                    await this.#explorer.startSelectingVersion('main', '2.0.0-alpha.2');
+                    assert.ok(await this.#explorer.waitForTabShown('validation-tab', 60000), 'the newer selection did not show the Validation tab');
+                    await olderProbe.release();
+                });
                 await this.#explorer.waitUntilIdle();
                 await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
             }],
             ['a version change made while the tabs are probed at start-up is applied', async () => {
-                const startupProbe = await this.#explorer.holdRequests('**/1.15.1/validation/rules.efx');
-                await this.#explorer.openWithoutWaiting('?version=1.15.1&base=1.14.2');
-                await startupProbe.requested;
-                await this.#explorer.startSelectingVersion('main', '2.0.0-alpha.4');
-                const validationShown = await this.#explorer.waitForTabShown('validation-tab', 30000);
-                await startupProbe.release();
+                const validationShown = await this.#explorer.holdRequestsDuring('**/1.15.1/validation/rules.efx', async startupProbe => {
+                    await this.#explorer.openWithoutWaiting('?version=1.15.1&base=1.14.2');
+                    await startupProbe.requested();
+                    await this.#explorer.startSelectingVersion('main', '2.0.0-alpha.4');
+                    const shown = await this.#explorer.waitForTabShown('validation-tab', 30000);
+                    await startupProbe.release();
+                    return shown;
+                });
                 await this.#explorer.waitUntilIdle();
                 assert.equal(await this.#explorer.mainVersion(), '2.0.0-alpha.4');
                 assert.deepEqual(await this.#explorer.appState(), { mainVersion: '2.0.0-alpha.4', baseVersion: '1.14.2' });
@@ -1033,16 +1477,45 @@ class SmokeTest {
                     await this.#explorer.nextTourStep();
                     shown.push(await this.#explorer.popoverTitles());
                 }
-                assert.deepEqual(shown, [['Select versions to compare'], ['Switch between sections'], ['Loading indicator'], ['Identify changes'], []]);
+                assert.deepEqual(shown, [['Choose the versions to compare'], ['Switch between sections'], ['Loading indicator'], ['Identify changes'], []]);
                 await this.#explorer.startTour();
                 await this.#explorer.nextTourStep();
                 await this.#explorer.cancelTour();
                 assert.deepEqual(await this.#explorer.popoverTitles(), []);
                 await this.#explorer.startTour();
-                assert.deepEqual(await this.#explorer.popoverTitles(), ['Select versions to compare']);
+                assert.deepEqual(await this.#explorer.popoverTitles(), ['Choose the versions to compare']);
                 await this.#explorer.cancelTour();
             }],
+            ['in a 768x768 window, the quick tour brings each step into view: every popover, its Next or Done included, is inside the window and below the bar', async () => {
+                await this.#assertTourStepsInView({ width: 768, height: 768 });
+            }],
+            ['in a 1440x768 window, the quick tour brings each step into view: every popover, its Next or Done included, is inside the window and below the bar', async () => {
+                await this.#assertTourStepsInView({ width: 1440, height: 768 });
+            }],
         ]);
+    }
+
+    /**
+     * Runs the quick tour in a window of the given size and asserts, before each Next, that the shown step's popover
+     * is in view (see {@link ExplorerPage#isPopoverInWindow}). The window's size is restored after.
+     *
+     * @param {{width: number, height: number}} windowSize
+     */
+    async #assertTourStepsInView(windowSize) {
+        const size = this.#explorer.windowSize();
+        await this.#explorer.resizeWindow(windowSize);
+        try {
+            await this.#explorer.startTour();
+            const steps = [];
+            for (let step = 0; step < 4; step++) {
+                steps.push([(await this.#explorer.popoverTitles())[0], await this.#explorer.isPopoverInWindow()]);
+                await this.#explorer.nextTourStep();
+            }
+            assert.deepEqual(steps, [['Choose the versions to compare', true], ['Switch between sections', true], ['Loading indicator', true], ['Identify changes', true]]);
+            assert.deepEqual(await this.#explorer.popoverTitles(), []);
+        } finally {
+            await this.#explorer.resizeWindow(size);
+        }
     }
 
     /** Two versions with the same EFX rules. */
@@ -1053,12 +1526,13 @@ class SmokeTest {
                 await this.#assertFieldsJsonTree();
             }],
             ['a slow response for a superseded pair does not replace the tree of the newer pair', async () => {
-                const slowResponse = await this.#explorer.holdRequests('**/1.3.2/fields/fields.json');
-                await this.#explorer.startSelectingVersion('base', '1.3.2');
-                await slowResponse.requested;
-                await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.4');
-                assert.ok((await this.#explorer.treeNodes('fields-explorer')).length > 0, 'no tree for the newer pair');
-                await slowResponse.release();
+                await this.#explorer.holdRequestsDuring('**/1.3.2/fields/fields.json', async slowResponse => {
+                    await this.#explorer.startSelectingVersion('base', '1.3.2');
+                    await slowResponse.requested();
+                    await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.4');
+                    assert.ok((await this.#explorer.treeNodes('fields-explorer')).length > 0, 'no tree for the newer pair');
+                    await slowResponse.release();
+                });
                 await this.#explorer.waitUntilIdle();
                 const nodes = await this.#explorer.treeNodes('fields-explorer');
                 assert.deepEqual(nodes.filter(node => node.status !== 'unchanged').map(node => node.id).slice(0, 5), [],
@@ -1069,14 +1543,16 @@ class SmokeTest {
             ['a response that completed just before a version change does not render: the tree never shows the older pair, and a failed newer load leaves the pane empty', async () => {
                 // The newer base (1.3.2) was probed earlier in this scenario, so its load starts at once, before the
                 // older responses are handed over.
-                const newerIndex = await this.#explorer.holdRequests('**/1.3.2/fields/fields.json');
-                await this.#explorer.selectVersionWhenRequestsComplete(['/2.0.0-alpha.4/fields/fields.json', '/2.0.0-alpha.1/fields/fields.json'], 'base', '1.3.2');
-                await this.#explorer.startCountingTreeNodes('fields-explorer');
-                await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.1');
-                await newerIndex.requested;
-                await this.#explorer.waitFor(1500);
-                const treeNodesWhileHeld = await this.#explorer.countedTreeNodes();
-                await newerIndex.release(500);
+                const treeNodesWhileHeld = await this.#explorer.holdRequestsDuring('**/1.3.2/fields/fields.json', async newerIndex => {
+                    await this.#explorer.selectVersionWhenRequestsComplete(['/2.0.0-alpha.4/fields/fields.json', '/2.0.0-alpha.1/fields/fields.json'], 'base', '1.3.2');
+                    await this.#explorer.startCountingTreeNodes('fields-explorer');
+                    await this.#explorer.startSelectingVersion('base', '2.0.0-alpha.1');
+                    await newerIndex.requested();
+                    await this.#explorer.waitFor(1500);
+                    const nodes = await this.#explorer.countedTreeNodes();
+                    await newerIndex.release(500);
+                    return nodes;
+                });
                 await this.#explorer.waitUntilIdle();
                 assert.equal(await this.#explorer.baseVersion(), '1.3.2');
                 assert.equal(treeNodesWhileHeld, 0, 'the tree of the older pair was shown');
@@ -1127,7 +1603,7 @@ class SmokeTest {
                     message: 'Error while downloading file fwd/data-types.json for SDK 2.0.0-alpha.3',
                     detail: body,
                     elements: [],
-                    detailStyle: { color: 'rgb(255, 0, 0)', display: 'block' }
+                    detailStyle: { color: 'rgb(102, 102, 102)', display: 'block' }  // --gs-base-color-gray-75, on a line of its own
                 });
                 assert.equal(await this.#explorer.globalIsSet('smokeTestInjected'), false);
             }],
@@ -1229,13 +1705,15 @@ class SmokeTest {
             }],
             ['the cards of a load superseded by a version change are not added to the newer comparison', async () => {
                 // The newer pair's index is held, so that the pane must stay empty until it arrives.
-                const newerIndex = await this.#explorer.holdRequests('**/1.4.0/codelists/codelists.json');
-                await this.#explorer.openTab('home-tab');
-                await this.#explorer.selectVersionWhenFirstCardAppears('code-lists-overview-card-group', 'base', '1.4.0');
-                await this.#explorer.startOpeningTab('codelists-tab');
-                await newerIndex.requested;
-                const whileHeld = await this.#explorer.cardStates('code-lists-overview-card-group');
-                await newerIndex.release();
+                const whileHeld = await this.#explorer.holdRequestsDuring('**/1.4.0/codelists/codelists.json', async newerIndex => {
+                    await this.#explorer.openTab('home-tab');
+                    await this.#explorer.selectVersionWhenFirstCardAppears('code-lists-overview-card-group', 'base', '1.4.0');
+                    await this.#explorer.startOpeningTab('codelists-tab');
+                    await newerIndex.requested();
+                    const cards = await this.#explorer.cardStates('code-lists-overview-card-group');
+                    await newerIndex.release();
+                    return cards;
+                });
                 await this.#explorer.waitUntilIdle();
                 assert.deepEqual(whileHeld.map(card => card.title).slice(0, 5), [], `${whileHeld.length} cards of the superseded load were added`);
                 assert.equal(await this.#explorer.baseVersion(), '1.4.0');
@@ -1250,8 +1728,319 @@ class SmokeTest {
      * A pair whose codelists take a while to check in the background: the filters must apply to the cards whose
      * status is still pending (upstream issues #56 and #57).
      */
+    /** The version chips, Home's comparison buttons and the version dialog. */
+    async #checkVersionPicker() {
+        await this.#scenario('?version=1.15.1&base=1.14.2', [
+            ['until start-up has filled the versions, Home\'s buttons are disabled; then the dialog\'s Compare without a change changes nothing and shows the Fields tab', async () => {
+                await this.#explorer.forgetCachedVersions();
+                await this.#explorer.holdRequestsDuring('https://data.jsdelivr.com/**', async versions => {
+                    await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                    await versions.requested();
+                    assert.deepEqual([await this.#explorer.isEnabled('#compare-versions'), await this.#explorer.isEnabled('#choose-versions')], [false, false]);
+                    await versions.release();
+                });
+                await this.#explorer.waitForVersions();
+                await this.#explorer.waitUntilIdle();
+                assert.deepEqual([await this.#explorer.isEnabled('#compare-versions'), await this.#explorer.isEnabled('#choose-versions')], [true, true]);
+                await this.#explorer.startCountingVersionChanges();
+                await this.#explorer.compareInDialogUnchanged();
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.countedVersionChanges(), 0);
+                assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.15.1', baseVersion: '1.14.2' });
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+            }],
+            ['on Home the comparison line is hidden, and "Compare 1.14.2 › 1.15.1" shows the Fields tab of the pair', async () => {
+                await this.#explorer.openTab('home-tab');
+                assert.equal(await this.#explorer.isShown('.ted-comparison-line'), false);
+                assert.equal(await this.#explorer.compareFromHome(), 'Compare 1.14.2 \u203A 1.15.1');
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.isShown('.ted-comparison-line'), true);
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+            }],
+            ['the target version menu has a Branches section, the base version menu has none', async () => {
+                assert.deepEqual(await this.#explorer.versionMenuSections('target'), ['Branches', 'Pre-releases', 'Releases']);
+                assert.deepEqual(await this.#explorer.versionMenuSections('base'), ['Pre-releases', 'Releases']);
+            }],
+            ['choosing a version in a chip\'s menu reloads the comparison with the new pair', async () => {
+                await this.#explorer.startCountingVersionChanges();
+                await this.#explorer.startSelectingVersion('base', '1.14.1');
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.countedVersionChanges(), 1);
+                assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.15.1', baseVersion: '1.14.1' });
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+            }],
+            ['after scrolling far down a tab, switching to Home shows its comparison buttons', async () => {
+                await this.#explorer.scrollToBottom();
+                await this.#explorer.openTab('home-tab');
+                assert.equal(await this.#explorer.isInWindow('#compare-versions'), true);
+            }],
+            ['the dialog\'s Compare with both versions changed applies them with one reload and shows the Fields tab of the new pair, loaded once although the tabs were still being probed', async () => {
+                await this.#explorer.openTab('home-tab');
+                await this.#explorer.startCountingVersionChanges();
+                // 1.13.0's probe is held (this page has not probed 1.13.0 yet: the explorer keeps each version's
+                // answer, as it has 1.14.2's) until Fields has been activated, on its shown.bs.tab, which comes after
+                // the dialog has closed and the pane has faded in: so Fields is always activated while the tabs are
+                // still probed.
+                const firstRequest = this.#explorer.requestedUrls.length;
+                await this.#explorer.holdRequestsDuring('**/1.13.0/validation/rules.efx', async probe => {
+                    await this.#explorer.startWaitingForTabShown('fields-tab');
+                    await this.#explorer.startComparingInDialog('1.14.2', '1.13.0');
+                    await probe.requested();
+                    await this.#explorer.tabShown();
+                    await probe.release();
+                });
+                await this.#explorer.waitUntilIdle();
+                const fieldsJsonVersions = this.#explorer.requestedUrls.slice(firstRequest).filter(url => url.endsWith('/fields/fields.json')).map(url => url.split('/').at(-3));
+                assert.deepEqual(fieldsJsonVersions.sort(), ['1.13.0', '1.14.2']);
+                assert.equal(await this.#explorer.countedVersionChanges(), 1);
+                assert.deepEqual(await this.#explorer.appState(), { mainVersion: '1.14.2', baseVersion: '1.13.0' });
+                assert.equal(await this.#explorer.mainVersion(), '1.14.2');
+                assert.equal(await this.#explorer.baseVersion(), '1.13.0');
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+            }],
+            ['Enter on Home\'s "Compare 1.13.0 \u203A 1.14.2" leaves the focus on the Fields tab\'s button (Home, with the button, is hidden)', async () => {
+                await this.#explorer.openTab('home-tab');
+                await this.#explorer.compareFromHomeWithEnter();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.focusedElement(), 'fields-tab');
+            }],
+            ['Enter on the dialog\'s Compare leaves the focus on the Fields tab\'s button', async () => {
+                await this.#explorer.openTab('home-tab');
+                await this.#explorer.compareInDialogWithEnter();
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.focusedElement(), 'fields-tab');
+            }],
+            ['a tab opened while start-up is still loading the versions is rendered once they are known, and its options work (fwd/: the alert, no error)', async () => {
+                // A cold load: the tab is opened before the application listens to the tab bar.
+                await this.#explorer.forgetCachedVersions();
+                await this.#explorer.holdRequestsDuring('https://data.jsdelivr.com/**', async versions => {
+                    await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                    await versions.requested();
+                    await this.#explorer.startOpeningTab('fields-tab');
+                    await versions.release();
+                });
+                await this.#explorer.waitForVersions();
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+                await this.#explorer.selectFieldsSource('fwd');
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.15.1 and 1.14.2 have no forward-compatible metadata (fields/fwd/).');
+                assert.equal(await this.#explorer.reportedErrors(), '');
+            }],
+            ['source changes in a tab opened while start-up is still loading the versions wait for them: no probe before, the tree and no error after (fwd/, then fields.json)', async () => {
+                await this.#explorer.forgetCachedVersions();
+                const firstRequest = this.#explorer.requestedUrls.length;
+                const probesBeforeVersions = await this.#explorer.holdRequestsDuring('https://data.jsdelivr.com/**', async versions => {
+                    await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                    await versions.requested();
+                    await this.#explorer.startOpeningTab('fields-tab');
+                    await this.#explorer.startSelectingFieldsSource('fwd');
+                    await this.#explorer.startSelectingFieldsSource('fields-json');
+                    const probes = this.#explorer.requestedUrls.slice(firstRequest).filter(url => url.endsWith('/validation/rules.efx'));
+                    await versions.release();
+                    return probes;
+                });
+                assert.deepEqual(probesBeforeVersions, []);
+                await this.#explorer.waitForVersions();
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.deepEqual(await this.#explorer.selectedToggleButton('fields-source'), { checked: 'fields-json', active: ['fields-json'] });
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+                assert.equal(await this.#explorer.reportedErrors(), '');
+            }],
+        ]);
+    }
+
+    /**
+     * Start-up when the list of versions cannot be downloaded (jsDelivr answering 503, on a cold load): it stops,
+     * with the error shown until the user closes it, and nothing but Home to open.
+     */
+    async #checkVersionListFailure() {
+        await this.#scenario('?version=1.15.1&base=1.14.2', [
+            ['when the version list cannot be downloaded, start-up stops: the error and "Reload the page to try again." stay shown, Home is shown (also over a tab opened meanwhile) and is the only tab to open, and nothing is requested from the SDK', async () => {
+                await this.#explorer.forgetCachedVersions();
+                const firstRequest = this.#explorer.requestedUrls.length;
+                try {
+                    await this.#explorer.holdRequestsDuring('https://data.jsdelivr.com/**', async versions => {
+                        await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                        await versions.requested();
+                        // A tab opened while the versions are loading: it must not stay open, empty.
+                        await this.#explorer.startOpeningTab('fields-tab');
+                        await versions.release(503);
+                    });
+                    await this.#explorer.waitForVersions();
+                    // Past the 15 s at which other errors hide (a real wait: Playwright's clock would stay installed
+                    // for the scenarios that follow).
+                    await this.#explorer.waitFor(16000);
+                    assert.match(await this.#explorer.apiStatus(), /^Error fetching the list of SDK versions\. Reload the page to try again\./);
+                    const controls = ['#base-version-chip', '#target-version-chip', '#compare-versions', '#choose-versions'];
+                    assert.deepEqual(await Promise.all(controls.map(control => this.#explorer.isEnabled(control))), [false, false, false, false]);
+                    assert.deepEqual(await this.#explorer.enabledTabButtons(), ['home-tab']);
+                    assert.equal(await this.#explorer.activeTab(), 'home-tab');
+                    assert.equal(await this.#explorer.isKeyboardFocusable('#home-tab'), true);
+                    // The disabled tabs look disabled: gray-30 (#c2c2c2), which Home is not.
+                    assert.equal(await this.#explorer.textColor('#fields-tab'), 'rgb(194, 194, 194)');
+                    assert.notEqual(await this.#explorer.textColor('#home-tab'), 'rgb(194, 194, 194)');
+                    const sdkRequests = this.#explorer.requestedUrls.slice(firstRequest)
+                        .filter(url => url.includes('/eForms-SDK//') || url.endsWith('/rules.efx') || url.endsWith('/fields.json'));
+                    assert.deepEqual(sdkRequests, []);
+                } finally {
+                    // The version list back, for the checks that follow, failed or not (this also forgets the console
+                    // error that the explorer logs for the failure).
+                    await this.#explorer.open('?version=1.15.1&base=1.14.2');
+                }
+            }],
+            ['when the version list is empty, start-up stops with the versions error and "Reload the page to try again.", and that reload downloads the list again and starts with the pair asked for', async () => {
+                // 1.15.1 / 1.14.2 is not the default pair: after the reload, it shows that the address kept it.
+                await this.#explorer.forgetCachedVersions();
+                let firstReloadRequest;
+                try {
+                    await this.#explorer.answerJsonDuring('https://data.jsdelivr.com/**', { versions: [] }, async () => {
+                        await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                        await this.#explorer.waitForVersions();
+                    });
+                    const toast = await this.#explorer.apiStatus();
+                    assert.match(toast, /^Error fetching the list of SDK versions: the list of versions is empty\. Reload the page to try again\./);
+                    assert.doesNotMatch(toast, /Cannot read properties/);
+                    assert.match(this.#explorer.address(), /\?version=1\.15\.1&base=1\.14\.2$/);
+                    // The reload the toast asks for, with the list back: the browser's, of the address as it is.
+                    firstReloadRequest = this.#explorer.requestedUrls.length;
+                    await this.#explorer.reload();
+                } finally {
+                    // The page restored for the checks that follow, if the check failed before the reload.
+                    if (firstReloadRequest === undefined) {
+                        await this.#explorer.open('?version=1.15.1&base=1.14.2');
+                    }
+                }
+                assert.ok(this.#explorer.requestedUrls.slice(firstReloadRequest).some(url => url.startsWith('https://data.jsdelivr.com/')), 'the reload did not download the list of versions');
+                assert.deepEqual([await this.#explorer.mainVersion(), await this.#explorer.baseVersion()], ['1.15.1', '1.14.2']);
+                assert.deepEqual([await this.#explorer.isEnabled('#base-version-chip'), await this.#explorer.isEnabled('#target-version-chip')], [true, true]);
+            }],
+            ['when the version list holds no usable version, start-up stops after reading the pair asked for: the address keeps it, and the reload starts with it', async () => {
+                // A list that is not empty but holds no version fails once the pair has been read from the address
+                // (an empty one fails before): the address must still hold it for the reload.
+                await this.#explorer.forgetCachedVersions();
+                let firstReloadRequest;
+                try {
+                    await this.#explorer.answerJsonDuring('https://data.jsdelivr.com/**', { versions: ['not-a-version'] }, async () => {
+                        await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                        await this.#explorer.waitForVersions();
+                    });
+                    assert.match(await this.#explorer.apiStatus(), /Reload the page to try again\./);
+                    assert.match(this.#explorer.address(), /\?version=1\.15\.1&base=1\.14\.2$/);
+                    firstReloadRequest = this.#explorer.requestedUrls.length;
+                    await this.#explorer.reload();
+                } finally {
+                    // The page restored for the checks that follow, if the check failed before the reload.
+                    if (firstReloadRequest === undefined) {
+                        await this.#explorer.open('?version=1.15.1&base=1.14.2');
+                    }
+                }
+                assert.ok(this.#explorer.requestedUrls.slice(firstReloadRequest).some(url => url.startsWith('https://data.jsdelivr.com/')), 'the reload did not download the list of versions');
+                assert.deepEqual([await this.#explorer.mainVersion(), await this.#explorer.baseVersion()], ['1.15.1', '1.14.2']);
+            }],
+            ['an empty list of versions kept by an earlier build is not used: the list is downloaded, and the requested pair is selected without an error', async () => {
+                await this.#explorer.storeVersions([]);
+                const firstRequest = this.#explorer.requestedUrls.length;
+                // open() fails the check if the explorer reports an error.
+                await this.#explorer.open('?version=1.14.1&base=1.12.0');
+                assert.ok(this.#explorer.requestedUrls.slice(firstRequest).some(url => url.startsWith('https://data.jsdelivr.com/')), 'the list of versions was not downloaded');
+                assert.deepEqual([await this.#explorer.mainVersion(), await this.#explorer.baseVersion()], ['1.14.1', '1.12.0']);
+            }],
+        ]);
+    }
+
+    /**
+     * A version change whose tab probe fails (a 500 for the target's rules.efx, a version this page has not probed):
+     * no tab is rendered for a pair whose tabs are not known, and the next request to render one probes again.
+     */
+    async #checkFailedProbe() {
+        const requestsSince = (first, suffix) => this.#explorer.requestedUrls.slice(first).filter(url => url.endsWith(suffix));
+        const rulesOf = version => `/${version}/validation/rules.efx`;
+        await this.#scenario('?version=1.15.1&base=1.14.2', [
+            ['when the dialog\'s tab probe fails before the dialog has closed, Fields shows no tree, the toast names rules.efx, and the next tab probes again and renders', async () => {
+                await this.#explorer.openTab('home-tab');
+                const firstRequest = this.#explorer.requestedUrls.length;
+                await this.#explorer.failRequestsDuring(`**${rulesOf('2.0.0-alpha.4')}`, async () => {
+                    await this.#explorer.startComparingInDialog('2.0.0-alpha.4', '1.14.2');
+                    await this.#explorer.waitUntilIdle();
+                    assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                    // The probe failed before Fields was activated: activating it probed again (and failed again).
+                    assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.4')).length, 2);
+                    assert.equal(await this.#explorer.hasTree('fields-explorer'), false);
+                    // Shown, not only written into the toast: the activation cleared the toast just before the second
+                    // probe failed, and that clearing must not hide the new error.
+                    assert.match(await this.#explorer.apiStatus(), /rules\.efx for SDK 2\.0\.0-alpha\.4/);
+                    assert.deepEqual(requestsSince(firstRequest, '/fields/fields.json'), []);
+                });
+                await this.#explorer.openTab('notice-types-tab');
+                assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.4')).length, 3);
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+                assert.ok((await this.#explorer.indexCards('notice-types-overview-card-group')).length > 0, 'Notice types has no cards');
+                assert.equal(await this.#explorer.reportedErrors(), '');
+            }],
+            ['when the dialog\'s tab probe fails after Fields has been activated, Fields shows no tree, the toast names rules.efx, and the next tab probes again and renders', async () => {
+                await this.#explorer.openTab('home-tab');
+                const firstRequest = this.#explorer.requestedUrls.length;
+                await this.#explorer.holdRequestsDuring(`**${rulesOf('2.0.0-alpha.3')}`, async probe => {
+                    await this.#explorer.startWaitingForTabShown('fields-tab');
+                    await this.#explorer.startComparingInDialog('2.0.0-alpha.3', '1.14.2');
+                    await probe.requested();
+                    await this.#explorer.tabShown();
+                    await probe.release(500);
+                });
+                await this.#explorer.waitUntilIdle();
+                assert.equal(await this.#explorer.activeTab(), 'fields-tab');
+                assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.3')).length, 1);
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), false);
+                assert.match(await this.#explorer.apiStatus(), /rules\.efx for SDK 2\.0\.0-alpha\.3/);
+                assert.deepEqual(requestsSince(firstRequest, '/fields/fields.json'), []);
+                await this.#explorer.openTab('notice-types-tab');
+                assert.equal(requestsSince(firstRequest, rulesOf('2.0.0-alpha.3')).length, 2);
+                await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
+                assert.ok((await this.#explorer.indexCards('notice-types-overview-card-group')).length > 0, 'Notice types has no cards');
+                assert.equal(await this.#explorer.reportedErrors(), '');
+            }],
+            ['fwd/ chosen in Fields while the tab probe of a new base is held loads nothing until the probe ends, then fwd/ once for each version of the new pair', async () => {
+                await this.#explorer.openTab('fields-tab');
+                const firstRequest = await this.#explorer.holdRequestsDuring(`**${rulesOf('1.13.0')}`, async probe => {
+                    await this.#explorer.startSelectingVersion('base', '1.13.0');
+                    await probe.requested();
+                    const first = this.#explorer.requestedUrls.length;
+                    await this.#explorer.startSelectingFieldsSource('fwd');
+                    await this.#explorer.waitFor(1000);
+                    assert.deepEqual(requestsSince(first, '/fields/fwd/nodes.json'), []);
+                    await probe.release();
+                    return first;
+                });
+                await this.#explorer.waitUntilIdle();
+                const fwdVersions = requestsSince(firstRequest, '/fields/fwd/nodes.json').map(url => url.split('/').at(-4));
+                assert.deepEqual(fwdVersions.sort(), ['1.13.0', '2.0.0-alpha.3']);
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.13.0 has no forward-compatible metadata (fields/fwd/).');
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
+            }],
+            ['after several errors at once, the toast cleared, and a newer error 5 s later, the newer one stays shown for its own 15 s', async () => {
+                // Playwright's clock makes the 15 s pass at once; it stays installed: this check comes last in the run.
+                await this.#explorer.installClock();
+                await this.#explorer.reportErrors(['The first error', 'The second error', 'The third error']);
+                await this.#explorer.runClock(100);
+                await this.#explorer.clearErrors();
+                await this.#explorer.runClock(5000);
+                await this.#explorer.reportErrors(['The newer error']);
+                // Past the earlier errors' 15 s, before the newer one's.
+                await this.#explorer.runClock(10500);
+                assert.equal(await this.#explorer.apiStatus(), 'The newer error');
+                // Past the newer one's 15 s.
+                await this.#explorer.runClock(5000);
+                assert.equal(await this.#explorer.apiStatus(), '');
+            }],
+        ]);
+    }
+
     async #checkFiltersWhileLoading() {
-        await this.#scenario('?version=1.16.0-rc.5&base=1.15.1', [
+        await this.#scenario('?version=1.16.0&base=1.15.1', [
             ['the Codelists parent filter applies while the codelists are still being checked ("country": only its 5 codelists)', async () => {
                 await this.#explorer.startOpeningTab('codelists-tab');
                 await this.#explorer.waitForFilterValue('code-lists-overview-card-group', 'country');
@@ -1285,7 +2074,7 @@ class SmokeTest {
         await this.#scenario('?version=2.0.0-alpha.4&base=1.9.0', [
             ['the Codelists tab compares each version\'s own file (exclusion-ground: criterion_exclusion-ground.gc in 1.9.0), without errors', async () => {
                 await this.#explorer.openTab('codelists-tab');
-                assert.equal(await this.#explorer.apiStatus(), '');
+                assert.equal(await this.#explorer.reportedErrors(), '');
                 const cards = await this.#explorer.indexCards('code-lists-overview-card-group');
                 assert.deepEqual(cards.filter(card => !card.status).map(card => card.title), []);
                 const renamed = cards.find(card => card.title === 'exclusion-ground');
@@ -1301,7 +2090,7 @@ class SmokeTest {
             ['the Fields tab in fwd/ mode names the files 2.0.0-alpha.2 lacks, shows its business entities as added and compares its data types', async () => {
                 await this.#explorer.openTab('fields-tab');
                 await this.#explorer.selectFieldsSource('fwd');
-                assert.equal(await this.#explorer.apiStatus(), '');
+                assert.equal(await this.#explorer.reportedErrors(), '');
                 assert.equal(await this.#explorer.shownText('#fields-source-alert'),
                     'SDK 2.0.0-alpha.2 has no fields/fwd/business-entity-hierarchy.json, business-entity-properties.json.');
                 const nodes = await this.#explorer.treeNodes('fields-explorer');

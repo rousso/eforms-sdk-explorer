@@ -89,6 +89,7 @@ export class IndexCard extends BootstrapWebComponent {
     
         this.shadowRoot.querySelector('#title').textContent = this.title;
         this.shadowRoot.querySelector('#subtitle').textContent = this.subTitle;
+        this.shadowRoot.querySelector('#status-label').textContent = this.status ?? '';  // shown in capitals by the template
         this.shadowRoot.querySelector('#card-header').classList.add(this.status + '-card');
         if (this.status) {
             this.classList.add(this.status + '-card');

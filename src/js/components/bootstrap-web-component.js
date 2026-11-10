@@ -18,10 +18,12 @@ export class BootstrapWebComponent extends HTMLElement {
     }
 
     /**
-     * @returns {string[]} The URLs of the stylesheets to load into the shadow root.
+     * @returns {string[]} The URLs of the stylesheets to load into the shadow root: Bootstrap, then the TED icons and
+     *          theme. The TED tokens are not among them: their custom properties reach the shadow root by
+     *          inheritance, and their @font-face must be declared in the document.
      */
     requiredCss() {
-        return [appConfig.stylesheets.bootstrap];
+        return [appConfig.stylesheets.bootstrap, appConfig.stylesheets.tedIcons, appConfig.stylesheets.tedTheme];
     }
 
     render() {

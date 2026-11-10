@@ -11,6 +11,9 @@ This release adds support for eForms SDK 2: you can compare SDK 1.x versions wit
 - **Fewer requests to GitHub**: the SDK Explorer no longer uses the GitHub API when it starts, and lists a folder with a single request per version, which your browser then remembers. Users who share a network, such as an office, no longer run out of the 60 GitHub requests per hour allowed without signing in.
 - A file that does not have the expected content is now reported with an error message naming the file, instead of being shown as empty.
 - **Bootstrap upgraded to 5.3** (from 4.6, which is no longer supported). Its stylesheet is now served by the SDK Explorer itself, so that the many cards of the Codelists tab stay quick to display.
+- **Choosing versions**: the base and target versions are chosen with the version chips at the top of every tab, each with a menu of branches, pre-releases and releases. On the Home tab, **Compare** opens the comparison of the selected versions, and **Choose versions…** chooses both versions at once.
+- **A failed download of the list of SDK versions** is reported, with a hint to reload the page: the versions asked for are kept for that reload, and no empty comparison is shown.
+- **New look**: a refreshed visual design, with the page as the only scroll.
 
 
 # SDK Explorer 0.1.0 - Release Notes

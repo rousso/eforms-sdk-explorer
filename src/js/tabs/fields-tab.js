@@ -36,21 +36,9 @@ export class FieldsTab extends TabController {
     init() {
         super.init();
 
-        // Render the tab again when a different metadata source is selected (Bootstrap fires change on the radio input of the button).
-        this.$sourceSelector().on('change', 'input[type="radio"]', async (e) => {
-            this.cancelRequests();
-            this.clear();
-            SdkExplorerApplication.startSpinner();
-            try {
-                await this.fetchAndRender();
-            } catch (error) {
-                if (error.statusText !== 'abort') {
-                    this.showErrorMessage(error.message, error.detail);
-                }
-            } finally {
-                SdkExplorerApplication.stopSpinner();
-            }
-        });
+        // Render the tab again when a different metadata source is selected (Bootstrap fires change on the radio input of
+        // the button). The application renders it, once the tabs that apply to the selected versions are known.
+        this.$sourceSelector().on('change', 'input[type="radio"]', () => SdkExplorerApplication.instance.activeTabOptionsChanged());
     }
 
     /**

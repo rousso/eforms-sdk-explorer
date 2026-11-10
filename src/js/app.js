@@ -19,6 +19,7 @@ import { TranslationsTab } from "./tabs/translations-tab.js";
 import { ViewTemplatesTab } from "./tabs/view-templates-tab.js";
 import { ReleaseNotesTab } from "./tabs/release-notes-tab.js";
 import { TabController } from "./tabs/tab-controller.js";
+import { RELOAD_TO_RETRY } from "./error-messages.js";
 
 export class SdkExplorerApplication {
 
@@ -35,12 +36,37 @@ export class SdkExplorerApplication {
     #repository = new SdkRepository(this);
 
     /**
-     * Counts the selections of versions (the one at start-up and every version change), so that the work for a
-     * selection that a newer one has superseded is dropped after each wait instead of being applied late.
+     * Counts the selections of versions (the one at start-up, every version change, and every new attempt after a
+     * failed tab probe), so that the work for a selection that a newer one has superseded is dropped after each wait
+     * instead of being applied late.
      *
      * @type {number}
      */
     #selection = 0;
+
+    /**
+     * The selection (see {@link #selection}) whose tabs are being probed, or null when no probe is in flight. While
+     * a probe is in flight, the tab activated is not rendered: the probe's end renders the active tab.
+     *
+     * @type {number|null}
+     */
+    #probedSelection = null;
+
+    /**
+     * The last selection whose tab probe succeeded, so that the tabs shown are those that apply to it. A tab is
+     * rendered only for that selection (see {@link #renderActiveTab}).
+     *
+     * @type {number|null}
+     */
+    #knownSelection = null;
+
+    /**
+     * Whether the tabs have been started (see {@link initTabs}): until then, the versions may not be set yet, and the
+     * active tab is not known to the application.
+     *
+     * @type {boolean}
+     */
+    #tabsStarted = false;
 
     /** @type {number} */
     #spinnerCounter = 0;
@@ -48,8 +74,8 @@ export class SdkExplorerApplication {
     /** @type {boolean} Whether the messages in the error toast have expired (it hid itself), so that the next message replaces them. */
     #apiStatusExpired = false;
 
-    /** @type {number} The timeout that hides the error toast. */
-    fadeTimeOut = null;
+    /** @type {number|null} The timeout that hides the error toast, 15 s after its last message. */
+    #hideTimeout = null;
 
     /** @returns {string} */
     get newVersion() {
@@ -78,16 +104,20 @@ export class SdkExplorerApplication {
         this.#addTab(new ReleaseNotesTab());
     }
 
-    static async init() {
-        await SdkExplorerApplication.instance.populateDropdown();
+    /**
+     * Starts the version selection: fills the two version dropdowns and listens to their changes. Call
+     * {@link initTabs} after it, only if it succeeded.
+     *
+     * @returns {Promise<boolean>} Whether a pair of versions is selected. If not (their list could not be
+     *          downloaded), start-up stops: every tab but Home is disabled, and the error toast says why.
+     */
+    static async initVersions() {
+        if (!(await SdkExplorerApplication.instance.populateDropdown())) {
+            SdkExplorerApplication.instance.#disableTabsButHome();
+            return false;
+        }
 
         // Listen to the user from now on, before the tabs are probed, so that a change made meanwhile is not lost.
-        $('ul.nav-tabs').on('shown.bs.tab', 'li.nav-item > button.nav-link', function (event) {
-            const activeTabId = $(event.target).attr('id');
-            console.log('Active tab changed:', activeTabId);
-            SdkExplorerApplication.instance.activeTabChanged(activeTabId);
-        });
-
         SdkExplorerApplication.instance.$mainVersionDropdown().change(function () {
             appState.mainVersion = $(this).val();
             $('#fieldDetailsContent').html('Select an item to see details.');
@@ -98,6 +128,40 @@ export class SdkExplorerApplication {
             appState.baseVersion = $(this).val();
             $('#fieldDetailsContent').html('Select an item to see details.');
             SdkExplorerApplication.instance.versionChanged(appState.mainVersion, appState.baseVersion);
+        });
+        return true;
+    }
+
+    /**
+     * Shows the Home tab and disables the button of every other tab, when start-up stops without versions: no tab
+     * stays or can be opened empty, not even one the user opened while the versions were loading. (No tab listener is
+     * installed then, so showing Home renders nothing. The version chips and Home's buttons stay disabled, as the
+     * page starts them: the version picker never starts.)
+     */
+    #disableTabsButHome() {
+        $('#home-tab').tab('show');
+        this.tabs.forEach(tab => {
+            if (tab.getId() !== 'home-tab') {
+                this.#tabButton(tab).disabled = true;
+            }
+        });
+    }
+
+    /**
+     * Starts the tabs, after {@link initVersions}: listens to the tab changes, and shows the tabs that apply to the
+     * selected versions (which probes some of their files).
+     */
+    static async initTabs() {
+        // The tab whose button is active in the page is the active tab, also when the user opened it before this
+        // listener was installed (while the versions were loading): the start-up probe's end renders it.
+        const application = SdkExplorerApplication.instance;
+        application.#tabsStarted = true;
+        application.#activeTab = application.tabs.get($('ul.nav-tabs button.nav-link.active').attr('id')) ?? null;
+
+        $('ul.nav-tabs').on('shown.bs.tab', 'li.nav-item > button.nav-link', function (event) {
+            const activeTabId = $(event.target).attr('id');
+            console.log('Active tab changed:', activeTabId);
+            SdkExplorerApplication.instance.activeTabChanged(activeTabId);
         });
 
         await SdkExplorerApplication.instance.#initTabVisibility();
@@ -162,7 +226,52 @@ export class SdkExplorerApplication {
         try {
             await this.#activeTab?.deactivated();
             this.#activeTab = this.tabs.get(activeTabId);
-            await this.#activeTab.activated();
+            await this.#renderActiveTab();
+        } catch (error) {
+            SdkExplorerApplication.updateApiStatus(error.message, error.detail);
+        }
+        finally {
+            this.stopSpinner();
+        }
+    }
+
+    /**
+     * Renders the active tab for the selected versions, but only once the tabs that apply to them are known:
+     * - while their tabs are probed, nothing: the probe's end renders the active tab (see #updateForSelection()), and
+     *   rendering it here too would load it twice;
+     * - if their probe failed, the selection is updated again: the tabs are probed again (a failed probe is not
+     *   kept) and the active tab is rendered if that succeeds, or the error is shown again if it fails;
+     * - otherwise, the active tab is rendered.
+     */
+    async #renderActiveTab() {
+        if (this.#probedSelection !== null) {
+            return;
+        }
+        if (this.#knownSelection !== this.#selection) {
+            await this.#updateForSelection();
+            return;
+        }
+        await this.#activeTab.activated();
+    }
+
+    /**
+     * Called by the active tab when one of its own options changes (Fields' metadata source, Validation's source),
+     * to render it again with that option: only once the tabs that apply to the selected versions are known, as for a
+     * tab switch (see #renderActiveTab()). The option is held by the tab's control, so the render that follows, now
+     * or at the end of the tab probe in flight, uses it.
+     */
+    async activeTabOptionsChanged() {
+        // Before the tabs have started (the versions still loading), nothing: the start-up probe's end renders the
+        // active tab, and the tab's control still holds the option then.
+        if (!this.#tabsStarted) {
+            return;
+        }
+        this.startSpinner();
+        this.clearApiStatus();
+        try {
+            this.#activeTab?.cancelRequests();
+            this.#activeTab?.clear();
+            await this.#renderActiveTab();
         } catch (error) {
             SdkExplorerApplication.updateApiStatus(error.message, error.detail);
         }
@@ -204,14 +313,24 @@ export class SdkExplorerApplication {
      * Shows the tabs that apply to the selected versions and renders the active tab for them, unless a newer
      * selection is made while the tabs are probed: that newer selection then does all of it, and the results and
      * errors of this one are dropped.
+     * A tab activated while the tabs are probed is rendered here, once the probe has ended (see #renderActiveTab()).
+     * If the probe fails, it stays empty, with the error in the toast, as the active tab does, until the next
+     * request to render a tab tries again.
      */
     async #updateForSelection() {
         const selection = ++this.#selection;
+        this.#probedSelection = selection;
         try {
-            const applicable = await this.#probeApplicableTabs();
+            const applicable = await this.#probeApplicableTabs().finally(() => {
+                // A newer selection's probe may be in flight by now: it is that one's to end.
+                if (this.#probedSelection === selection) {
+                    this.#probedSelection = null;
+                }
+            });
             if (selection !== this.#selection) {
                 return;
             }
+            this.#knownSelection = selection;
             if (this.#showApplicableTabs(applicable)) {
                 await this.#activeTab?.versionChanged();
             }
@@ -234,11 +353,11 @@ export class SdkExplorerApplication {
     }
 
     /**
-     * Shows the nav buttons of the tabs that apply and hides the others. If the active tab is hidden, the Home tab
-     * is activated instead.
+     * Shows the nav buttons of the tabs that apply and hides the others. If the active tab is hidden, the tab that
+     * replaces it (see {@link TabController#replacementTabId}) is activated instead, if it applies, or else Home.
      *
      * @param {Map<TabController, boolean>} applicable Whether each tab applies to the selected versions.
-     * @returns {boolean} true if the active tab is still shown, false if the Home tab is being activated instead.
+     * @returns {boolean} true if the active tab is still shown, false if another tab is being activated instead.
      */
     #showApplicableTabs(applicable) {
         applicable.forEach((isApplicable, tab) => {
@@ -249,8 +368,10 @@ export class SdkExplorerApplication {
 
         const activeTabIsShown = !this.#activeTab || applicable.get(this.#activeTab);
         if (!activeTabIsShown) {
-            // Showing the Home tab activates it (see activeTabChanged).
-            $('#home-tab').tab('show');
+            // Showing a tab activates it (see activeTabChanged).
+            const replacement = this.tabs.get(this.#activeTab.replacementTabId());
+            const tabToShow = replacement && applicable.get(replacement) ? replacement : this.tabs.get('home-tab');
+            $(this.#tabButton(tabToShow)).tab('show');
         }
         return activeTabIsShown;
     }
@@ -284,7 +405,7 @@ export class SdkExplorerApplication {
     clearApiStatus() {
         // Forget the messages shown so far, and stop the timeout that would hide the toast later
         SdkExplorerApplication.instance.#apiStatusExpired = false;
-        clearTimeout(SdkExplorerApplication.instance.fadeTimeOut);
+        clearTimeout(SdkExplorerApplication.instance.#hideTimeout);
 
         // Clear the message inside the toast body
         SdkExplorerApplication.instance.#toastBody().textContent = '';
@@ -299,8 +420,10 @@ export class SdkExplorerApplication {
      *
      * @param {string} message
      * @param {string} [detail] For example why a request failed (see CustomError.detail).
+     * @param {boolean} [staysShown] Whether the toast stays shown until the user closes it, instead of hiding itself
+     *          15 s later: for an error that leaves nothing else to do (start-up without versions).
      */
-    static updateApiStatus(message, detail = '') {
+    static updateApiStatus(message, detail = '', staysShown = false) {
         const application = SdkExplorerApplication.instance;
         if (application.#apiStatusExpired) {
             application.#toastBody().textContent = '';
@@ -317,16 +440,15 @@ export class SdkExplorerApplication {
         }
         application.#toastBody().append(item);
 
-        clearTimeout(SdkExplorerApplication.instance.fadeTimeOut);
-
-        setTimeout(() => {
-            // Display the toast
-            SdkExplorerApplication.instance.$apiStatus().toast('show');
-            SdkExplorerApplication.instance.fadeTimeOut = setTimeout(() => {
-                SdkExplorerApplication.instance.$apiStatus().toast('hide');
-                SdkExplorerApplication.instance.#apiStatusExpired = true;
-            }, 15000);
-        }, 0);
+        // Show the toast and hide it 15 s after this message (unless it stays shown), replacing the timeout of the
+        // previous one: at once, so that there is only ever one timeout, which clearApiStatus() stops, and a clearing
+        // just after a message cannot be followed by an empty toast shown late. (The toast has no fade to wait for.)
+        application.$apiStatus().toast('show');
+        clearTimeout(application.#hideTimeout);
+        application.#hideTimeout = staysShown ? null : setTimeout(() => {
+            application.$apiStatus().toast('hide');
+            application.#apiStatusExpired = true;
+        }, 15000);
     }
 
     /**
@@ -355,15 +477,10 @@ export class SdkExplorerApplication {
      * @returns 
      */
     #getVersionsFromQueryString() {
-        // Parse the query string
+        // Parse the query string (populateDropdown() removes it once a pair is selected)
         let params = new URLSearchParams(window.location.search);
         let versionParam = params.get('version');
         let baseParam = params.get('base');
-
-        if (window.location.search) {
-            // Remove the query string from the URL
-            history.replaceState(null, null, window.location.pathname);
-        }
 
         return [versionParam, baseParam];
     }
@@ -380,6 +497,13 @@ export class SdkExplorerApplication {
         return $.ajax(options);
     }
 
+    /**
+     * Fills the two version dropdowns with the versions of the SDK, and selects the pair of the query string or the
+     * default one.
+     *
+     * @returns {Promise<boolean>} Whether a pair is selected: false if the versions could not be listed (the error
+     *          is then shown).
+     */
     async populateDropdown() {
         this.startSpinner();
         this.clearApiStatus();
@@ -454,9 +578,20 @@ export class SdkExplorerApplication {
             this.$baseVersionDropdown().val(baseVersion);
             appState.mainVersion = mainVersion;
             appState.baseVersion = baseVersion;
+
+            // The pair is selected: the address loses its query string now, not when it is read, so that a start-up
+            // that fails before this point keeps it for the reload that the error asks for.
+            if (window.location.search) {
+                history.replaceState(null, null, window.location.pathname);
+            }
+            return true;
         } catch (error) {
-            SdkExplorerApplication.updateApiStatus(error.message, error.detail);
+            // Start-up stops here, so the error stays shown, with what to do about it: a reload, which must then
+            // download the list again, whatever made the selection fail.
+            this.#repository.forgetVersions();
+            SdkExplorerApplication.updateApiStatus(`${error.message}. ${RELOAD_TO_RETRY}`, error.detail, true);
             console.error('Error populating dropdowns:', error);
+            return false;
         } finally {
             this.stopSpinner();
         }

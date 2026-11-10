@@ -47,6 +47,16 @@ export class SchematronsTab extends TabController {
     }
 
     /**
+     * Overridden: the Validation tab, shown when this tab is hidden, replaces it, since it offers the schematrons as
+     * one of its sources.
+     *
+     * @returns {string}
+     */
+    replacementTabId() {
+        return 'validation-tab';
+    }
+
+    /**
      * Overridden to remove the cards and the diff.
      */
     clear() {
