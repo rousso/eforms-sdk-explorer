@@ -217,6 +217,27 @@ export class SdkExplorerApplication {
         await this.#activeTab.activated();
     }
 
+    /**
+     * Called by the active tab when one of its own options changes (Fields' metadata source, Validation's source),
+     * to render it again with that option: only once the tabs that apply to the selected versions are known, as for a
+     * tab switch (see #renderActiveTab()). The option is held by the tab's control, so the render that follows, now
+     * or at the end of the tab probe in flight, uses it.
+     */
+    async activeTabOptionsChanged() {
+        this.startSpinner();
+        this.clearApiStatus();
+        try {
+            this.#activeTab?.cancelRequests();
+            this.#activeTab?.clear();
+            await this.#renderActiveTab();
+        } catch (error) {
+            SdkExplorerApplication.updateApiStatus(error.message, error.detail);
+        }
+        finally {
+            this.stopSpinner();
+        }
+    }
+
     async versionChanged() {
         this.startSpinner();
         this.clearApiStatus();

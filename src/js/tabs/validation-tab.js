@@ -60,18 +60,9 @@ export class ValidationTab extends TabController {
             this.#switchToOverview();
         });
 
-        // Render the overview again when a different source is selected (Bootstrap fires change on the radio input of the button).
-        this.$sourceSelector().on('change', 'input[type="radio"]', async (e) => {
-            this.cancelRequests();
-            this.clear();
-            try {
-                await this.fetchAndRender();
-            } catch (error) {
-                if (error.statusText !== 'abort') {
-                    this.showErrorMessage(error.message, error.detail);
-                }
-            }
-        });
+        // Render the overview again when a different source is selected (Bootstrap fires change on the radio input of
+        // the button). The application renders it, once the tabs that apply to the selected versions are known.
+        this.$sourceSelector().on('change', 'input[type="radio"]', () => SdkExplorerApplication.instance.activeTabOptionsChanged());
     }
 
     async fetchAndRender() {

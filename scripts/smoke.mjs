@@ -711,6 +711,16 @@ class ExplorerPage {
     }
 
     /**
+     * Selects a source in the metadata source selector of the Fields tab, as a user would, without waiting for the
+     * explorer to be idle (it is not, while a tab probe is held).
+     *
+     * @param {string} source The value of the option, for example `fwd`.
+     */
+    async startSelectingFieldsSource(source) {
+        await this.#page.click(`#fields-source input[value="${source}"] + label`);
+    }
+
+    /**
      * @param {string} groupId The id of a toggle button group of radio inputs.
      * @returns {Promise<{checked: string, active: string[]}>} The value of the checked radio input, and the values of
      *          the radio inputs whose button shows the selected state: the checked ones (Bootstrap's `.btn-check:checked`
@@ -1649,6 +1659,22 @@ class SmokeTest {
                 await this.#assertTabsShown({ 'validation-tab': true, 'schematrons-tab': false });
                 assert.ok((await this.#explorer.indexCards('notice-types-overview-card-group')).length > 0, 'Notice types has no cards');
                 assert.equal(await this.#explorer.apiStatus(), '');
+            }],
+            ['fwd/ chosen in Fields while the tab probe of a new base is held loads nothing until the probe ends, then fwd/ once for each version of the new pair', async () => {
+                await this.#explorer.openTab('fields-tab');
+                const probe = await this.#explorer.holdRequests(`**${rulesOf('1.13.0')}`);
+                await this.#explorer.startSelectingVersion('base', '1.13.0');
+                await probe.requested;
+                const firstRequest = this.#explorer.requestedUrls.length;
+                await this.#explorer.startSelectingFieldsSource('fwd');
+                await this.#explorer.waitFor(1000);
+                assert.deepEqual(requestsSince(firstRequest, '/fields/fwd/nodes.json'), []);
+                await probe.release();
+                await this.#explorer.waitUntilIdle();
+                const fwdVersions = requestsSince(firstRequest, '/fields/fwd/nodes.json').map(url => url.split('/').at(-4));
+                assert.deepEqual(fwdVersions.sort(), ['1.13.0', '2.0.0-alpha.3']);
+                assert.equal(await this.#explorer.shownText('#fields-source-alert'), 'SDK 1.13.0 has no forward-compatible metadata (fields/fwd/).');
+                assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
             }],
         ]);
     }
