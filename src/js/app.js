@@ -19,6 +19,7 @@ import { TranslationsTab } from "./tabs/translations-tab.js";
 import { ViewTemplatesTab } from "./tabs/view-templates-tab.js";
 import { ReleaseNotesTab } from "./tabs/release-notes-tab.js";
 import { TabController } from "./tabs/tab-controller.js";
+import { RELOAD_TO_RETRY } from "./error-messages.js";
 
 export class SdkExplorerApplication {
 
@@ -416,8 +417,10 @@ export class SdkExplorerApplication {
      *
      * @param {string} message
      * @param {string} [detail] For example why a request failed (see CustomError.detail).
+     * @param {boolean} [staysShown] Whether the toast stays shown until the user closes it, instead of hiding itself
+     *          15 s later: for an error that leaves nothing else to do (start-up without versions).
      */
-    static updateApiStatus(message, detail = '') {
+    static updateApiStatus(message, detail = '', staysShown = false) {
         const application = SdkExplorerApplication.instance;
         if (application.#apiStatusExpired) {
             application.#toastBody().textContent = '';
@@ -434,12 +437,12 @@ export class SdkExplorerApplication {
         }
         application.#toastBody().append(item);
 
-        // Show the toast and hide it 15 s after this message, replacing the timeout of the previous one: at once,
-        // so that there is only ever one timeout, which clearApiStatus() stops, and a clearing just after a message
-        // cannot be followed by an empty toast shown late. (The toast has no fade to wait for.)
+        // Show the toast and hide it 15 s after this message (unless it stays shown), replacing the timeout of the
+        // previous one: at once, so that there is only ever one timeout, which clearApiStatus() stops, and a clearing
+        // just after a message cannot be followed by an empty toast shown late. (The toast has no fade to wait for.)
         application.$apiStatus().toast('show');
         clearTimeout(application.#hideTimeout);
-        application.#hideTimeout = setTimeout(() => {
+        application.#hideTimeout = staysShown ? null : setTimeout(() => {
             application.$apiStatus().toast('hide');
             application.#apiStatusExpired = true;
         }, 15000);
@@ -579,7 +582,8 @@ export class SdkExplorerApplication {
             appState.baseVersion = baseVersion;
             return true;
         } catch (error) {
-            SdkExplorerApplication.updateApiStatus(error.message, error.detail);
+            // Start-up stops here, so the error stays shown, with what to do about it.
+            SdkExplorerApplication.updateApiStatus(`${error.message}. ${RELOAD_TO_RETRY}`, error.detail, true);
             console.error('Error populating dropdowns:', error);
             return false;
         } finally {
