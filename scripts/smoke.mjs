@@ -1114,6 +1114,13 @@ class ExplorerPage {
     }
 
     /**
+     * @returns {Promise<string[]>} The ids of the tab buttons that are enabled, in the tab bar's order.
+     */
+    async enabledTabButtons() {
+        return this.#page.$$eval('ul.nav-tabs button.nav-link', buttons => buttons.filter(button => !button.disabled).map(button => button.id));
+    }
+
+    /**
      * Reports errors to the explorer's toast, all in the same task, as several failed loads can.
      *
      * @param {string[]} messages
@@ -1237,6 +1244,7 @@ class SmokeTest {
         await this.#checkCodelistsAcrossRenames();
         await this.#checkFiltersWhileLoading();
         await this.#checkVersionPicker();
+        await this.#checkVersionListFailure();
         // Last: its last check installs Playwright's clock in the page, for the rest of the run.
         await this.#checkFailedProbe();
         console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
@@ -1768,6 +1776,41 @@ class SmokeTest {
                 assert.deepEqual(await this.#explorer.selectedToggleButton('fields-source'), { checked: 'fields-json', active: ['fields-json'] });
                 assert.equal(await this.#explorer.hasTree('fields-explorer'), true);
                 assert.equal(await this.#explorer.reportedErrors(), '');
+            }],
+        ]);
+    }
+
+    /**
+     * Start-up when the list of versions cannot be downloaded (jsDelivr answering 503, on a cold load): it stops,
+     * with the error shown until the user closes it, and nothing but Home to open.
+     */
+    async #checkVersionListFailure() {
+        await this.#scenario('?version=1.15.1&base=1.14.2', [
+            ['when the version list cannot be downloaded, start-up stops: the error and "Reload the page to try again." stay shown, only Home can be opened, and nothing is requested from the SDK', async () => {
+                await this.#explorer.forgetCachedVersions();
+                const firstRequest = this.#explorer.requestedUrls.length;
+                try {
+                    await this.#explorer.holdRequestsDuring('https://data.jsdelivr.com/**', async versions => {
+                        await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                        await versions.requested();
+                        await versions.release(503);
+                    });
+                    await this.#explorer.waitForVersions();
+                    // Past the 15 s at which other errors hide (a real wait: Playwright's clock would stay installed
+                    // for the scenarios that follow).
+                    await this.#explorer.waitFor(16000);
+                    assert.match(await this.#explorer.apiStatus(), /^Error fetching the list of SDK versions\. Reload the page to try again\./);
+                    const controls = ['#base-version-chip', '#target-version-chip', '#compare-versions', '#choose-versions'];
+                    assert.deepEqual(await Promise.all(controls.map(control => this.#explorer.isEnabled(control))), [false, false, false, false]);
+                    assert.deepEqual(await this.#explorer.enabledTabButtons(), ['home-tab']);
+                    const sdkRequests = this.#explorer.requestedUrls.slice(firstRequest)
+                        .filter(url => url.includes('/eForms-SDK//') || url.endsWith('/rules.efx') || url.endsWith('/fields.json'));
+                    assert.deepEqual(sdkRequests, []);
+                } finally {
+                    // The version list back, for the checks that follow, failed or not (this also forgets the console
+                    // error that the explorer logs for the failure).
+                    await this.#explorer.open('?version=1.15.1&base=1.14.2');
+                }
             }],
         ]);
     }
