@@ -585,7 +585,9 @@ export class SdkExplorerApplication {
             appState.baseVersion = baseVersion;
             return true;
         } catch (error) {
-            // Start-up stops here, so the error stays shown, with what to do about it.
+            // Start-up stops here, so the error stays shown, with what to do about it: a reload, which must then
+            // download the list again, whatever made the selection fail.
+            this.#repository.forgetVersions();
             SdkExplorerApplication.updateApiStatus(`${error.message}. ${RELOAD_TO_RETRY}`, error.detail, true);
             console.error('Error populating dropdowns:', error);
             return false;

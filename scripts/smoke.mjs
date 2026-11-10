@@ -844,6 +844,24 @@ class ExplorerPage {
     }
 
     /**
+     * Runs an action while the requests matching a URL pattern are answered with the given JSON, without reaching
+     * the network, to see how the explorer handles a response that a service could give.
+     *
+     * @param {string} urlPattern A Playwright URL glob, as for page.route().
+     * @param {Object} json
+     * @param {() => Promise<void>} action
+     */
+    async answerJsonDuring(urlPattern, json, action) {
+        const answer = route => route.fulfill({ json });
+        await this.#page.route(urlPattern, answer);
+        try {
+            await action();
+        } finally {
+            await this.#page.unroute(urlPattern, answer);
+        }
+    }
+
+    /**
      * Runs an action while the JSON responses to the requests matching a URL pattern are rewritten, to see how the
      * explorer shows content that the SDK could contain.
      *
@@ -1824,6 +1842,27 @@ class SmokeTest {
                     // error that the explorer logs for the failure).
                     await this.#explorer.open('?version=1.15.1&base=1.14.2');
                 }
+            }],
+            ['when the version list is empty, start-up stops with the versions error and "Reload the page to try again.", and that reload downloads the list again and starts', async () => {
+                await this.#explorer.forgetCachedVersions();
+                let firstReloadRequest;
+                try {
+                    await this.#explorer.answerJsonDuring('https://data.jsdelivr.com/**', { versions: [] }, async () => {
+                        await this.#explorer.startOpening('?version=1.15.1&base=1.14.2');
+                        await this.#explorer.waitForVersions();
+                    });
+                    const toast = await this.#explorer.apiStatus();
+                    assert.match(toast, /^Error fetching the list of SDK versions: the list of versions is empty\. Reload the page to try again\./);
+                    assert.doesNotMatch(toast, /Cannot read properties/);
+                } finally {
+                    // The reload the toast asks for, with the list back (and the page restored for the checks that
+                    // follow, failed or not).
+                    firstReloadRequest = this.#explorer.requestedUrls.length;
+                    await this.#explorer.open('?version=1.15.1&base=1.14.2');
+                }
+                assert.ok(this.#explorer.requestedUrls.slice(firstReloadRequest).some(url => url.startsWith('https://data.jsdelivr.com/')), 'the reload did not download the list of versions');
+                assert.equal(await this.#explorer.mainVersion(), '1.15.1');
+                assert.deepEqual([await this.#explorer.isEnabled('#base-version-chip'), await this.#explorer.isEnabled('#target-version-chip')], [true, true]);
             }],
         ]);
     }
