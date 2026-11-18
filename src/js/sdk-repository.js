@@ -23,9 +23,11 @@ import { ERROR_FETCHING_DIRECTORY_LISTING, ERROR_FETCHING_VERSIONS } from "./err
 /**
  * Knows how to reach the SDK repository without spending the GitHub API rate limit, which unauthenticated users
  * share per IP address (60 requests per hour):
- * the list of versions comes from the jsDelivr data API, a folder listing from one request to the GitHub git trees API,
- * and both are kept in the browser's local storage (indefinitely for a tag, whose files never change; for
- * appConfig.repositoryCacheMinutes for a branch and for the list of versions).
+ * the list of versions comes from the jsDelivr data API, the folder listings of a version from one request to the
+ * GitHub git trees API, and both are kept in the browser's local storage (indefinitely for a tag, whose files never
+ * change; for appConfig.repositoryCacheMinutes for a branch and for the list of versions).
+ * The file tree of a version is downloaded once for all the folders the explorer lists (see #LISTED_FOLDERS): only
+ * their listings are kept, not the whole tree, which is too large for the local storage.
  * When the local storage is unavailable or full, the repository works without it.
  */
 export class SdkRepository {
@@ -38,6 +40,9 @@ export class SdkRepository {
 
     /** The key under which the list of versions is kept in the browser. */
     static #VERSIONS_KEY = 'versions';
+
+    /** The folders whose listings are kept from the file tree of a version, whichever of them was asked for. */
+    static #LISTED_FOLDERS = Object.freeze(['schemas', 'schematrons', 'translations', 'validation']);
 
     /** @type {RequestOwner} */
     #owner;
@@ -97,16 +102,36 @@ export class SdkRepository {
      *
      * @param {string} folderPath The path of the folder from the root of the repository, for example `schematrons`.
      * @param {string} sdkVersion A tag or one of the configured branches.
-     * @returns {Promise<RepositoryFile[]>}
+     * @returns {Promise<RepositoryFile[]>} Empty if the version does not have the folder.
      */
     async listFolder(folderPath, sdkVersion) {
-        const storageKey = `tree/${sdkVersion}/${folderPath}`;
-        const maxAgeMinutes = appConfig.branches.includes(sdkVersion) ? appConfig.repositoryCacheMinutes : null;
-        const stored = SdkRepository.#retrieve(storageKey, maxAgeMinutes);
+        const maxAgeMinutes = SdkRepository.#maxAgeMinutes(sdkVersion);
+        const stored = SdkRepository.#retrieve(SdkRepository.#folderKey(folderPath, sdkVersion), maxAgeMinutes);
         if (stored !== null) {
             return stored;
         }
 
+        const tree = await this.#fetchTree(sdkVersion);
+        const folders = new Set([...SdkRepository.#LISTED_FOLDERS, folderPath]);
+        let files = [];
+        for (const folder of folders) {
+            const listing = SdkRepository.#filesUnder(tree, folder);
+            SdkRepository.#store(SdkRepository.#folderKey(folder, sdkVersion), listing);
+            if (folder === folderPath) {
+                files = listing;
+            }
+        }
+        return files;
+    }
+
+    /**
+     * Downloads the file tree of a version. Each listing that is not kept downloads it again: the request belongs to
+     * the load of its owner, which may cancel it, so it is not shared with other loads.
+     *
+     * @param {string} sdkVersion
+     * @returns {Promise<Object[]>} The entries of the tree, as the GitHub git trees API gives them.
+     */
+    async #fetchTree(sdkVersion) {
         let response;
         try {
             response = await this.#owner.ajaxRequest({
@@ -120,18 +145,41 @@ export class SdkRepository {
         if (response.truncated) {
             throw new CustomError(`${ERROR_FETCHING_DIRECTORY_LISTING}: GitHub returned an incomplete file tree for SDK ${sdkVersion}`);
         }
+        return response.tree;
+    }
 
+    /**
+     * @param {Object[]} tree The entries of a file tree.
+     * @param {string} folderPath
+     * @returns {RepositoryFile[]} The files under the folder.
+     */
+    static #filesUnder(tree, folderPath) {
         const prefix = `${folderPath}/`;
-        const files = response.tree
+        return tree
             .filter(entry => entry.type === 'blob' && entry.path.startsWith(prefix))
             .map(entry => ({
                 path: entry.path.substring(prefix.length),
                 name: entry.path.split('/').pop(),
                 size: entry.size
             }));
+    }
 
-        SdkRepository.#store(storageKey, files);
-        return files;
+    /**
+     * @param {string} folderPath
+     * @param {string} sdkVersion
+     * @returns {string} The key under which the listing of the folder is kept in the browser.
+     */
+    static #folderKey(folderPath, sdkVersion) {
+        return `tree/${sdkVersion}/${folderPath}`;
+    }
+
+    /**
+     * @param {string} sdkVersion
+     * @returns {number|null} How long what is known of the version may be kept, in minutes: null (for ever) for a
+     *          tag, whose files never change; appConfig.repositoryCacheMinutes for a branch.
+     */
+    static #maxAgeMinutes(sdkVersion) {
+        return appConfig.branches.includes(sdkVersion) ? appConfig.repositoryCacheMinutes : null;
     }
 
     /**

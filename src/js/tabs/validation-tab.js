@@ -4,6 +4,7 @@
  * Unless required by applicable law or agreed to in writing, software distributed under the Licence is distributed on an “AS IS” basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the Licence for the specific language governing permissions and limitations under the Licence.
  */
 
+import { appConfig } from "../config.js";
 import { appState } from "../state.js";
 import { Diff, DiffEntry } from "../diff.js";
 import { TabController } from "./tab-controller.js";
@@ -38,10 +39,10 @@ export class ValidationTab extends TabController {
     ]);
 
     /**
-     * Whether each version has EFX rules, keyed by version (tag or branch name).
+     * Whether each version has EFX rules, keyed by version (tag or branch name), with when it was asked.
      * The probes are kept as promises so that concurrent questions about the same version share one request.
      *
-     * @type {Map<string, Promise<boolean>>}
+     * @type {Map<string, {probe: Promise<boolean>, startedAt: number}>}
      */
     #rulesProbes = new Map();
 
@@ -268,20 +269,29 @@ export class ValidationTab extends TabController {
     }
 
     /**
-     * Tells whether the specified version has EFX rules. Each version is probed once.
+     * Tells whether the specified version has EFX rules. A tag is probed once; a branch, whose files change, again
+     * once its answer is older than appConfig.repositoryCacheMinutes, as its folder listings are.
      *
      * @param {string} sdkVersion
      * @returns {Promise<boolean>}
      */
     #hasRules(sdkVersion) {
-        if (!this.#rulesProbes.has(sdkVersion)) {
+        const known = this.#rulesProbes.get(sdkVersion);
+        const expired = known && appConfig.branches.includes(sdkVersion)
+            && Date.now() - known.startedAt > appConfig.repositoryCacheMinutes * 60000;
+        if (!known || expired) {
             const probe = this.#probeRules(sdkVersion);
-            this.#rulesProbes.set(sdkVersion, probe);
+            const entry = { probe: probe, startedAt: Date.now() };
+            this.#rulesProbes.set(sdkVersion, entry);
 
             // A probe that failed (or was aborted) is not remembered, so that it is tried again next time.
-            probe.catch(() => this.#rulesProbes.delete(sdkVersion));
+            probe.catch(() => {
+                if (this.#rulesProbes.get(sdkVersion) === entry) {
+                    this.#rulesProbes.delete(sdkVersion);
+                }
+            });
         }
-        return this.#rulesProbes.get(sdkVersion);
+        return this.#rulesProbes.get(sdkVersion).probe;
     }
 
     /**

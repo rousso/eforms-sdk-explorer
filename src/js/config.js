@@ -11,7 +11,6 @@ export const appConfig = {
     repositoryCacheMinutes: 10,  // how long the list of versions and the file tree of a branch are kept in the browser
     thresholdVersion: '1.3.2',  // versions before this one are not displayed in the dropdown
     branches: ['develop', 'efx-2'],  // branches offered at the top of the target version dropdown
-    validationFiles: ['rules.efx', 'stage-1a.efx', 'stage-4m.efx', 'stage-5m.efx', 'dependencies.json'],  // files of the validation folder (it has no index file)
     unindexedViewTemplates: ['summary.efx'],  // view templates that some versions have without listing them in view-templates.json
     stylesheets: {  // the library stylesheets the web components load into their shadow roots: the same ones index.html loads into the page
         bootstrap: './src/assets/vendor/bootstrap-5.3.8.min.css',  // served from the repository, without the @charset rule of the CDN file (see the comment at the top of the file)

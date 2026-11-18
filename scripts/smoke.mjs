@@ -11,15 +11,19 @@
  * console errors, and checks how the explorer selects versions, shows its tabs and comparisons, and handles slow and
  * failed loads.
  *
- * The explorer reads the SDK from GitHub and jsDelivr, so the test needs network access. It spends 2 requests of the
- * unauthenticated GitHub API budget (60 requests per hour) per run: one git trees request per version, the first time
- * the schematrons folder of a pair is listed; the version list comes from jsDelivr, and listings are then kept in the
- * browser.
+ * The explorer reads the SDK from GitHub and jsDelivr, so the test needs network access. Each run prints how many
+ * requests it spent of the unauthenticated GitHub API budget (60 requests per hour): one git trees request per
+ * version, the first time a folder of that version is listed; the version list comes from jsDelivr, and listings are
+ * then kept in the browser.
+ *
+ * The checks are behavioural. The few assertions that depend on the content of the SDK (counts of nodes, codelists,
+ * data types, the names of the validation files) are marked as SDK data: a failure among them is reported with
+ * "[SDK data]", and --skip-sdk-data skips them. They name released tags, whose content does not change.
  *
  * Usage:
  *   npm install
  *   npx playwright install chromium     (once, unless SMOKE_CHROMIUM_EXECUTABLE_PATH is set)
- *   npm run smoke
+ *   npm run smoke [-- --skip-sdk-data]
  *
  * Environment:
  *   SMOKE_CHROMIUM_EXECUTABLE_PATH  Chromium executable to use instead of the one installed by Playwright.
@@ -1268,16 +1272,11 @@ class ExplorerPage {
  */
 class SmokeTest {
 
-    /**
-     * Runs of consecutive versions that the version dropdowns list in this order, latest first.
-     * They name real tags of the SDK and hold as long as these tags are listed: the 1.16.0 pre-releases (its betas;
-     * its release candidates were deleted when 1.16.0 was released) are listed until a release later than 1.16.0
-     * exists.
-     */
-    static #EXPECTED_VERSION_RUNS = Object.freeze([
-        ['2.0.0-alpha.5', '2.0.0-alpha.4', '2.0.0-alpha.3', '2.0.0-alpha.2', '2.0.0-alpha.1'],
-        ['1.16.0', '1.16.0-beta.3', '1.16.0-beta.2', '1.16.0-beta.1', '1.15.1'],
-    ]);
+    /** The URL of the list of the SDK's tags that the explorer reads (appConfig.versionsUrl). */
+    static #VERSIONS_URL = 'https://data.jsdelivr.com/v1/package/gh/OP-TED/eForms-SDK';
+
+    /** The oldest version the explorer lists (appConfig.thresholdVersion). */
+    static #THRESHOLD_VERSION = '1.3.2';
 
     /** The roots of the tree of the Fields tab in fwd/ mode. */
     static #FORWARD_COMPATIBLE_ROOTS = Object.freeze(['XML structure', 'Business entities', 'Data types']);
@@ -1294,11 +1293,19 @@ class SmokeTest {
     /** @type {number} */
     #failed = 0;
 
+    /** @type {boolean} Whether the assertions on SDK data are skipped. */
+    #skipSdkData;
+
+    /** @type {number} The number of SDK data assertions skipped. */
+    #skippedSdkData = 0;
+
     /**
      * @param {ExplorerPage} explorer
+     * @param {boolean} skipSdkData Whether to skip the assertions on SDK data (see {@link #sdkData}).
      */
-    constructor(explorer) {
+    constructor(explorer, skipSdkData) {
         this.#explorer = explorer;
+        this.#skipSdkData = skipSdkData;
     }
 
     /**
@@ -1320,7 +1327,8 @@ class SmokeTest {
         await this.#checkVersionListFailure();
         // Last: its last check installs Playwright's clock in the page, for the rest of the run.
         await this.#checkFailedProbe();
-        console.log(`\n${this.#passed} passed, ${this.#failed} failed; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
+        const skipped = this.#skipSdkData ? `, ${this.#skippedSdkData} SDK data assertions skipped` : '';
+        console.log(`\n${this.#passed} passed, ${this.#failed} failed${skipped}; ${this.#explorer.githubApiRequests.length} GitHub API requests`);
         return this.#failed;
     }
 
@@ -1334,9 +1342,10 @@ class SmokeTest {
             ['the target dropdown offers the branches develop and efx-2 at the top', async () => {
                 assert.deepEqual((await this.#explorer.mainVersionOptions()).slice(0, 2), ['develop', 'efx-2']);
             }],
-            ['both dropdowns list the versions in version order (2.0.0-alpha.5 … 2.0.0-alpha.1 … 1.16.0, 1.16.0-beta.3 … 1.16.0-beta.1, 1.15.1)', async () => {
-                SmokeTest.#assertVersionOrder(await this.#explorer.mainVersionOptions());
-                SmokeTest.#assertVersionOrder(await this.#explorer.baseVersionOptions());
+            ['both dropdowns list the versions latest first: every release from 1.3.2 on, and the pre-releases of the latest release and of the unreleased versions', async () => {
+                const tags = await SmokeTest.#listTags();
+                SmokeTest.#assertVersionList((await this.#explorer.mainVersionOptions()).filter(option => !['develop', 'efx-2'].includes(option)), tags);
+                SmokeTest.#assertVersionList(await this.#explorer.baseVersionOptions(), tags);
             }],
             ['the releases beyond the first page of tags (1.10.0 to 1.10.2) are listed', async () => {
                 const options = await this.#explorer.baseVersionOptions();
@@ -1360,7 +1369,7 @@ class SmokeTest {
             ['the Validation tab lists the EFX rules files as added, with Compare disabled', async () => {
                 await this.#explorer.openTab('validation-tab');
                 const cards = await this.#explorer.indexCards('validation-overview-card-group');
-                assert.deepEqual(cards.map(card => card.title), SmokeTest.#VALIDATION_FILES);
+                await this.#sdkData(() => assert.deepEqual(cards.map(card => card.title), SmokeTest.#VALIDATION_FILES));
                 cards.forEach(card => {
                     assert.equal(card.status, 'added', card.title);
                     assert.equal(card.compareEnabled, false, card.title);
@@ -1579,12 +1588,14 @@ class SmokeTest {
                 const nodes = await this.#explorer.treeNodes('fields-explorer');
                 assert.deepEqual(nodes.filter(node => node.parent === '#').map(node => node.text), SmokeTest.#FORWARD_COMPATIBLE_ROOTS);
                 const xmlStructure = nodes.filter(node => node.parent !== '#' && !/^(be|bep|dt):/.test(node.id));
-                assert.equal(xmlStructure.filter(node => node.folder).length, 262, 'nodes');
-                const modifiedFields = xmlStructure.filter(node => !node.folder && node.status === 'modified').map(node => node.id);
-                assert.equal(modifiedFields.length, 13, `modified fields: ${modifiedFields.join(', ')}`);
-                assert.ok(modifiedFields.includes('BT-507-Business'), 'BT-507-Business is not modified');
-                assert.equal(nodes.filter(node => node.id.startsWith('be:')).length, 96, 'business entities');
-                assert.equal(nodes.filter(node => node.id.startsWith('dt:')).length, 19, 'data types');
+                await this.#sdkData(() => {
+                    assert.equal(xmlStructure.filter(node => node.folder).length, 262, 'nodes');
+                    const modifiedFields = xmlStructure.filter(node => !node.folder && node.status === 'modified').map(node => node.id);
+                    assert.equal(modifiedFields.length, 13, `modified fields: ${modifiedFields.join(', ')}`);
+                    assert.ok(modifiedFields.includes('BT-507-Business'), 'BT-507-Business is not modified');
+                    assert.equal(nodes.filter(node => node.id.startsWith('be:')).length, 96, 'business entities');
+                    assert.equal(nodes.filter(node => node.id.startsWith('dt:')).length, 19, 'data types');
+                });
             }],
             ['when loading fails, the Fields tab shows an empty pane and the error naming the file, not the previous tree', async () => {
                 await this.#explorer.selectFieldsSource('fields-json');
@@ -1630,7 +1641,7 @@ class SmokeTest {
             ['the Validation tab lists the EFX rules files as unchanged, without a folder filter', async () => {
                 await this.#explorer.openTab('validation-tab');
                 const cards = await this.#explorer.indexCards('validation-overview-card-group');
-                assert.deepEqual(cards.map(card => card.title), SmokeTest.#VALIDATION_FILES);
+                await this.#sdkData(() => assert.deepEqual(cards.map(card => card.title), SmokeTest.#VALIDATION_FILES));
                 cards.forEach(card => {
                     assert.equal(card.status, 'unchanged', card.title);
                     assert.equal(card.compareEnabled, true, card.title);
@@ -1650,9 +1661,9 @@ class SmokeTest {
                 await this.#explorer.selectStatusFilter('validation-overview-card-group', 'modified');
                 assert.deepEqual((await this.#explorer.cardStates('validation-overview-card-group')).filter(card => card.visible).map(card => card.title), []);
             }],
-            ['the Schematron source lists the schematrons of the pair with one git trees request per version', async () => {
+            ['the Schematron source lists the schematrons of the pair without a git trees request: the EFX rules source already listed both versions', async () => {
                 const treesRequests = await this.#treesRequestsDuring(() => this.#explorer.selectValidationSource('schematron'));
-                assert.equal(treesRequests, 2);
+                assert.equal(treesRequests, 0);
                 assert.deepEqual(await this.#explorer.selectedToggleButton('validation-source'), { checked: 'schematron', active: ['schematron'] });
                 const cards = await this.#explorer.indexCards('validation-overview-card-group');
                 assert.ok(cards.length > 0, 'no cards');
@@ -2045,7 +2056,7 @@ class SmokeTest {
                 assert.deepEqual(whileLoading.filter(card => card.visible && card.subtitle !== 'country').map(card => card.title), []);
                 await this.#explorer.waitUntilIdle();
                 const visible = (await this.#explorer.cardStates('code-lists-overview-card-group')).filter(card => card.visible);
-                assert.equal(visible.length, 5, `visible: ${visible.map(card => card.title).join(', ')}`);
+                await this.#sdkData(() => assert.equal(visible.length, 5, `visible: ${visible.map(card => card.title).join(', ')}`));
                 assert.ok(visible.every(card => card.subtitle === 'country'));
             }],
             ['the Codelists status filter applies while the codelists are still being checked ("modified": no pending codelist, then the 11 modified)', async () => {
@@ -2058,7 +2069,7 @@ class SmokeTest {
                 assert.deepEqual(whileLoading.filter(card => card.visible && card.status !== 'modified').map(card => card.title), []);
                 await this.#explorer.waitUntilIdle();
                 const visible = (await this.#explorer.cardStates('code-lists-overview-card-group')).filter(card => card.visible);
-                assert.equal(visible.length, 11, `visible: ${visible.map(card => card.title).join(', ')}`);
+                await this.#sdkData(() => assert.equal(visible.length, 11, `visible: ${visible.map(card => card.title).join(', ')}`));
                 assert.ok(visible.every(card => card.status === 'modified'));
             }],
         ]);
@@ -2093,7 +2104,7 @@ class SmokeTest {
                 assert.ok(businessEntities.length > 0, 'no business entities');
                 assert.deepEqual(businessEntities.filter(node => node.status !== 'added'), []);
                 const dataTypes = nodes.filter(node => node.id.startsWith('dt:'));
-                assert.equal(dataTypes.length, 19, 'data types');
+                await this.#sdkData(() => assert.equal(dataTypes.length, 19, 'data types'));
                 assert.deepEqual(dataTypes.filter(node => ['added', 'removed'].includes(node.status)), []);
             }],
         ]);
@@ -2202,19 +2213,99 @@ class SmokeTest {
     }
 
     /**
-     * Asserts that each of the expected runs of versions appears in the dropdown as consecutive options, the runs in
-     * the expected order. Other versions may appear before, between and after the runs.
+     * Asserts that a version dropdown lists the versions the explorer offers, whatever the tags are: latest first,
+     * every release from the threshold on, the pre-releases of the latest release and those of unreleased versions,
+     * and no other pre-release.
      *
-     * @param {string[]} options The options of a version dropdown.
+     * @param {string[]} options The versions listed by a version dropdown (without the branches).
+     * @param {string[]} tags The tags of the SDK.
      */
-    static #assertVersionOrder(options) {
-        let endOfPreviousRun = -1;
-        SmokeTest.#EXPECTED_VERSION_RUNS.forEach(run => {
-            const start = options.indexOf(run[0]);
-            assert.ok(start > endOfPreviousRun, `${run[0]} is missing or out of order: ${options.join(', ')}`);
-            assert.deepEqual(options.slice(start, start + run.length), run);
-            endOfPreviousRun = start + run.length - 1;
-        });
+    static #assertVersionList(options, tags) {
+        const versions = tags.map(SmokeTest.#parseVersion).filter(version => version !== null)
+            .filter(version => SmokeTest.#compareVersions(version, SmokeTest.#parseVersion(SmokeTest.#THRESHOLD_VERSION)) >= 0);
+        const releases = versions.filter(version => version.preRelease === null);
+        const latestRelease = releases.reduce((latest, version) => SmokeTest.#compareVersions(version, latest) > 0 ? version : latest);
+        const expected = versions.filter(version => version.preRelease === null
+            || version.core === latestRelease.core
+            || !releases.some(release => release.core === version.core));
+        const expectedNames = expected.sort((a, b) => SmokeTest.#compareVersions(b, a)).map(version => version.name);
+        assert.deepEqual(options, expectedNames);
+    }
+
+    /**
+     * @returns {Promise<string[]>} The tags of the SDK, as the explorer gets them.
+     */
+    static async #listTags() {
+        const response = await fetch(SmokeTest.#VERSIONS_URL);
+        assert.ok(response.ok, `the list of tags could not be downloaded: ${response.status}`);
+        return (await response.json()).versions;
+    }
+
+    /**
+     * @param {string} name A tag, for example `2.0.0-alpha.4`.
+     * @returns {{name: string, core: string, numbers: number[], preRelease: (string|number)[]|null}|null} null if the
+     *          tag is not a version.
+     */
+    static #parseVersion(name) {
+        const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(name);
+        if (!match) {
+            return null;
+        }
+        return {
+            name: name,
+            core: `${match[1]}.${match[2]}.${match[3]}`,
+            numbers: [Number(match[1]), Number(match[2]), Number(match[3])],
+            preRelease: match[4] ? match[4].split('.').map(part => /^\d+$/.test(part) ? Number(part) : part) : null
+        };
+    }
+
+    /**
+     * Compares two versions by Semantic Versioning precedence (a pre-release comes before its release).
+     *
+     * @returns {number} Negative if a comes first, positive if b does, 0 if they are equal.
+     */
+    static #compareVersions(a, b) {
+        for (let i = 0; i < 3; i++) {
+            if (a.numbers[i] !== b.numbers[i]) {
+                return a.numbers[i] - b.numbers[i];
+            }
+        }
+        if (a.preRelease === null || b.preRelease === null) {
+            return (a.preRelease === null) - (b.preRelease === null);
+        }
+        for (let i = 0; i < Math.min(a.preRelease.length, b.preRelease.length); i++) {
+            const [x, y] = [a.preRelease[i], b.preRelease[i]];
+            if (x === y) {
+                continue;
+            }
+            if (typeof x === 'number' && typeof y === 'number') {
+                return x - y;
+            }
+            if (typeof x === 'number' || typeof y === 'number') {
+                return typeof x === 'number' ? -1 : 1;
+            }
+            return x < y ? -1 : 1;
+        }
+        return a.preRelease.length - b.preRelease.length;
+    }
+
+    /**
+     * Runs assertions that depend on the content of the SDK, unless they are skipped (--skip-sdk-data). A failure
+     * among them is reported with "[SDK data]", so that it is not mistaken for a change of behaviour.
+     *
+     * @param {() => (void|Promise<void>)} assertions
+     */
+    async #sdkData(assertions) {
+        if (this.#skipSdkData) {
+            this.#skippedSdkData++;
+            return;
+        }
+        try {
+            await assertions();
+        } catch (error) {
+            error.message = `[SDK data] ${error.message}`;
+            throw error;
+        }
     }
 
     /**
@@ -2235,7 +2326,7 @@ try {
     // Every load fetches the SDK files as a first visit does (as in a context with request interception, where
     // Playwright disables the HTTP cache), so that the checks made while a tab is still loading find it loading.
     await (await context.newCDPSession(page)).send('Network.setCacheDisabled', { cacheDisabled: true });
-    const failed = await new SmokeTest(new ExplorerPage(page, baseUrl)).run();
+    const failed = await new SmokeTest(new ExplorerPage(page, baseUrl), process.argv.includes('--skip-sdk-data')).run();
     process.exitCode = failed === 0 ? 0 : 1;
 } finally {
     await browser.close();

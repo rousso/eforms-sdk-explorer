@@ -1,0 +1,26 @@
+name: Smoke test
+
+# Runs the smoke test (scripts/smoke.mjs) against the eForms SDK on GitHub: on every pull request, every Monday
+# (so that a change on the SDK side is noticed), and on demand.
+on:
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run smoke

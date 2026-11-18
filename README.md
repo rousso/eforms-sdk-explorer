@@ -88,7 +88,9 @@ The repository includes a smoke test that serves the SDK Explorer locally, opens
 2. Install the browser used by the test, once: `npx playwright install chromium`
 3. Run the test: `npm run smoke`
 
-The test needs network access and uses 4 of the 60 requests per hour that the GitHub API allows without signing in. To use a Chromium browser already installed on your machine instead, set the environment variable `SMOKE_CHROMIUM_EXECUTABLE_PATH` to its path.
+The test needs network access. It uses a few of the 60 requests per hour that the GitHub API allows without signing in (one per SDK version whose folders it lists; 6 in a full run) and prints the number at the end. To use a Chromium browser already installed on your machine instead, set the environment variable `SMOKE_CHROMIUM_EXECUTABLE_PATH` to its path.
+
+The checks are behavioural. The few assertions that depend on the content of the SDK, such as the number of nodes of a version, are reported with "[SDK data]" when they fail, and `npm run smoke -- --skip-sdk-data` skips them. The test also runs on GitHub, on every pull request and every Monday (`.github/workflows/smoke.yml`).
 
 ## Acknowledgements
 

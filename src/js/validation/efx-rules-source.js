@@ -6,17 +6,21 @@
 
 import { appConfig } from "../config.js";
 import { Diff, DiffEntry } from "../diff.js";
-import { TabController } from "../tabs/tab-controller.js";
+import { SdkRepository } from "../sdk-repository.js";
 import { PropertyCard } from "../components/property-card.js";
 import { IndexCard } from "../components/index-card.js";
 import { AjaxError } from "../custom-error.js";
 import { ERROR_FETCHING_FILE } from "../error-messages.js";
 
 /**
+ * @typedef {import('./validation-source.js').ValidationSourceOwner} ValidationSourceOwner
+ */
+
+/**
  * The validation folder of the SDK as a source of validation files: the EFX rules and their dependencies.
- * The folder has no index file, so the index is built by fetching each of the files listed in appConfig.validationFiles.
- * A file that a version does not have is absent from its index; a version without the folder has an empty index.
- * The index items carry the text of their file, so that their status can be decided without fetching them again.
+ * The folder has no index file, so the index is built from the listing of the folder, by fetching each of its files.
+ * A version without the folder has an empty index. The index items carry the text of their file, so that their
+ * status can be decided without fetching them again.
  */
 export class EfxRulesSource {
 
@@ -29,15 +33,19 @@ export class EfxRulesSource {
     /** Matches the lines that are EFX comments. */
     static #COMMENT_LINE = /^\/\/.*$/gm;
 
-    /** @type {TabController} */
+    /** @type {ValidationSourceOwner} */
     #tab;
 
+    /** @type {SdkRepository} */
+    #repository;
+
     /**
-     * @param {TabController} tab The tab that owns the source. The requests of the source go through this tab, and
-     * the index cards call its fetchAndRenderDiffView(filename) method.
+     * @param {ValidationSourceOwner} tab The tab that owns the source. The requests of the source go through this
+     *        tab, and the index cards call its fetchAndRenderDiffView(filename) method.
      */
     constructor(tab) {
         this.#tab = tab;
+        this.#repository = new SdkRepository(tab);
     }
 
     /**
@@ -54,7 +62,11 @@ export class EfxRulesSource {
      * @returns {Promise<Object[]>} One item per file present in the version: filename, size, stages, includes and text.
      */
     async fetchIndex(sdkVersion) {
-        const items = await Promise.all(appConfig.validationFiles.map(filename => this.#fetchIndexItem(filename, sdkVersion)));
+        const files = await this.#repository.listFolder('validation', sdkVersion);
+        // The EFX rules files first, then the files they depend on, each group by name.
+        const filenames = files.map(file => file.path)
+            .sort((a, b) => Number(EfxRulesSource.#isJson(a)) - Number(EfxRulesSource.#isJson(b)) || a.localeCompare(b));
+        const items = await Promise.all(filenames.map(filename => this.#fetchIndexItem(filename, sdkVersion)));
         return items.filter(item => item !== null);
     }
 
@@ -83,7 +95,7 @@ export class EfxRulesSource {
      *
      * @param {string} filename
      * @param {string} sdkVersion
-     * @returns {Promise<Object|null>} null if the version does not have the file.
+     * @returns {Promise<Object|null>} null if the version does not have the file (any longer, for a branch).
      */
     async #fetchIndexItem(filename, sdkVersion) {
         let text;

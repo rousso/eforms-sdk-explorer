@@ -6,10 +6,13 @@
 
 import { appConfig } from "../config.js";
 import { Diff, DiffEntry } from "../diff.js";
-import { TabController } from "../tabs/tab-controller.js";
 import { PropertyCard } from "../components/property-card.js";
 import { IndexCard } from "../components/index-card.js";
 import { SdkRepository } from "../sdk-repository.js";
+
+/**
+ * @typedef {import('./validation-source.js').ValidationSourceOwner} ValidationSourceOwner
+ */
 
 /**
  * The schematrons folder of the SDK as a source of validation files.
@@ -18,15 +21,15 @@ import { SdkRepository } from "../sdk-repository.js";
  */
 export class SchematronSource {
 
-    /** @type {TabController} */
+    /** @type {ValidationSourceOwner} */
     #tab;
 
     /** @type {SdkRepository} */
     #repository;
 
     /**
-     * @param {TabController} tab The tab that owns the source. The requests of the source go through this tab, and
-     * the index cards call its checkForChanges(filename) and fetchAndRenderDiffView(filename) methods.
+     * @param {ValidationSourceOwner} tab The tab that owns the source. The requests of the source go through this
+     *        tab, and the index cards call its checkForChanges(filename) and fetchAndRenderDiffView(filename) methods.
      */
     constructor(tab) {
         this.#tab = tab;
