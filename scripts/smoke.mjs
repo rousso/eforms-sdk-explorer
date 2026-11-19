@@ -27,6 +27,9 @@
  *
  * Environment:
  *   SMOKE_CHROMIUM_EXECUTABLE_PATH  Chromium executable to use instead of the one installed by Playwright.
+ *   GITHUB_TOKEN                    A token sent with the explorer's GitHub API requests (and only those), as on
+ *                                   GitHub Actions, where the unauthenticated budget of the shared runners is often
+ *                                   spent.
  */
 
 import assert from 'node:assert/strict';
@@ -2322,6 +2325,14 @@ const browser = await chromium.launch({ executablePath: process.env.SMOKE_CHROMI
 try {
     const baseUrl = await server.start();
     const context = await browser.newContext();
+    // On GitHub Actions, the runners share their IP addresses, so the unauthenticated GitHub API budget is often
+    // spent already: the explorer's GitHub API requests then carry the workflow's token. It is sent only to
+    // api.github.com.
+    if (process.env.GITHUB_TOKEN) {
+        await context.route('https://api.github.com/**', route => route.continue({
+            headers: { ...route.request().headers(), authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
+        }));
+    }
     const page = await context.newPage();
     // Every load fetches the SDK files as a first visit does (as in a context with request interception, where
     // Playwright disables the HTTP cache), so that the checks made while a tab is still loading find it loading.

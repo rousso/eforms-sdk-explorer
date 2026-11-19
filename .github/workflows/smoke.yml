@@ -24,3 +24,6 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run smoke
+        env:
+          # Read-only; the smoke test sends it with the explorer's GitHub API requests only (see scripts/smoke.mjs).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
